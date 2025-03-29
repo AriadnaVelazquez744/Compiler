@@ -4,5 +4,21 @@
         "yyin",
         "yylex",
         "yyparse"
-    ]
+    ],
+    // "files.associations": {
+    //     "*.l": "cpp",
+    //     "*.y": "cpp"
+    // },
+    // "editor.quickSuggestions": {
+    //     "other": true,
+    //     "comments": true,
+    //     "strings": true
+    // },
+    // "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "editor.tokenColorCustomizations": {
+        "[name of the theme]": {
+            "semanticHighlighting": true
+        }
+    }
+
 }

@@ -17,9 +17,9 @@ AST_DIR = ast
 LEXER_SRC = $(LEXER_DIR)/hulk.l
 PARSER_SRC = $(PARSER_DIR)/hulk.y
 
-LEXER_OUT = $(BUILD_DIR)/lex.yy.c
-PARSER_OUT = $(BUILD_DIR)/hulk.tab.c
-PARSER_HEADER = $(BUILD_DIR)/hulk.tab.h
+LEXER_OUT = $(BUILD_DIR)/lex.yy.cpp
+PARSER_OUT = $(BUILD_DIR)/hulk.tab.cpp
+PARSER_HEADER = $(BUILD_DIR)/hulk.tab.hpp
 
 # Archivos compilados
 OBJS = $(BUILD_DIR)/lexer.o $(BUILD_DIR)/parser.o $(BUILD_DIR)/ast.o $(BUILD_DIR)/main.o
@@ -32,11 +32,11 @@ all: build $(BIN)
 
 # Compilación del lexer con Flex
 $(LEXER_OUT): $(LEXER_SRC)
-	$(LEX) -o $@ $<
+	$(LEX) --c++ -o $@ $<
 
 # Compilación del parser con Bison
 $(PARSER_OUT) $(PARSER_HEADER): $(PARSER_SRC)
-	$(YACC) -d -o $(PARSER_OUT) $<
+	$(YACC) -d --defines=$(PARSER_HEADER) -o $(PARSER_OUT) $<
 
 # Compilación de los archivos fuente
 $(BUILD_DIR)/lexer.o: $(LEXER_OUT) $(LEXER_DIR)/lexer.cpp

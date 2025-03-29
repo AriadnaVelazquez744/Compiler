@@ -1,8 +1,8 @@
 #include <iostream>
-#include "../lexer/lexer.h"
-#include "../parser/parser.h"
-// #include "../ast/ast.h"
-// #include "../ir/ir.h"
+#include "../lexer/lexer.hpp"
+#include "../parser/parser.hpp"
+// #include "../ast/ast.hpp"
+// #include "../ir/ir.hpp"
 
 extern FILE* yyin;
 

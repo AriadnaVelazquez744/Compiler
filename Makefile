@@ -30,18 +30,19 @@ BIN = $(BUILD_DIR)/hulk_compiler
 # Regla principal
 all: build $(BIN)
 
-# Compilación del lexer con Flex
+# Compilación del lexer con Flex (modo C++)
 $(LEXER_OUT): $(LEXER_SRC)
 	$(LEX) --c++ -o $@ $<
 
-# Compilación del parser con Bison
+# Compilación del parser con Bison (modo C++)
 $(PARSER_OUT) $(PARSER_HEADER): $(PARSER_SRC)
 	$(YACC) -d --defines=$(PARSER_HEADER) -o $(PARSER_OUT) $<
 
-# Compilación de los archivos fuente
+# Compilación del lexer
 $(BUILD_DIR)/lexer.o: $(LEXER_OUT) $(LEXER_DIR)/lexer.cpp
 	$(CXX) $(CXXFLAGS) -c $(LEXER_DIR)/lexer.cpp -o $@
 
+# Compilación del parser
 $(BUILD_DIR)/parser.o: $(PARSER_OUT) $(PARSER_DIR)/parser.cpp
 	$(CXX) $(CXXFLAGS) -c $(PARSER_DIR)/parser.cpp -o $@
 

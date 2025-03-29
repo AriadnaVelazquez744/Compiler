@@ -1,5 +1,6 @@
 #include "lexer.hpp"
 #include "../parser/parser.hpp"
+#include "../parser/hulk.tab.hpp" // Incluye los tokens generados por Bison
 #include <iostream>
 
 namespace HULK {
@@ -17,99 +18,96 @@ namespace HULK {
         while ((token = lexer.yylex())) {
             switch (token) {
                 // ====== Tipos básicos ======
-                case Parser::token::NUMBER:
+                case NUMBER:
                     std::cout << "NUMBER" << std::endl;
                     break;
-                case Parser::token::BOOL:
+                case BOOL:
                     std::cout << "BOOL" << std::endl;
                     break;
-                case Parser::token::STRING:
+                case STRING:
                     std::cout << "STRING" << std::endl;
                     break;
-                case Parser::token::TOKEN_NULL:
+                case TOKEN_NULL:
                     std::cout << "NULL" << std::endl;
                     break;
 
                 // ====== Funciones globales ======
-                case Parser::token::PRINT:
+                case PRINT:
                     std::cout << "PRINT" << std::endl;
                     break;
-                case Parser::token::READ:
+                case READ:
                     std::cout << "READ" << std::endl;
                     break;
-                case Parser::token::PARSE:
+                case PARSE:
                     std::cout << "PARSE" << std::endl;
                     break;
-                case Parser::token::PARSE:
-                    std::cout << "PARSE" << std::endl;
-                    break;
-                case Parser::token::SIN:
+                case SIN:
                     std::cout << "SIN" << std::endl;
                     break;
-                case Parser::token::COS:
+                case COS:
                     std::cout << "COS" << std::endl;
                     break;
-                case Parser::token::MAX:
+                case MAX:
                     std::cout << "MAX" << std::endl;
                     break;
-                case Parser::token::MIN:
+                case MIN:
                     std::cout << "MIN" << std::endl;
                     break;
 
 
                 // ====== Operadores aritméticos ======
-                case Parser::token::ADD:
+                case ADD:
                     std::cout << "ADD (+)" << std::endl;
                     break;
-                case Parser::token::SUB:
+                case SUB:
                     std::cout << "SUB (-)" << std::endl;
                     break;
-                case Parser::token::MUL:
+                case MUL:
                     std::cout << "MUL (*)" << std::endl;
                     break;
-                case Parser::token::DIV:
+                case DIV:
                     std::cout << "DIV (/)" << std::endl;
                     break;
-                case Parser::token::MOD:
+                case MOD:
                     std::cout << "MOD (%)" << std::endl;
                     break;
 
                 // ====== Operadores de comparación ======
-                case Parser::token::LT:
+                case LT:
                     std::cout << "LT (<)" << std::endl;
                     break;
-                case Parser::token::GT:
+                case GT:
                     std::cout << "GT (>)" << std::endl;
                     break;
-                case Parser::token::LE:
+                case LE:
                     std::cout << "LE (<=)" << std::endl;
                     break;
-                case Parser::token::GE:
+                case GE:
                     std::cout << "GE (>=)" << std::endl;
                     break;
-                case Parser::token::EQ:
+                case EQ:
                     std::cout << "EQ (==)" << std::endl;
                     break;
-                case Parser::token::NE:
+                case NE:
                     std::cout << "NE (!=)" << std::endl;
                     break;
 
                 // ====== Operadores lógicos ======
-                case Parser::token::AND:
+                case AND:
                     std::cout << "AND (&)" << std::endl;
                     break;
-                case Parser::token::OR:
+                case OR:
                     std::cout << "OR (|)" << std::endl;
                     break;
-                case Parser::token::NOT:
+                case NOT:
                     std::cout << "NOT (!)" << std::endl;
                     break;
 
                 // ====== Operadores de concatenación ======
-                case Parser::token::CONCAT:
+                case CONCAT:
                     std::cout << "CONCAT (@)" << std::endl;
                     break;
-                case Parser::token::CONCAT_SPACE:
+                case CONCAT_SPACE:
                     std::cout << "CONCAT_SPACE (@@)" << std::endl;
                     break;
 

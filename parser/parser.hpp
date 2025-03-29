@@ -1,10 +1,14 @@
-#ifndef PARSER_H
-#define PARSER_H
+#ifndef PARSER_HPP
+#define PARSER_HPP
 
-#include <iostream>
+#include <string>
+#include "../lexer/lexer.hpp"
 
-extern int yyparse();  // Función de Bison
+namespace HULK {
+    class Parser {
+    public:
+        static int parse(); // Método para iniciar el parser
+    };
+}
 
-void runParser();
-
-#endif // PARSER_H
+#endif // PARSER_HPP

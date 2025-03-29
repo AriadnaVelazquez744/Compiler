@@ -2,7 +2,7 @@
 #define LEXER_H
 
 #include <string>
-#include <variant>
+#include "../parser/hulk.tab.hpp"
 
 namespace HULK {
     class Lexer {
@@ -11,4 +11,4 @@ namespace HULK {
     };
 }
 
-#endif
+#endif // LEXER_H

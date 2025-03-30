@@ -1,10 +1,10 @@
 #include <iostream>
+#include <cstdio> // Para FILE*
 #include "../lexer/lexer.hpp"
 #include "../parser/parser.hpp"
-// #include "../ast/ast.hpp"
-// #include "../ir/ir.hpp"
 
-extern FILE* yyin;
+extern FILE* yyin; // Archivo de entrada para el lexer
+extern int yyparse(); // Función principal del parser
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -18,10 +18,17 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    yyin = file;
-    yyparse();  // Llama al parser, que usa el lexer automáticamente
-    fclose(file);
+    yyin = file; // Asigna el archivo al lexer
 
-    std::cout << "Compilación exitosa.\n";
+    std::cout << "Iniciando análisis...\n";
+
+    // Llama al parser (el parser invoca al lexer automáticamente)
+    if (yyparse() == 0) {
+        std::cout << "Análisis completado: Expresión válida.\n";
+    } else {
+        std::cerr << "Error en el análisis sintáctico.\n";
+    }
+
+    fclose(file); // Cierra el archivo
     return 0;
 }

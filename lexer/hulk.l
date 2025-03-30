@@ -1,48 +1,38 @@
 %option c++ noyywrap
 
 %{
-#include "../parser/parser.hpp"  // Para la integración con Bison
-#include <iostream>
+#include "lexer.hpp"
 #include <cstdlib>
-#include <string>
-
-// Definimos una clase Lexer para encapsular yylex()
-class Lexer {
-public:
-    std::string text;
-};
-
-// Declaramos el token y la instancia de la clase Lexer
-#define YY_DECL HULK::Parser::token_type yylex(HULK::Parser::semantic_type* yylval)
-
+#include <iostream>
+#include <string>      // Para std::string
+#include <stdexcept>   // Para excepciones
 %}
 
-/* ========== Definición de Expresiones Regulares ========== */
+/* ========== Definición de Tokens ========== */
 %%
 WHITESPACE    [ \t\r]+
 COMMENT       "//".*
+NUMBER        [0-9]+(\.[0-9]+)?
 
-NUMBER        [0-9]+(\.[0-9]+)?      
-BOOL_TRUE     "True"                 
-BOOL_FALSE    "False"                
-STRING        "\"([^\"\\]|\\.)*\""   
-NULL_VAL      "Null"                 
+BOOL_TRUE     "True"
+BOOL_FALSE    "False"
+STRING        \"[^\"\n]*\"  // Simplificada para evitar problemas con m4
+NULL_VAL      "Null"
 
-ADD           "\+"
-SUB           "-"
-MUL           "\*"
-DIV           "/"
-MOD           "%"
+ADD           [+]
+SUB           [-]
+MUL           [*]
+DIV           [/]
+MOD           [%]
 
-LT            "<"
-GT            ">"
+LT            [<]
+GT            [>]
 LE            "<="
 GE            ">="
 EQ            "=="
 NE            "!="
-
 AND           "&"
-OR            "|"
+OR            [|]
 NOT           "!"
 
 CONCAT        "@"
@@ -51,10 +41,11 @@ CONCAT_SPACE  "@@"
 PRINT         "print"
 READ          "read"
 PARSE         "parse"
+
 SIN           "sin"
 COS           "cos"
-MIN           "min"
 MAX           "max"
+MIN           "min"
 
 %%
 
@@ -62,41 +53,51 @@ MAX           "max"
 {WHITESPACE}     { /* Ignorar espacios en blanco */ }
 {COMMENT}        { /* Ignorar comentarios */ }
 
-{NUMBER}         { yylval->num = std::stod(yytext); return HULK::Parser::token_type::NUMBER; }
-{BOOL_TRUE}      { yylval->boolean = true; return HULK::Parser::token_type::BOOL; }
-{BOOL_FALSE}     { yylval->boolean = false; return HULK::Parser::token_type::BOOL; }
-{STRING}         { yylval->str = new std::string(yytext); return HULK::Parser::token_type::STRING; }
-{NULL_VAL}       { return HULK::Parser::token_type::TOKEN_NULL; }
+{NUMBER}         { yylval.num = std::stod(yytext); return NUMBER; }
+{BOOL_TRUE}      { yylval.boolean = true; return BOOL; }
+{BOOL_FALSE}     { yylval.boolean = false; return BOOL; }
+{STRING}         { 
+                    yylval.str = new std::string(yytext); 
+                    return STRING; 
+                 }
+{NULL_VAL}       { return TOKEN_NULL; }
 
-{ADD}            { return HULK::Parser::token_type::ADD; }
-{SUB}            { return HULK::Parser::token_type::SUB; }
-{MUL}            { return HULK::Parser::token_type::MUL; }
-{DIV}            { return HULK::Parser::token_type::DIV; }
-{MOD}            { return HULK::Parser::token_type::MOD; }
+{ADD}            { return ADD; }
+{SUB}            { return SUB; }
+{MUL}            { return MUL; }
+{DIV}            { return DIV; }
+{MOD}            { return MOD; }
 
-{LT}             { return HULK::Parser::token_type::LT; }
-{GT}             { return HULK::Parser::token_type::GT; }
-{LE}             { return HULK::Parser::token_type::LE; }
-{GE}             { return HULK::Parser::token_type::GE; }
-{EQ}             { return HULK::Parser::token_type::EQ; }
-{NE}             { return HULK::Parser::token_type::NE; }
+{LT}             { return LT; }
+{GT}             { return GT; }
+{LE}             { return LE; }
+{GE}             { return GE; }
+{EQ}             { return EQ; }
+{NE}             { return NE; }
 
-{AND}            { return HULK::Parser::token_type::AND; }
-{OR}             { return HULK::Parser::token_type::OR; }
-{NOT}            { return HULK::Parser::token_type::NOT; }
+{AND}            { return AND; }
+{OR}             { return OR; }
+{NOT}            { return NOT; }
 
-{CONCAT}         { return HULK::Parser::token_type::CONCAT; }
-{CONCAT_SPACE}   { return HULK::Parser::token_type::CONCAT_SPACE; }
+{CONCAT}         { return CONCAT; }
+{CONCAT_SPACE}   { return CONCAT_SPACE; }
 
-{PRINT}          { return HULK::Parser::token_type::PRINT; }
-{READ}           { return HULK::Parser::token_type::READ; }
-{PARSE}          { return HULK::Parser::token_type::PARSE; }
-{SIN}            { return HULK::Parser::token_type::SIN; }
-{COS}            { return HULK::Parser::token_type::COS; }
-{MAX}            { return HULK::Parser::token_type::MAX; }
-{MIN}            { return HULK::Parser::token_type::MIN; }
+{PRINT}          { return PRINT; }
+{READ}           { return READ; }
+{PARSE}          { return PARSE; }
+{SIN}            { return SIN; }
+{COS}            { return COS; }
+{MAX}            { return MAX; }
+{MIN}            { return MIN; }
 
-.                { std::cerr << "Carácter inesperado: " << yytext << std::endl; exit(1); }
+.                { 
+                    if (yytext && yytext[0] != '\0') {
+                        std::cerr << "Carácter inesperado: " << yytext << std::endl; 
+                    } else {
+                        std::cerr << "Carácter inesperado: carácter nulo o vacío" << std::endl;
+                    }
+                    exit(1); 
+                 }
 
 %%
-// User-defined code can go here if needed.
+

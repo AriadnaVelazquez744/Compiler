@@ -6,13 +6,11 @@
 #include <cstdlib>  
 #include "../lexer/lexer.hpp"  // Integración con el lexer
 
-// Definimos el espacio de nombres HULK
-namespace HULK {
-    class Parser {
-    public:
-        static int parse();  // Función principal de análisis
-    };
-}
+#include <cstdio>
+#include <cstdlib>
+
+void yyerror(const char* s);
+int yylex();
 %}
 
 /* Configuración de Bison */
@@ -55,6 +53,7 @@ namespace HULK {
 %left AND OR
 %right NOT
 %nonassoc CONCAT CONCAT_SPACE
+%right UMINUS
 
 /* Punto de Entrada */
 %start program
@@ -91,6 +90,8 @@ expr:
     | COS expr               { $$ = std::cos($2); }
     | MIN expr expr          { $$ = std::min($2, $3); }
     | MAX expr expr          { $$ = std::max($2, $3); }
+    | '-' expr %prec UMINUS  { $$ = -$2; }
+    | '(' expr ')'           { $$ = $2; }
     ;
 
 /* Expresiones Booleanas */
@@ -122,7 +123,7 @@ str_expr:
 
 /* Manejo de errores de parsing */
 void yyerror(const char* s) {
-    std::cerr << "Error de parsing: " << s << std::endl;
+    std::cerr << "Error de sintaxis: " << s << std::endl;
 }
 
 /* Función para leer una entrada desde la consola */

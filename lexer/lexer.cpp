@@ -11,11 +11,10 @@ namespace HULK {
      */
     void runLexer() {
         std::cout << "Ejecutando lexer...\n";
-        Lexer lexer;  // Se instancia el lexer
         int token;
 
         // Se procesa la entrada hasta que yylex() retorne 0 (fin del archivo)
-        while ((token = lexer.yylex())) {
+        while ((token = yylex())) {
             switch (token) {
                 // ====== Tipos básicos ======
                 case NUMBER:
@@ -53,7 +52,6 @@ namespace HULK {
                 case MIN:
                     std::cout << "MIN" << std::endl;
                     break;
-
 
                 // ====== Operadores aritméticos ======
                 case ADD:

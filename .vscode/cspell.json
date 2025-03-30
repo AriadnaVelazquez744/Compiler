@@ -4,7 +4,10 @@
     "dictionaryDefinitions": [],
     "dictionaries": [],
     "words": [
-        "codegen"
+        "codegen",
+        "noyywrap",
+        "yylval",
+        "yytext"
     ],
     "ignoreWords": [],
     "import": [],

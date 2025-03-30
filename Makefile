@@ -17,12 +17,12 @@ AST_DIR = ast
 LEXER_SRC = $(LEXER_DIR)/hulk.l
 PARSER_SRC = $(PARSER_DIR)/hulk.y
 
-LEXER_OUT = $(BUILD_DIR)/lex.yy.cpp
+LEXER_OUT = $(BUILD_DIR)/hulk.yy.cpp
 PARSER_OUT = $(BUILD_DIR)/hulk.tab.cpp
 PARSER_HEADER = $(BUILD_DIR)/hulk.tab.hpp
 
 # Archivos compilados
-OBJS = $(BUILD_DIR)/lexer.o $(BUILD_DIR)/parser.o $(BUILD_DIR)/ast.o $(BUILD_DIR)/main.o
+OBJS = $(BUILD_DIR)/lexer.o $(BUILD_DIR)/parser.o $(BUILD_DIR)/main.o
 
 # Ejecutable final
 BIN = $(BUILD_DIR)/hulk_compiler
@@ -46,9 +46,7 @@ $(BUILD_DIR)/lexer.o: $(LEXER_OUT) $(LEXER_DIR)/lexer.cpp
 $(BUILD_DIR)/parser.o: $(PARSER_OUT) $(PARSER_DIR)/parser.cpp
 	$(CXX) $(CXXFLAGS) -c $(PARSER_DIR)/parser.cpp -o $@
 
-$(BUILD_DIR)/ast.o: $(AST_DIR)/ast.cpp
-	$(CXX) $(CXXFLAGS) -c $(AST_DIR)/ast.cpp -o $@
-
+# Compilación del archivo principal
 $(BUILD_DIR)/main.o: $(SRC_DIR)/main.cpp
 	$(CXX) $(CXXFLAGS) -c $(SRC_DIR)/main.cpp -o $@
 

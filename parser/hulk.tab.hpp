@@ -80,7 +80,8 @@ extern int yydebug;
     SIN = 281,                     /* SIN  */
     COS = 282,                     /* COS  */
     MIN = 283,                     /* MIN  */
-    MAX = 284                      /* MAX  */
+    MAX = 284,                     /* MAX  */
+    UMINUS = 285                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -89,14 +90,14 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 22 "parser/hulk.y"
+#line 20 "parser/hulk.y"
 
     double num;               // Para valores numéricos
     bool boolean;             // Para valores booleanos
     std::string* str;         // Para cadenas
     std::string* stmt;        // Tipo genérico para statement
 
-#line 100 "parser/hulk.tab.hpp"
+#line 101 "parser/hulk.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

@@ -1,14 +1,14 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include <string>
-#include "../parser/hulk.tab.hpp"
+#include <cstdio> // Para FILE*
+#include "../parser/parser.hpp"
 
 namespace HULK {
-    class Lexer {
-    public:
-        int yylex();
-    };
+    int yylex(); // Declaración de la función generada por Flex
+
+    // Declaración de la variable global yyin utilizada por Flex
+    extern FILE* yyin;
 }
 
 #endif // LEXER_H

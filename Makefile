@@ -1,63 +1,47 @@
-# Configuración del compilador
-CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Iinclude
-
-# Herramientas de compilación
-LEX = flex
-YACC = bison
+# Herramientas
+BISON   := bison
+FLEX    := flex
+CXX     := g++
+CXXFLAGS := -std=c++17 -Wall -Wextra -g -Iinclude	-Wno-free-nonheap-object
 
 # Directorios
-BUILD_DIR = build
-SRC_DIR = src
-LEXER_DIR = lexer
-PARSER_DIR = parser
-AST_DIR = ast
+BUILD_DIR := build
+SRC_DIR := src
 
-# Archivos fuente
-LEXER_SRC = $(LEXER_DIR)/hulk.l
-PARSER_SRC = $(PARSER_DIR)/hulk.y
+# Archivos generados
+PARSER_SRC := $(BUILD_DIR)/parser.tab.cpp
+PARSER_HEADER := $(BUILD_DIR)/parser.tab.hpp
+LEXER_SRC := $(BUILD_DIR)/lex.yy.cpp
 
-LEXER_OUT = $(BUILD_DIR)/hulk.yy.cpp
-PARSER_OUT = $(BUILD_DIR)/hulk.tab.cpp
-PARSER_HEADER = $(BUILD_DIR)/hulk.tab.hpp
+# Fuentes del proyecto
+SOURCES := $(SRC_DIR)/main.cpp
+OBJECTS := $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
 
-# Archivos compilados
-OBJS = $(BUILD_DIR)/lexer.o $(BUILD_DIR)/parser.o $(BUILD_DIR)/main.o
+EXECUTABLE := hulk-compiler
 
-# Ejecutable final
-BIN = $(BUILD_DIR)/hulk_compiler
+.PHONY: all clean
 
-# Regla principal
-all: build $(BIN)
+all: $(BUILD_DIR) $(EXECUTABLE)
 
-# Compilación del lexer con Flex (modo C++)
-$(LEXER_OUT): $(LEXER_SRC)
-	$(LEX) --c++ -o $@ $<
+$(BUILD_DIR):
+	mkdir -p $@  
 
-# Compilación del parser con Bison (modo C++)
-$(PARSER_OUT) $(PARSER_HEADER): $(PARSER_SRC)
-	$(YACC) -d --defines=$(PARSER_HEADER) -o $(PARSER_OUT) $<
+$(EXECUTABLE): $(OBJECTS) $(PARSER_SRC:.cpp=.o) $(LEXER_SRC:.cpp=.o)
+	$(CXX)	$(CXXFLAGS)	$^	-o	$@
 
-# Compilación del lexer
-$(BUILD_DIR)/lexer.o: $(LEXER_OUT) $(LEXER_DIR)/lexer.cpp
-	$(CXX) $(CXXFLAGS) -c $(LEXER_DIR)/lexer.cpp -o $@
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(CXX)	$(CXXFLAGS)	-c	$<	-o	$@
 
-# Compilación del parser
-$(BUILD_DIR)/parser.o: $(PARSER_OUT) $(PARSER_DIR)/parser.cpp
-	$(CXX) $(CXXFLAGS) -c $(PARSER_DIR)/parser.cpp -o $@
+# Generar parser con prefijo TOK_
+$(PARSER_SRC) $(PARSER_HEADER): $(SRC_DIR)/parser.y
+	$(BISON)	-d	-o	$(PARSER_SRC)	--defines=$(PARSER_HEADER)	$<
 
-# Compilación del archivo principal
-$(BUILD_DIR)/main.o: $(SRC_DIR)/main.cpp
-	$(CXX) $(CXXFLAGS) -c $(SRC_DIR)/main.cpp -o $@
+# Generar lexer
+$(LEXER_SRC): $(SRC_DIR)/lexer.l	$(PARSER_HEADER)
+	$(FLEX)	-o	$@	$<
 
-# Enlace final
-$(BIN): $(OBJS)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.cpp
+	$(CXX)	$(CXXFLAGS)	-c	$<	-o	$@
 
-# Regla de limpieza
 clean:
-	rm -rf $(BUILD_DIR)
-
-# Creación de la carpeta build si no existe
-build:
-	mkdir -p $(BUILD_DIR)
+	rm	-rf	$(BUILD_DIR)	$(EXECUTABLE)

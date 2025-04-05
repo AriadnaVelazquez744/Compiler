@@ -35,8 +35,8 @@
    especially those whose name start with YY_ or yy_.  They are
    private implementation details that can be changed or removed.  */
 
-#ifndef YY_YY_PARSER_HULK_TAB_HPP_INCLUDED
-# define YY_YY_PARSER_HULK_TAB_HPP_INCLUDED
+#ifndef YY_YY_BUILD_PARSER_TAB_HPP_INCLUDED
+# define YY_YY_BUILD_PARSER_TAB_HPP_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -50,57 +50,18 @@ extern int yydebug;
 # define YYTOKENTYPE
   enum yytokentype
   {
-    YYEMPTY = -2,
-    YYEOF = 0,                     /* "end of file"  */
-    YYerror = 256,                 /* error  */
-    YYUNDEF = 257,                 /* "invalid token"  */
-    NUMBER = 258,                  /* NUMBER  */
-    BOOL = 259,                    /* BOOL  */
-    STRING = 260,                  /* STRING  */
-    TOKEN_NULL = 261,              /* TOKEN_NULL  */
-    ADD = 262,                     /* ADD  */
-    SUB = 263,                     /* SUB  */
-    MUL = 264,                     /* MUL  */
-    DIV = 265,                     /* DIV  */
-    MOD = 266,                     /* MOD  */
-    LT = 267,                      /* LT  */
-    GT = 268,                      /* GT  */
-    LE = 269,                      /* LE  */
-    GE = 270,                      /* GE  */
-    EQ = 271,                      /* EQ  */
-    NE = 272,                      /* NE  */
-    AND = 273,                     /* AND  */
-    OR = 274,                      /* OR  */
-    NOT = 275,                     /* NOT  */
-    CONCAT = 276,                  /* CONCAT  */
-    CONCAT_SPACE = 277,            /* CONCAT_SPACE  */
-    PRINT = 278,                   /* PRINT  */
-    READ = 279,                    /* READ  */
-    PARSE = 280,                   /* PARSE  */
-    SIN = 281,                     /* SIN  */
-    COS = 282,                     /* COS  */
-    MIN = 283,                     /* MIN  */
-    MAX = 284,                     /* MAX  */
-    UMINUS = 285                   /* UMINUS  */
+    TOK_YYEMPTY = -2,
+    TOK_YYEOF = 0,                 /* "end of file"  */
+    TOK_YYerror = 256,             /* error  */
+    TOK_YYUNDEF = 257,             /* "invalid token"  */
+    TOK_NUMBER = 258               /* NUMBER  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-union YYSTYPE
-{
-#line 20 "parser/hulk.y"
-
-    double num;               // Para valores numéricos
-    bool boolean;             // Para valores booleanos
-    std::string* str;         // Para cadenas
-    std::string* stmt;        // Tipo genérico para statement
-
-#line 101 "parser/hulk.tab.hpp"
-
-};
-typedef union YYSTYPE YYSTYPE;
+typedef int YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif
@@ -112,4 +73,4 @@ extern YYSTYPE yylval;
 int yyparse (void);
 
 
-#endif /* !YY_YY_PARSER_HULK_TAB_HPP_INCLUDED  */
+#endif /* !YY_YY_BUILD_PARSER_TAB_HPP_INCLUDED  */

@@ -1,7 +1,14 @@
 %{
 #include "../build/parser.tab.hpp"     
-extern YYSTYPE yylval;   // Variable para valores semánticos
-extern int yylineno;  // Para seguimiento de líneas
+extern YYLTYPE yylloc;     // Para ubicaciones
+
+// Variables para manejar columnas
+int yycolumn = 1;
+#define YY_USER_ACTION \
+    yylloc.first_line = yylloc.last_line = yylineno; \
+    yylloc.first_column = yycolumn; \
+    yylloc.last_column = yycolumn + yyleng - 1; \
+    yycolumn += yyleng;
 %}
 
 %option noyywrap         
@@ -10,13 +17,18 @@ extern int yylineno;  // Para seguimiento de líneas
 
 %%
 
--?[0-9]+    { 
-                        yylval = atoi(yytext); 
-                        return TOK_NUMBER; 
-                    }
+-?[0-9]+(\.[0-9]+)?  { 
+                            yylval.num = atof(yytext); 
+                            return NUMBER; 
+                        }
 
-[ \t\n]             ;  // Ignorar espacios y saltos
+[ \t]                   { yycolumn += yyleng; }  // Ignorar espacios
 
-.                   { fprintf(stderr, "Carácter inválido: %s\n", yytext); }
+\n                      { yycolumn = 1; }        // Resetear columna al salto de línea
+
+.                       { 
+                            fprintf(stderr, "Error léxico: '%s' en línea %d, columna %d\n", yytext, yylineno, yycolumn); 
+                            yycolumn++; 
+                        }
 
 %%

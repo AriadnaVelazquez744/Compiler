@@ -6,6 +6,11 @@
     "words": [
         "codegen",
         "noyywrap",
+        "yycolumn",
+        "yyleng",
+        "yylineno",
+        "yylloc",
+        "YYLTYPE",
         "yylval",
         "yytext"
     ],

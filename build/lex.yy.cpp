@@ -781,7 +781,7 @@ YY_RULE_SETUP
 case 2:
 YY_RULE_SETUP
 #line 28 "src/lexer.l"
-{ /*yycolumn += yyleng - 1;*/ }  // Ignorar espacios
+{ /* Whitespace handled by YY_USER_ACTION */ }  // Ignorar espacios
 	YY_BREAK
 case 3:
 /* rule 3 can match eol */

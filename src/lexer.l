@@ -25,7 +25,7 @@ int yycolumn = 1;
                             return NUMBER; 
                         }
 
-[ \t]+                  { /*yycolumn += yyleng - 1;*/ }  // Ignorar espacios
+[ \t]+                  { /* Whitespace handled by YY_USER_ACTION */ }  // Ignorar espacios
 
 \n                      { yycolumn = 1; }        // Resetear columna al salto de línea
 

@@ -4,12 +4,13 @@ extern int yyparse();
 extern FILE *yyin;
 
 int main(int argc, char **argv) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <input.hulk>\n", argv[0]);
-        return 1;
+    const char* filename = "script.hulk";  // Default file
+    
+    if (argc >= 2) {
+        filename = argv[1];  // Use provided filename
     }
 
-    FILE *input_file = fopen(argv[1], "r");
+    FILE *input_file = fopen(filename, "r");
     if (!input_file) {
         perror("Error opening file");
         return 1;

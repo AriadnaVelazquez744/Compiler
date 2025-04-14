@@ -19,18 +19,18 @@ int yycolumn = 1;
 
 %%
 
--?[0-9]+(\.[0-9]+)?  { 
+-?[0-9]+(\.[0-9]+)?     { 
                             yylval.num = atof(yytext); 
-                            printf("Token: %s → Línea %d, Columna %d\n", yytext, yylineno, yycolumn);
+                            printf("Token: %s → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
                             return NUMBER; 
                         }
 
-[ \t]+                  { yycolumn += yyleng - 1; }  // Ignorar espacios
+[ \t]+                  { /*yycolumn += yyleng - 1;*/ }  // Ignorar espacios
 
 \n                      { yycolumn = 1; }        // Resetear columna al salto de línea
 
 .                       { 
-                            fprintf(stderr, "Error léxico: '%s' en %d:%d\n", yytext, yylineno, yycolumn); 
+                            fprintf(stderr, "Error léxico: '%s' en %d:%d\n", yytext, yylineno, yylloc.first_column); 
                             //yycolumn++; 
                         }
 

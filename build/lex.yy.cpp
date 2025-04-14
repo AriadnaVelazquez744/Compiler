@@ -774,14 +774,14 @@ YY_RULE_SETUP
 #line 22 "src/lexer.l"
 { 
                             yylval.num = atof(yytext); 
-                            printf("Token: %s → Línea %d, Columna %d\n", yytext, yylineno, yycolumn);
+                            printf("Token: %s → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
                             return NUMBER; 
                         }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
 #line 28 "src/lexer.l"
-{ yycolumn += yyleng - 1; }  // Ignorar espacios
+{ /*yycolumn += yyleng - 1;*/ }  // Ignorar espacios
 	YY_BREAK
 case 3:
 /* rule 3 can match eol */
@@ -793,7 +793,7 @@ case 4:
 YY_RULE_SETUP
 #line 32 "src/lexer.l"
 { 
-                            fprintf(stderr, "Error léxico: '%s' en %d:%d\n", yytext, yylineno, yycolumn); 
+                            fprintf(stderr, "Error léxico: '%s' en %d:%d\n", yytext, yylineno, yylloc.first_column); 
                             //yycolumn++; 
                         }
 	YY_BREAK

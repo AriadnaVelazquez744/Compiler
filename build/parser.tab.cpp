@@ -1178,7 +1178,7 @@ yyreduce:
     {
   case 4: /* expression: NUMBER  */
 #line 37 "src/parser.y"
-           { printf("Número reconocido: %lf\n", (yyvsp[0].num)); }
+           { printf("Número reconocido: %g\n", (yyvsp[0].num)); }
 #line 1183 "build/parser.tab.cpp"
     break;
 

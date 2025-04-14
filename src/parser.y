@@ -34,7 +34,7 @@ program:
 ;
 
 expression:
-    NUMBER { printf("Número reconocido: %lf\n", $1); }
+    NUMBER { printf("Número reconocido: %g\n", $1); }
 ;
 
 %%

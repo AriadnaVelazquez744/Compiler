@@ -61,7 +61,8 @@ extern int yydebug;
     YYerror = 256,                 /* error  */
     YYUNDEF = 257,                 /* "invalid token"  */
     NUMBER = 258,                  /* NUMBER  */
-    STRING = 259                   /* STRING  */
+    STRING = 259,                  /* STRING  */
+    BOOL = 260                     /* BOOL  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -74,8 +75,9 @@ union YYSTYPE
 
     double num;  // Tipo para números (enteros y decimales)
     std::string* str; 
+    bool boolean;
 
-#line 79 "build/parser.tab.hpp"
+#line 81 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

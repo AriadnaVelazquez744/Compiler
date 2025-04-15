@@ -32,6 +32,18 @@ int yycolumn = 1;
                             return STRING;
                         }
 
+"True"                  {
+                            yylval.boolean = true;
+                            printf("Boolean: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
+                            return BOOL;
+                        }
+
+"False"                 {
+                            yylval.boolean = false;
+                            printf("Boolean: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
+                            return BOOL;
+                        }
+
 [ \t]+                  { /* Whitespace handled by YY_USER_ACTION */ }  // Ignorar espacios
 
 \n                      { yycolumn = 1; }        // Resetear columna al salto de línea

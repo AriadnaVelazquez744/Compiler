@@ -23,11 +23,13 @@ typedef struct YYLTYPE {
 %union {
     double num;  // Tipo para números (enteros y decimales)
     std::string* str; 
+    bool boolean;
 }
 
 // Asociar el token NUMBER al campo 'number' de la unión
 %token <num> NUMBER
 %token <str> STRING
+%token <boolean> BOOL
 
 // Habilitar seguimiento de ubicaciones
 %locations
@@ -38,6 +40,7 @@ program:
     /* vacío */
     | program exp
     | program str_exp
+    | program bool_exp
 ;
 
 exp:
@@ -45,7 +48,15 @@ exp:
 ;
 
 str_exp:
-    STRING { printf("Texto reconocido: %s\n", $1->c_str()); }
+    STRING  { 
+                printf("Texto reconocido: %s\n", $1->c_str()); 
+                delete $1;  // Clean up allocated string
+            }
+;
+
+bool_exp:
+    BOOL { printf("Booleano: %s\n", $1 ? "true" : "false"); }
+;
 
 %%
 

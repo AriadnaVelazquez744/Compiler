@@ -3,6 +3,7 @@ BISON   := bison
 FLEX    := flex
 CXX     := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -g -Iinclude	-Wno-free-nonheap-object
+LDFLAGS += -lfl -lstdc++
 
 # Directorios
 BUILD_DIR := build
@@ -34,7 +35,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 
 # Generar parser con prefijo TOK_
 $(PARSER_SRC) $(PARSER_HEADER): $(SRC_DIR)/parser.y
-	$(BISON)	-d	-o	$(PARSER_SRC)	--defines=$(PARSER_HEADER)	$<
+	$(BISON)	-d	-o	$(PARSER_SRC)	--defines=$(PARSER_HEADER)	-Wno-deprecated	$<
 
 # Generar lexer
 $(LEXER_SRC): $(SRC_DIR)/lexer.l	$(PARSER_HEADER)

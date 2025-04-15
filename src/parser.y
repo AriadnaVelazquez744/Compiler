@@ -31,6 +31,10 @@ typedef struct YYLTYPE {
 %token <str> STRING
 %token <boolean> BOOL
 
+%type <num> exp
+%type <str> str_exp
+%type <boolean> bool_exp
+
 // Habilitar seguimiento de ubicaciones
 %locations
 
@@ -44,18 +48,19 @@ program:
 ;
 
 exp:
-    NUMBER { printf("Número reconocido: %g\n", $1); }
+    NUMBER  {   $$ = $1; printf("Número reconocido: %g\n", $$); }
 ;
 
 str_exp:
-    STRING  { 
-                printf("Texto reconocido: %s\n", $1->c_str()); 
+    STRING  {   
+                $$ = new std::string(*$1);
+                printf("Texto reconocido: %s\n", $$->c_str()); 
                 delete $1;  // Clean up allocated string
             }
 ;
 
 bool_exp:
-    BOOL { printf("Booleano: %s\n", $1 ? "true" : "false"); }
+    BOOL { $$ = $1; printf("Booleano: %s\n", $$ ? "true" : "false"); }
 ;
 
 %%

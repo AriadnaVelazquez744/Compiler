@@ -512,7 +512,7 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int8 yyrline[] =
 {
-       0,    39,    39,    41,    42,    43,    47,    51,    58
+       0,    43,    43,    45,    46,    47,    51,    55,    63
 };
 #endif
 
@@ -1182,28 +1182,29 @@ yyreduce:
   switch (yyn)
     {
   case 6: /* exp: NUMBER  */
-#line 47 "src/parser.y"
-           { printf("Número reconocido: %g\n", (yyvsp[0].num)); }
+#line 51 "src/parser.y"
+            {   (yyval.num) = (yyvsp[0].num); printf("Número reconocido: %g\n", (yyval.num)); }
 #line 1188 "build/parser.tab.cpp"
     break;
 
   case 7: /* str_exp: STRING  */
-#line 51 "src/parser.y"
-            { 
-                printf("Texto reconocido: %s\n", (yyvsp[0].str)->c_str()); 
+#line 55 "src/parser.y"
+            {   
+                (yyval.str) = new std::string(*(yyvsp[0].str));
+                printf("Texto reconocido: %s\n", (yyval.str)->c_str()); 
                 delete (yyvsp[0].str);  // Clean up allocated string
             }
-#line 1197 "build/parser.tab.cpp"
+#line 1198 "build/parser.tab.cpp"
     break;
 
   case 8: /* bool_exp: BOOL  */
-#line 58 "src/parser.y"
-         { printf("Booleano: %s\n", (yyvsp[0].boolean) ? "true" : "false"); }
-#line 1203 "build/parser.tab.cpp"
+#line 63 "src/parser.y"
+         { (yyval.boolean) = (yyvsp[0].boolean); printf("Booleano: %s\n", (yyval.boolean) ? "true" : "false"); }
+#line 1204 "build/parser.tab.cpp"
     break;
 
 
-#line 1207 "build/parser.tab.cpp"
+#line 1208 "build/parser.tab.cpp"
 
       default: break;
     }
@@ -1401,7 +1402,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 61 "src/parser.y"
+#line 66 "src/parser.y"
 
 
 void yyerror(const char *msg) {

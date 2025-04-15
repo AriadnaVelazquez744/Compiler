@@ -44,13 +44,17 @@ int yycolumn = 1;
                             return BOOL;
                         }
 
+";"                     { 
+                            printf("';' symbol  → Línea %d, Columna %d\n", yylineno, yylloc.first_column);
+                            return ';'; 
+                        }
+
 [ \t]+                  { /* Whitespace handled by YY_USER_ACTION */ }  // Ignorar espacios
 
 \n                      { yycolumn = 1; }        // Resetear columna al salto de línea
 
 .                       { 
                             fprintf(stderr, "Error léxico: '%s' en %d:%d\n", yytext, yylineno, yylloc.first_column); 
-                            //yycolumn++; 
                         }
 
 %%

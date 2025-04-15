@@ -33,6 +33,8 @@ typedef struct YYLTYPE {
 %token <str> STRING
 %token <boolean> BOOL
 
+%token ';'
+
 %type <stmt> statement
 %type <num> exp
 %type <str> str_exp
@@ -49,9 +51,9 @@ program:
 ;
 
 statement:
-    exp             { std::cout << "Resultado: " << $1 << std::endl; };
-    | str_exp       { $$ = $1; }
-    | bool_exp      { /* Evaluación de booleano sin imprimir */ }
+    exp ';'         { std::cout << "Resultado: " << $1 << std::endl; };
+    | str_exp ';'   { $$ = $1; }
+    | bool_exp ';'  { /* Evaluación de booleano sin imprimir */ }
 ;
 
     exp:

@@ -20,6 +20,9 @@ typedef struct YYLTYPE {
     #include <iostream>
 }
 
+// Habilitar seguimiento de ubicaciones
+%locations
+
 // Definir la unión de tipos semánticos
 %union {
     double num;  // Tipo para números (enteros y decimales)
@@ -28,20 +31,23 @@ typedef struct YYLTYPE {
     std::string* stmt;
 }
 
-// Asociar el token NUMBER al campo 'number' de la unión
+// --------------------------------------/* Definición de Tokens */------------------------------------------- //
+
+// Literales 
 %token <num> NUMBER
 %token <str> STRING
 %token <boolean> BOOL
+%token NULL_VAL
 
 %token ';'
 
+// -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
 %type <num> exp
 %type <str> str_exp
 %type <boolean> bool_exp
+%type <stmt> null_exp
 
-// Habilitar seguimiento de ubicaciones
-%locations
 
 %%
 
@@ -51,9 +57,10 @@ program:
 ;
 
 statement:
-    exp ';'         { std::cout << "Resultado: " << $1 << std::endl; };
+    exp ';'         { std::cout << "Resultado: " << $1 << std::endl; }
     | str_exp ';'   { $$ = $1; }
     | bool_exp ';'  { /* Evaluación de booleano sin imprimir */ }
+    | null_exp ';'
 ;
 
     exp:
@@ -71,6 +78,11 @@ statement:
     bool_exp:
         BOOL { $$ = $1; printf("Booleano: %s\n", $$ ? "true" : "false"); }
     ;
+
+    null_exp:
+        NULL_VAL ';'     { std::cout << "Null valor reconocido\n"; }
+    ;
+
 
 %%
 

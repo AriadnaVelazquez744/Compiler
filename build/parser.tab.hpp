@@ -44,6 +44,12 @@
 #if YYDEBUG
 extern int yydebug;
 #endif
+/* "%code requires" blocks.  */
+#line 18 "src/parser.y"
+
+    #include <string>
+
+#line 53 "build/parser.tab.hpp"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -54,7 +60,8 @@ extern int yydebug;
     YYEOF = 0,                     /* "end of file"  */
     YYerror = 256,                 /* error  */
     YYUNDEF = 257,                 /* "invalid token"  */
-    NUMBER = 258                   /* NUMBER  */
+    NUMBER = 258,                  /* NUMBER  */
+    STRING = 259                   /* STRING  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -63,11 +70,12 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 19 "src/parser.y"
+#line 23 "src/parser.y"
 
     double num;  // Tipo para números (enteros y decimales)
+    std::string* str; 
 
-#line 71 "build/parser.tab.hpp"
+#line 79 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

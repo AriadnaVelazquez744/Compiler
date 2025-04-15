@@ -1,5 +1,6 @@
 %{
 #include "../build/parser.tab.hpp"     
+#include <string>
 
 // Variables para seguimiento de columnas
 int yycolumn = 1;
@@ -23,6 +24,12 @@ int yycolumn = 1;
                             yylval.num = atof(yytext); 
                             printf("Token: %s → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
                             return NUMBER; 
+                        }
+
+\"([^\"]*)\"            {
+                            yylval.str = new std::string(yytext);
+                            printf("String: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
+                            return STRING;
                         }
 
 [ \t]+                  { /* Whitespace handled by YY_USER_ACTION */ }  // Ignorar espacios

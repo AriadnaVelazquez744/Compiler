@@ -15,13 +15,19 @@ typedef struct YYLTYPE {
 
 %}
 
+%code requires {
+    #include <string>
+}
+
 // Definir la unión de tipos semánticos
 %union {
     double num;  // Tipo para números (enteros y decimales)
+    std::string* str; 
 }
 
 // Asociar el token NUMBER al campo 'number' de la unión
 %token <num> NUMBER
+%token <str> STRING
 
 // Habilitar seguimiento de ubicaciones
 %locations
@@ -30,12 +36,16 @@ typedef struct YYLTYPE {
 
 program:
     /* vacío */
-    | program expression
+    | program exp
+    | program str_exp
 ;
 
-expression:
+exp:
     NUMBER { printf("Número reconocido: %g\n", $1); }
 ;
+
+str_exp:
+    STRING { printf("Texto reconocido: %s\n", $1->c_str()); }
 
 %%
 

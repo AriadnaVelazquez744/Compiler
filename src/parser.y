@@ -17,6 +17,7 @@ typedef struct YYLTYPE {
 
 %code requires {
     #include <string>
+    #include <iostream>
 }
 
 // Definir la unión de tipos semánticos
@@ -24,6 +25,7 @@ typedef struct YYLTYPE {
     double num;  // Tipo para números (enteros y decimales)
     std::string* str; 
     bool boolean;
+    std::string* stmt;
 }
 
 // Asociar el token NUMBER al campo 'number' de la unión
@@ -31,6 +33,7 @@ typedef struct YYLTYPE {
 %token <str> STRING
 %token <boolean> BOOL
 
+%type <stmt> statement
 %type <num> exp
 %type <str> str_exp
 %type <boolean> bool_exp
@@ -42,26 +45,30 @@ typedef struct YYLTYPE {
 
 program:
     /* vacío */
-    | program exp
-    | program str_exp
-    | program bool_exp
+    | program statement
 ;
 
-exp:
-    NUMBER  {   $$ = $1; printf("Número reconocido: %g\n", $$); }
+statement:
+    exp             { std::cout << "Resultado: " << $1 << std::endl; };
+    | str_exp       { $$ = $1; }
+    | bool_exp      { /* Evaluación de booleano sin imprimir */ }
 ;
 
-str_exp:
-    STRING  {   
-                $$ = new std::string(*$1);
-                printf("Texto reconocido: %s\n", $$->c_str()); 
-                delete $1;  // Clean up allocated string
-            }
-;
+    exp:
+        NUMBER  {   $$ = $1; printf("Número reconocido: %g\n", $$); }
+    ;
 
-bool_exp:
-    BOOL { $$ = $1; printf("Booleano: %s\n", $$ ? "true" : "false"); }
-;
+    str_exp:
+        STRING  {   
+                    $$ = new std::string(*$1);
+                    printf("Texto reconocido: %s\n", $$->c_str()); 
+                    delete $1;  // Clean up allocated string
+                }
+    ;
+
+    bool_exp:
+        BOOL { $$ = $1; printf("Booleano: %s\n", $$ ? "true" : "false"); }
+    ;
 
 %%
 

@@ -120,9 +120,10 @@ enum yysymbol_kind_t
   YYSYMBOL_BOOL = 5,                       /* BOOL  */
   YYSYMBOL_YYACCEPT = 6,                   /* $accept  */
   YYSYMBOL_program = 7,                    /* program  */
-  YYSYMBOL_exp = 8,                        /* exp  */
-  YYSYMBOL_str_exp = 9,                    /* str_exp  */
-  YYSYMBOL_bool_exp = 10                   /* bool_exp  */
+  YYSYMBOL_statement = 8,                  /* statement  */
+  YYSYMBOL_exp = 9,                        /* exp  */
+  YYSYMBOL_str_exp = 10,                   /* str_exp  */
+  YYSYMBOL_bool_exp = 11                   /* bool_exp  */
 };
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 
@@ -458,11 +459,11 @@ union yyalloc
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  6
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  5
+#define YYNNTS  6
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  8
+#define YYNRULES  9
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  9
+#define YYNSTATES  10
 
 /* YYMAXUTOK -- Last valid token kind.  */
 #define YYMAXUTOK   260
@@ -512,7 +513,7 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int8 yyrline[] =
 {
-       0,    43,    43,    45,    46,    47,    51,    55,    63
+       0,    46,    46,    48,    52,    53,    54,    58,    62,    70
 };
 #endif
 
@@ -529,7 +530,7 @@ static const char *yysymbol_name (yysymbol_kind_t yysymbol) YY_ATTRIBUTE_UNUSED;
 static const char *const yytname[] =
 {
   "\"end of file\"", "error", "\"invalid token\"", "NUMBER", "STRING",
-  "BOOL", "$accept", "program", "exp", "str_exp", "bool_exp", YY_NULLPTR
+  "BOOL", "$accept", "program", "statement", "exp", "str_exp", "bool_exp", YY_NULLPTR
 };
 
 static const char *
@@ -553,7 +554,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-      -1,     0,    -1,    -1,    -1,    -1,    -1,    -1,    -1
+      -1,     0,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -561,19 +562,19 @@ static const yytype_int8 yypact[] =
    means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
-       2,     0,     1,     6,     7,     8,     3,     4,     5
+       2,     0,     1,     7,     8,     9,     3,     4,     5,     6
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-      -1,    -1,    -1,    -1,    -1
+      -1,    -1,    -1,    -1,    -1,    -1
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-       0,     1,     6,     7,     8
+       0,     1,     6,     7,     8,     9
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -593,19 +594,19 @@ static const yytype_int8 yycheck[] =
    state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
-       0,     7,     0,     3,     4,     5,     8,     9,    10
+       0,     7,     0,     3,     4,     5,     8,     9,    10,    11
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr1[] =
 {
-       0,     6,     7,     7,     7,     7,     8,     9,    10
+       0,     6,     7,     7,     8,     8,     8,     9,    10,    11
 };
 
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
-       0,     2,     0,     2,     2,     2,     1,     1,     1
+       0,     2,     0,     2,     1,     1,     1,     1,     1,     1
 };
 
 
@@ -1181,30 +1182,48 @@ yyreduce:
   YY_REDUCE_PRINT (yyn);
   switch (yyn)
     {
-  case 6: /* exp: NUMBER  */
-#line 51 "src/parser.y"
-            {   (yyval.num) = (yyvsp[0].num); printf("Número reconocido: %g\n", (yyval.num)); }
-#line 1188 "build/parser.tab.cpp"
+  case 4: /* statement: exp  */
+#line 52 "src/parser.y"
+                    { std::cout << "Resultado: " << (yyvsp[0].num) << std::endl; }
+#line 1189 "build/parser.tab.cpp"
     break;
 
-  case 7: /* str_exp: STRING  */
-#line 55 "src/parser.y"
-            {   
-                (yyval.str) = new std::string(*(yyvsp[0].str));
-                printf("Texto reconocido: %s\n", (yyval.str)->c_str()); 
-                delete (yyvsp[0].str);  // Clean up allocated string
-            }
-#line 1198 "build/parser.tab.cpp"
+  case 5: /* statement: str_exp  */
+#line 53 "src/parser.y"
+                    { (yyval.stmt) = (yyvsp[0].str); }
+#line 1195 "build/parser.tab.cpp"
     break;
 
-  case 8: /* bool_exp: BOOL  */
-#line 63 "src/parser.y"
-         { (yyval.boolean) = (yyvsp[0].boolean); printf("Booleano: %s\n", (yyval.boolean) ? "true" : "false"); }
-#line 1204 "build/parser.tab.cpp"
+  case 6: /* statement: bool_exp  */
+#line 54 "src/parser.y"
+                    { /* Evaluación de booleano sin imprimir */ }
+#line 1201 "build/parser.tab.cpp"
+    break;
+
+  case 7: /* exp: NUMBER  */
+#line 58 "src/parser.y"
+                {   (yyval.num) = (yyvsp[0].num); printf("Número reconocido: %g\n", (yyval.num)); }
+#line 1207 "build/parser.tab.cpp"
+    break;
+
+  case 8: /* str_exp: STRING  */
+#line 62 "src/parser.y"
+                {   
+                    (yyval.str) = new std::string(*(yyvsp[0].str));
+                    printf("Texto reconocido: %s\n", (yyval.str)->c_str()); 
+                    delete (yyvsp[0].str);  // Clean up allocated string
+                }
+#line 1217 "build/parser.tab.cpp"
+    break;
+
+  case 9: /* bool_exp: BOOL  */
+#line 70 "src/parser.y"
+             { (yyval.boolean) = (yyvsp[0].boolean); printf("Booleano: %s\n", (yyval.boolean) ? "true" : "false"); }
+#line 1223 "build/parser.tab.cpp"
     break;
 
 
-#line 1208 "build/parser.tab.cpp"
+#line 1227 "build/parser.tab.cpp"
 
       default: break;
     }
@@ -1402,7 +1421,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 66 "src/parser.y"
+#line 73 "src/parser.y"
 
 
 void yyerror(const char *msg) {

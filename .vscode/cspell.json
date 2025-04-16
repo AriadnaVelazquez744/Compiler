@@ -5,8 +5,13 @@
     "dictionaries": [],
     "words": [
         "codegen",
+        "cout",
+        "endl",
         "noyywrap",
+        "typedef",
         "yycolumn",
+        "yyerrok",
+        "yyerror",
         "yyleng",
         "yylineno",
         "yylloc",

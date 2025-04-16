@@ -50,6 +50,14 @@ typedef struct YYLTYPE {
 %token DIV
 %token MOD
 
+// operadores booleanos entre números
+%token LT
+%token GT 
+%token LE 
+%token GE 
+%token EQ
+%token NE
+
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
 %type <num> exp
@@ -72,8 +80,8 @@ program:
 
 statement:
     exp ';'         { std::cout << "Resultado: " << $1 << std::endl; }
-    | str_exp ';'   { $$ = $1; }
-    | bool_exp ';'  { /* Evaluación de booleano sin imprimir */ }
+    | str_exp ';'   { std::cout << "Texto: " << $1->c_str() << std::endl; delete $1; }
+    | bool_exp ';'  { std::cout << "Booleano: " << ($1 ? "true" : "false") << std::endl; }
     | null_exp ';'
 ;
 
@@ -102,6 +110,12 @@ statement:
 
     bool_exp:
         BOOL { $$ = $1; printf("Booleano: %s\n", $$ ? "true" : "false"); }
+        | exp LT exp           { $$ = $1 < $3; }
+        | exp GT exp           { $$ = $1 > $3; }
+        | exp LE exp           { $$ = $1 <= $3; }
+        | exp GE exp           { $$ = $1 >= $3; }
+        | exp EQ exp           { $$ = $1 == $3; }
+        | exp NE exp           { $$ = $1 != $3; }
     ;
 
     null_exp:

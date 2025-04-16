@@ -49,19 +49,31 @@ int yycolumn = 1;
                             return NULL_VAL; 
                         }
 
-[+]                     { printf(" + \n"); return ADD;}
+[+]                     { printf(" + \n"); return ADD; }
 
-[-]                     { printf(" - \n"); return SUB;}
+[-]                     { printf(" - \n"); return SUB; }
 
-[*]                     { printf(" * \n"); return MUL;}
+[*]                     { printf(" * \n"); return MUL; }
 
-[/]                     { printf(" / \n"); return DIV;}
+[/]                     { printf(" / \n"); return DIV; }
 
-[%]                     { printf(" mod \n"); return MOD;}
+[%]                     { printf(" mod \n"); return MOD; }
 
-"("                     { printf(" ( \n"); return '(';}
+[<]                     { printf(" < \n"); return LT; }
 
-")"                     { printf(" ) \n"); return ')';}
+[>]                     { printf(" > \n"); return GT; }
+
+"<="                    { printf(" <= \n"); return LE; }
+
+">="                    { printf(" >= \n"); return GE; }
+
+"=="                    { printf(" == \n"); return EQ; }
+
+"!="                    { printf(" != \n"); return NE; }
+
+"("                     { printf(" ( \n"); return '('; }
+
+")"                     { printf(" ) \n"); return ')'; }
 
 ";"                     { 
                             printf("';' symbol  → Línea %d, Columna %d\n", yylineno, yylloc.first_column);

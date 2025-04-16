@@ -70,7 +70,13 @@ extern int yydebug;
     SUB = 263,                     /* SUB  */
     MUL = 264,                     /* MUL  */
     DIV = 265,                     /* DIV  */
-    MOD = 266                      /* MOD  */
+    MOD = 266,                     /* MOD  */
+    LT = 267,                      /* LT  */
+    GT = 268,                      /* GT  */
+    LE = 269,                      /* LE  */
+    GE = 270,                      /* GE  */
+    EQ = 271,                      /* EQ  */
+    NE = 272                       /* NE  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -86,7 +92,7 @@ union YYSTYPE
     bool boolean;
     std::string* stmt;
 
-#line 90 "build/parser.tab.hpp"
+#line 96 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

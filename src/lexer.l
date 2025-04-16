@@ -71,11 +71,15 @@ int yycolumn = 1;
 
 "!="                    { printf(" != \n"); return NE; }
 
-"&"                    { printf(" & \n"); return AND; }
+"&"                     { printf(" & \n"); return AND; }
 
-"!"                    { printf(" ! \n"); return NOT; }
+"!"                     { printf(" ! \n"); return NOT; }
 
-[|]                    { printf(" | \n"); return OR; }
+[|]                     { printf(" | \n"); return OR; }
+
+"@"                     { printf(" @ \n"); return CONCAT; }
+
+"@@"                    { printf(" @@ \n"); return CONCAT_SPACE; }
 
 "("                     { printf(" ( \n"); return '('; }
 

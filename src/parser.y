@@ -63,6 +63,10 @@ typedef struct YYLTYPE {
 %token OR 
 %token NOT
 
+// operadores para literales de texto
+%token CONCAT
+%token CONCAT_SPACE
+
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
 %type <num> exp
@@ -76,7 +80,7 @@ typedef struct YYLTYPE {
 %left LT GT LE GE EQ NE
 %left AND OR 
 %right NOT
-
+%nonassoc CONCAT CONCAT_SPACE
 
 %%
 
@@ -114,6 +118,9 @@ statement:
                     printf("Texto reconocido: %s\n", $$->c_str()); 
                     delete $1;  // Clean up allocated string
                 }
+        | str_exp CONCAT str_exp { $$ = new std::string(*$1 + *$3); delete $1; delete $3; }
+        | str_exp CONCAT_SPACE str_exp { $$ = new std::string(*$1 + " " + *$3); delete $1; delete $3; }
+    
     ;
 
     bool_exp:

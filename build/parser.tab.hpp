@@ -79,7 +79,9 @@ extern int yydebug;
     NE = 272,                      /* NE  */
     AND = 273,                     /* AND  */
     OR = 274,                      /* OR  */
-    NOT = 275                      /* NOT  */
+    NOT = 275,                     /* NOT  */
+    CONCAT = 276,                  /* CONCAT  */
+    CONCAT_SPACE = 277             /* CONCAT_SPACE  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -95,7 +97,7 @@ union YYSTYPE
     bool boolean;
     std::string* stmt;
 
-#line 99 "build/parser.tab.hpp"
+#line 101 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

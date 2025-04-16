@@ -59,6 +59,9 @@ typedef struct YYLTYPE {
 %token NE
 
 // operadores booleanos entre expresiones booleanas
+%token AND
+%token OR 
+%token NOT
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
@@ -71,6 +74,8 @@ typedef struct YYLTYPE {
 %left ADD SUB
 %left MUL DIV MOD
 %left LT GT LE GE EQ NE
+%left AND OR 
+%right NOT
 
 
 %%
@@ -119,6 +124,10 @@ statement:
         | exp GE exp           { $$ = $1 >= $3; }
         | exp EQ exp           { $$ = $1 == $3; }
         | exp NE exp           { $$ = $1 != $3; }
+        | bool_exp AND bool_exp { $$ = $1 && $3; }
+        | bool_exp OR bool_exp  { $$ = $1 || $3; }
+        | NOT bool_exp          { $$ = !$2; }
+        | '(' bool_exp ')'     { $$ = $2; }
     ;
 
     null_exp:

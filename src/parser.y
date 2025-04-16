@@ -78,6 +78,10 @@ typedef struct YYLTYPE {
 %token LOG
 %token RANDOM
 
+
+// funciones predeterminadas
+%token PRINT
+
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
 %type <num> expr
@@ -104,31 +108,32 @@ program:
 ;
 
 statement:
-    expr ';'         { std::cout << "Resultado: " << $1 << std::endl; }
-    | str_expr ';'   { std::cout << "Texto: " << $1->c_str() << std::endl; delete $1; }
-    | bool_expr ';'  { std::cout << "Booleano: " << ($1 ? "true" : "false") << std::endl; }
-    | null_expr ';'
+    expr ';'                { std::cout << "Resultado: " << $1 << std::endl; }
+    | str_expr ';'          { std::cout << "Texto: " << $1->c_str() << std::endl; delete $1; }
+    | bool_expr ';'         { std::cout << "Booleano: " << ($1 ? "true" : "false") << std::endl; }
+    | null_expr ';'         { std::cout << "Null valor reconocido\n"; delete $1; }
+    | PRINT value ';'       { std::cout << "Salida: " << *$2 << std::endl; }
 ;
 
     value:
-        expr           { $$ = new std::string(std::to_string($1)); }
-        | str_expr     { $$ = new std::string(*$1); delete $1; }
-        | bool_expr    { $$ = new std::string($1 ? "true" : "false"); }
-        | null_expr    { $$ = new std::string("null"); }
+        expr                { $$ = new std::string(std::to_string($1)); }
+        | str_expr          { $$ = new std::string(*$1); delete $1; }
+        | bool_expr         { $$ = new std::string($1 ? "true" : "false"); }
+        | null_expr         { $$ = new std::string("null"); }
+        | '(' value ')'     { $$ = $2; }
     ;
 
     expr:
-        NUMBER                  { $$ = $1; printf("Número reconocido: %g\n", $$); }
-        | expr ADD expr   { $$ = $1 + $3; printf("%g + %g\n", $1, $3); }
+        NUMBER              { $$ = $1; printf("Número reconocido: %g\n", $$); }
+        | expr ADD expr     { $$ = $1 + $3; printf("%g + %g\n", $1, $3); }
         | expr SUB expr     { $$ = $1 - $3; printf("%g - %g\n", $1, $3); }
         | expr MUL expr     { $$ = $1 * $3; printf("%g * %g\n", $1, $3); }
         | expr DIV expr     { 
-                            $$ = ($3 != 0) ? $1 / $3 : throw std::runtime_error("División por cero"); 
-                            printf("%g / %g\n", $1, $3);
+                                $$ = ($3 != 0) ? $1 / $3 : throw std::runtime_error("División por cero"); 
+                                printf("%g / %g\n", $1, $3);
                             }
         | expr MOD expr     { $$ = std::fmod($1, $3); printf("mod ( %g, %g )\n", $1, $3); }
         | SUB expr          { $$ = - $2; printf("Número negativo: %g\n", $$); }
-        | '(' expr ')'      { $$ = $2; printf("( %g )\n", $2); }
         | SIN expr          { $$ = std::sin($2); }
         | COS expr          { $$ = std::cos($2); }
         | MIN expr expr     { $$ = std::min($2, $3); }
@@ -141,34 +146,31 @@ statement:
     ;
 
     str_expr:
-        STRING  {   
-                    $$ = new std::string(*$1);
-                    printf("Texto reconocido: %s\n", $$->c_str()); 
-                    delete $1;  // Clean up allocated string
-                }
-        | str_expr CONCAT str_expr { $$ = new std::string(*$1 + *$3); delete $1; delete $3; }
-        | str_expr CONCAT_SPACE str_expr { $$ = new std::string(*$1 + " " + *$3); delete $1; delete $3; }
+        STRING                              {   
+                                                $$ = new std::string(*$1);
+                                                printf("Texto reconocido: %s\n", $$->c_str()); 
+                                                delete $1;  // Clean up allocated string
+                                            }
+        | str_expr CONCAT str_expr          { $$ = new std::string(*$1 + *$3); delete $1; delete $3; }
+        | str_expr CONCAT_SPACE str_expr    { $$ = new std::string(*$1 + " " + *$3); delete $1; delete $3; }
     ;
 
     bool_expr:
-        BOOL { $$ = $1; printf("Booleano: %s\n", $$ ? "true" : "false"); }
-        | expr LT expr            { $$ = $1 < $3; }
-        | expr GT expr            { $$ = $1 > $3; }
-        | expr LE expr            { $$ = $1 <= $3; }
-        | expr GE expr            { $$ = $1 >= $3; }
-        | value EQ value        { $$ = (*$1 == *$3); delete $1; delete $3; }
-        | value NE value        { $$ = (*$1 != *$3); delete $1; delete $3; }
-        | bool_expr AND bool_expr { $$ = $1 && $3; }
-        | bool_expr OR bool_expr  { $$ = $1 || $3; }
-        | NOT bool_expr          { $$ = !$2; }
-        | '(' bool_expr ')'      { $$ = $2; }
+        BOOL                        { $$ = $1; printf("Booleano: %s\n", $$ ? "true" : "false"); }
+        | expr LT expr              { $$ = $1 < $3; }
+        | expr GT expr              { $$ = $1 > $3; }
+        | expr LE expr              { $$ = $1 <= $3; }
+        | expr GE expr              { $$ = $1 >= $3; }
+        | value EQ value            { $$ = (*$1 == *$3); delete $1; delete $3; }
+        | value NE value            { $$ = (*$1 != *$3); delete $1; delete $3; }
+        | bool_expr AND bool_expr   { $$ = $1 && $3; }
+        | bool_expr OR bool_expr    { $$ = $1 || $3; }
+        | NOT bool_expr             { $$ = !$2; }
     ;
 
     null_expr:
-        NULL_VAL ';'     { std::cout << "Null valor reconocido\n"; }
+        NULL_VAL     { $$ = new std::string("null"); }
     ;
-
-
 
 %%
 

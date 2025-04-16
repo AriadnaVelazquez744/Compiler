@@ -81,6 +81,9 @@ int yycolumn = 1;
 "random"                { printf(" random \n"); return RANDOM; }
 
 
+"print"                 { printf("print\n"); return PRINT; }
+
+
 "("                     { printf(" ( \n"); return '('; }
 ")"                     { printf(" ) \n"); return ')'; }
 ";"                     { 

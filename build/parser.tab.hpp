@@ -90,7 +90,8 @@ extern int yydebug;
     SQRT = 283,                    /* SQRT  */
     EXP = 284,                     /* EXP  */
     LOG = 285,                     /* LOG  */
-    RANDOM = 286                   /* RANDOM  */
+    RANDOM = 286,                  /* RANDOM  */
+    PRINT = 287                    /* PRINT  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -106,7 +107,7 @@ union YYSTYPE
     bool boolean;
     std::string* stmt;
 
-#line 110 "build/parser.tab.hpp"
+#line 111 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

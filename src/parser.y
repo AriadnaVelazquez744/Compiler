@@ -79,6 +79,7 @@ typedef struct YYLTYPE {
 %type <str> str_exp
 %type <boolean> bool_exp
 %type <stmt> null_exp
+%type <stmt> value
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
 %left ADD SUB
@@ -103,6 +104,13 @@ statement:
     | bool_exp ';'  { std::cout << "Booleano: " << ($1 ? "true" : "false") << std::endl; }
     | null_exp ';'
 ;
+
+    value:
+        exp           { $$ = new std::string(std::to_string($1)); }
+        | str_exp     { $$ = new std::string(*$1); delete $1; }
+        | bool_exp    { $$ = new std::string($1 ? "true" : "false"); }
+        | null_exp    { $$ = new std::string("null"); }
+    ;
 
     exp:
         NUMBER          { $$ = $1; printf("Número reconocido: %g\n", $$); }
@@ -131,26 +139,26 @@ statement:
                 }
         | str_exp CONCAT str_exp { $$ = new std::string(*$1 + *$3); delete $1; delete $3; }
         | str_exp CONCAT_SPACE str_exp { $$ = new std::string(*$1 + " " + *$3); delete $1; delete $3; }
-    
     ;
 
     bool_exp:
         BOOL { $$ = $1; printf("Booleano: %s\n", $$ ? "true" : "false"); }
-        | exp LT exp           { $$ = $1 < $3; }
-        | exp GT exp           { $$ = $1 > $3; }
-        | exp LE exp           { $$ = $1 <= $3; }
-        | exp GE exp           { $$ = $1 >= $3; }
-        | exp EQ exp           { $$ = $1 == $3; }
-        | exp NE exp           { $$ = $1 != $3; }
+        | exp LT exp            { $$ = $1 < $3; }
+        | exp GT exp            { $$ = $1 > $3; }
+        | exp LE exp            { $$ = $1 <= $3; }
+        | exp GE exp            { $$ = $1 >= $3; }
+        | value EQ value        { $$ = (*$1 == *$3); delete $1; delete $3; }
+        | value NE value        { $$ = (*$1 != *$3); delete $1; delete $3; }
         | bool_exp AND bool_exp { $$ = $1 && $3; }
         | bool_exp OR bool_exp  { $$ = $1 || $3; }
         | NOT bool_exp          { $$ = !$2; }
-        | '(' bool_exp ')'     { $$ = $2; }
+        | '(' bool_exp ')'      { $$ = $2; }
     ;
 
     null_exp:
         NULL_VAL ';'     { std::cout << "Null valor reconocido\n"; }
     ;
+
 
 
 %%

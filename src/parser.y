@@ -41,6 +41,7 @@ typedef struct YYLTYPE {
 %token NULL_VAL
 
 %token ';'
+%token '(' ')'
 
 // operadores aritméticos
 %token ADD
@@ -77,16 +78,17 @@ statement:
 ;
 
     exp:
-        NUMBER  {   $$ = $1; printf("Número reconocido: %g\n", $$); }
-        | exp ADD exp   { $$ = $1 + $3; printf("%g + %g\n", $1, $3);}
-        | exp SUB exp   { $$ = $1 - $3; printf("%g - %g\n", $1, $3);}
-        | exp MUL exp   { $$ = $1 * $3; printf("%g * %g\n", $1, $3);}
+        NUMBER          { $$ = $1; printf("Número reconocido: %g\n", $$); }
+        | exp ADD exp   { $$ = $1 + $3; printf("%g + %g\n", $1, $3); }
+        | exp SUB exp   { $$ = $1 - $3; printf("%g - %g\n", $1, $3); }
+        | exp MUL exp   { $$ = $1 * $3; printf("%g * %g\n", $1, $3); }
         | exp DIV exp   { 
                             $$ = ($3 != 0) ? $1 / $3 : throw std::runtime_error("División por cero"); 
                             printf("%g / %g\n", $1, $3);
                         }
-        | exp MOD exp   { $$ = std::fmod($1, $3); printf("mod ( %g, %g )\n", $1, $3);}
-        | SUB exp       { $$ = - $2; printf("Número negativo: %g\n", $$);}
+        | exp MOD exp   { $$ = std::fmod($1, $3); printf("mod ( %g, %g )\n", $1, $3); }
+        | SUB exp       { $$ = - $2; printf("Número negativo: %g\n", $$); }
+        | '(' exp ')'   { $$ = $2; printf("( %g )\n", $2); }
 
     ;
 

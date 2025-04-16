@@ -59,6 +59,10 @@ int yycolumn = 1;
 
 [%]                     { printf(" mod \n"); return MOD;}
 
+"("                     { printf(" ( \n"); return '(';}
+
+")"                     { printf(" ) \n"); return ')';}
+
 ";"                     { 
                             printf("';' symbol  → Línea %d, Columna %d\n", yylineno, yylloc.first_column);
                             return ';'; 

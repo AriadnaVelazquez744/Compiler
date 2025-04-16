@@ -18,6 +18,7 @@ typedef struct YYLTYPE {
 %code requires {
     #include <string>
     #include <iostream>
+    #include <cmath>
 }
 
 // Habilitar seguimiento de ubicaciones
@@ -43,6 +44,10 @@ typedef struct YYLTYPE {
 
 // operadores aritméticos
 %token ADD
+%token SUB
+%token MUL
+%token DIV
+%token MOD
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
@@ -52,7 +57,8 @@ typedef struct YYLTYPE {
 %type <stmt> null_exp
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
-%left ADD
+%left ADD SUB
+%left MUL DIV MOD 
 
 
 %%
@@ -73,6 +79,15 @@ statement:
     exp:
         NUMBER  {   $$ = $1; printf("Número reconocido: %g\n", $$); }
         | exp ADD exp   { $$ = $1 + $3; printf("%g + %g\n", $1, $3);}
+        | exp SUB exp   { $$ = $1 - $3; printf("%g - %g\n", $1, $3);}
+        | exp MUL exp   { $$ = $1 * $3; printf("%g * %g\n", $1, $3);}
+        | exp DIV exp   { 
+                            $$ = ($3 != 0) ? $1 / $3 : throw std::runtime_error("División por cero"); 
+                            printf("%g / %g\n", $1, $3);
+                        }
+        | exp MOD exp   { $$ = std::fmod($1, $3); printf("mod ( %g, %g )\n", $1, $3);}
+        | SUB exp       { $$ = - $2; printf("Número negativo: %g\n", $$);}
+
     ;
 
     str_exp:

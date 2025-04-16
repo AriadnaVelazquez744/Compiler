@@ -20,7 +20,7 @@ int yycolumn = 1;
 
 %%
 
--?[0-9]+(\.[0-9]+)?     { 
+[0-9]+(\.[0-9]+)?     { 
                             yylval.num = atof(yytext); 
                             printf("Token: %s → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
                             return NUMBER; 
@@ -49,7 +49,15 @@ int yycolumn = 1;
                             return NULL_VAL; 
                         }
 
-[+]                     { return ADD; printf(" + ");}
+[+]                     { printf(" + \n"); return ADD;}
+
+[-]                     { printf(" - \n"); return SUB;}
+
+[*]                     { printf(" * \n"); return MUL;}
+
+[/]                     { printf(" / \n"); return DIV;}
+
+[%]                     { printf(" mod \n"); return MOD;}
 
 ";"                     { 
                             printf("';' symbol  → Línea %d, Columna %d\n", yylineno, yylloc.first_column);

@@ -121,13 +121,17 @@ enum yysymbol_kind_t
   YYSYMBOL_NULL_VAL = 6,                   /* NULL_VAL  */
   YYSYMBOL_7_ = 7,                         /* ';'  */
   YYSYMBOL_ADD = 8,                        /* ADD  */
-  YYSYMBOL_YYACCEPT = 9,                   /* $accept  */
-  YYSYMBOL_program = 10,                   /* program  */
-  YYSYMBOL_statement = 11,                 /* statement  */
-  YYSYMBOL_exp = 12,                       /* exp  */
-  YYSYMBOL_str_exp = 13,                   /* str_exp  */
-  YYSYMBOL_bool_exp = 14,                  /* bool_exp  */
-  YYSYMBOL_null_exp = 15                   /* null_exp  */
+  YYSYMBOL_SUB = 9,                        /* SUB  */
+  YYSYMBOL_MUL = 10,                       /* MUL  */
+  YYSYMBOL_DIV = 11,                       /* DIV  */
+  YYSYMBOL_MOD = 12,                       /* MOD  */
+  YYSYMBOL_YYACCEPT = 13,                  /* $accept  */
+  YYSYMBOL_program = 14,                   /* program  */
+  YYSYMBOL_statement = 15,                 /* statement  */
+  YYSYMBOL_exp = 16,                       /* exp  */
+  YYSYMBOL_str_exp = 17,                   /* str_exp  */
+  YYSYMBOL_bool_exp = 18,                  /* bool_exp  */
+  YYSYMBOL_null_exp = 19                   /* null_exp  */
 };
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 
@@ -458,19 +462,19 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  2
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   14
+#define YYLAST   30
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS  9
+#define YYNTOKENS  13
 /* YYNNTS -- Number of nonterminals.  */
 #define YYNNTS  7
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  13
+#define YYNRULES  18
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  21
+#define YYNSTATES  31
 
 /* YYMAXUTOK -- Last valid token kind.  */
-#define YYMAXUTOK   262
+#define YYMAXUTOK   266
 
 
 /* YYTRANSLATE(TOKEN-NUM) -- Symbol number corresponding to TOKEN-NUM
@@ -510,15 +514,15 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
-       5,     6,     8
+       5,     6,     8,     9,    10,    11,    12
 };
 
 #if YYDEBUG
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int8 yyrline[] =
 {
-       0,    60,    60,    62,    63,    68,    69,    70,    71,    75,
-      76,    80,    88,    92
+       0,    66,    66,    68,    69,    73,    74,    75,    76,    80,
+      81,    82,    83,    84,    88,    89,    94,   102,   106
 };
 #endif
 
@@ -535,8 +539,8 @@ static const char *yysymbol_name (yysymbol_kind_t yysymbol) YY_ATTRIBUTE_UNUSED;
 static const char *const yytname[] =
 {
   "\"end of file\"", "error", "\"invalid token\"", "NUMBER", "STRING",
-  "BOOL", "NULL_VAL", "';'", "ADD", "$accept", "program", "statement",
-  "exp", "str_exp", "bool_exp", "null_exp", YY_NULLPTR
+  "BOOL", "NULL_VAL", "';'", "ADD", "SUB", "MUL", "DIV", "MOD", "$accept",
+  "program", "statement", "exp", "str_exp", "bool_exp", "null_exp", YY_NULLPTR
 };
 
 static const char *
@@ -546,7 +550,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-10)
+#define YYPACT_NINF (-9)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -560,9 +564,10 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-     -10,     0,   -10,    -5,   -10,   -10,   -10,     3,   -10,     1,
-       4,     5,     6,   -10,   -10,   -10,    11,   -10,   -10,   -10,
-     -10
+      -9,    15,    -9,    -5,    -9,    -9,    -9,    -1,    -2,    -9,
+      18,     1,     2,    10,    -9,    -9,    -7,    -9,    -2,    -2,
+      -2,    -2,    -2,    -9,    -9,    -9,    -7,    -7,    -9,    -9,
+      -9
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -570,21 +575,22 @@ static const yytype_int8 yypact[] =
    means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
-       2,     0,     1,     0,     9,    11,    12,     0,     3,     0,
-       0,     0,     0,     4,    13,     5,     0,     6,     7,     8,
-      10
+       2,     0,     1,     0,     9,    16,    17,     0,     0,     3,
+       0,     0,     0,     0,     4,    18,    15,     5,     0,     0,
+       0,     0,     0,     6,     7,     8,    10,    11,    12,    13,
+      14
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -10,   -10,   -10,    -9,   -10,   -10,   -10
+      -9,    -9,    -9,    -8,    -9,    -9,    -9
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-       0,     1,     8,     9,    10,    11,    12
+       0,     1,     9,    10,    11,    12,    13
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -592,37 +598,42 @@ static const yytype_int8 yydefgoto[] =
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
-       2,     3,    13,     4,     5,     6,     7,    20,    15,    16,
-      14,    17,    18,    19,     4
+      16,     4,    14,    20,    21,    22,    15,     8,    23,    24,
+      26,    27,    28,    29,    30,     2,     3,    25,     4,     5,
+       6,     7,     0,     0,     8,    17,    18,    19,    20,    21,
+      22
 };
 
 static const yytype_int8 yycheck[] =
 {
-       0,     1,     7,     3,     4,     5,     6,    16,     7,     8,
-       7,     7,     7,     7,     3
+       8,     3,     7,    10,    11,    12,     7,     9,     7,     7,
+      18,    19,    20,    21,    22,     0,     1,     7,     3,     4,
+       5,     6,    -1,    -1,     9,     7,     8,     9,    10,    11,
+      12
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
    state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
-       0,    10,     0,     1,     3,     4,     5,     6,    11,    12,
-      13,    14,    15,     7,     7,     7,     8,     7,     7,     7,
-      12
+       0,    14,     0,     1,     3,     4,     5,     6,     9,    15,
+      16,    17,    18,    19,     7,     7,    16,     7,     8,     9,
+      10,    11,    12,     7,     7,     7,    16,    16,    16,    16,
+      16
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr1[] =
 {
-       0,     9,    10,    10,    10,    11,    11,    11,    11,    12,
-      12,    13,    14,    15
+       0,    13,    14,    14,    14,    15,    15,    15,    15,    16,
+      16,    16,    16,    16,    16,    16,    17,    18,    19
 };
 
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
        0,     2,     0,     2,     3,     2,     2,     2,     2,     1,
-       3,     1,     1,     2
+       3,     3,     3,     3,     3,     2,     1,     1,     2
 };
 
 
@@ -1199,66 +1210,98 @@ yyreduce:
   switch (yyn)
     {
   case 4: /* program: program error ';'  */
-#line 63 "src/parser.y"
-                        { 
-        yyerrok; }
-#line 1206 "build/parser.tab.cpp"
+#line 69 "src/parser.y"
+                        { yyerrok; }
+#line 1216 "build/parser.tab.cpp"
     break;
 
   case 5: /* statement: exp ';'  */
-#line 68 "src/parser.y"
+#line 73 "src/parser.y"
                     { std::cout << "Resultado: " << (yyvsp[-1].num) << std::endl; }
-#line 1212 "build/parser.tab.cpp"
+#line 1222 "build/parser.tab.cpp"
     break;
 
   case 6: /* statement: str_exp ';'  */
-#line 69 "src/parser.y"
+#line 74 "src/parser.y"
                     { (yyval.stmt) = (yyvsp[-1].str); }
-#line 1218 "build/parser.tab.cpp"
+#line 1228 "build/parser.tab.cpp"
     break;
 
   case 7: /* statement: bool_exp ';'  */
-#line 70 "src/parser.y"
+#line 75 "src/parser.y"
                     { /* Evaluación de booleano sin imprimir */ }
-#line 1224 "build/parser.tab.cpp"
+#line 1234 "build/parser.tab.cpp"
     break;
 
   case 9: /* exp: NUMBER  */
-#line 75 "src/parser.y"
+#line 80 "src/parser.y"
                 {   (yyval.num) = (yyvsp[0].num); printf("Número reconocido: %g\n", (yyval.num)); }
-#line 1230 "build/parser.tab.cpp"
+#line 1240 "build/parser.tab.cpp"
     break;
 
   case 10: /* exp: exp ADD exp  */
-#line 76 "src/parser.y"
+#line 81 "src/parser.y"
                         { (yyval.num) = (yyvsp[-2].num) + (yyvsp[0].num); printf("%g + %g\n", (yyvsp[-2].num), (yyvsp[0].num));}
-#line 1236 "build/parser.tab.cpp"
+#line 1246 "build/parser.tab.cpp"
     break;
 
-  case 11: /* str_exp: STRING  */
-#line 80 "src/parser.y"
+  case 11: /* exp: exp SUB exp  */
+#line 82 "src/parser.y"
+                        { (yyval.num) = (yyvsp[-2].num) - (yyvsp[0].num); printf("%g - %g\n", (yyvsp[-2].num), (yyvsp[0].num));}
+#line 1252 "build/parser.tab.cpp"
+    break;
+
+  case 12: /* exp: exp MUL exp  */
+#line 83 "src/parser.y"
+                        { (yyval.num) = (yyvsp[-2].num) * (yyvsp[0].num); printf("%g * %g\n", (yyvsp[-2].num), (yyvsp[0].num));}
+#line 1258 "build/parser.tab.cpp"
+    break;
+
+  case 13: /* exp: exp DIV exp  */
+#line 84 "src/parser.y"
+                        { 
+                            (yyval.num) = ((yyvsp[0].num) != 0) ? (yyvsp[-2].num) / (yyvsp[0].num) : throw std::runtime_error("División por cero"); 
+                            printf("%g / %g\n", (yyvsp[-2].num), (yyvsp[0].num));
+                        }
+#line 1267 "build/parser.tab.cpp"
+    break;
+
+  case 14: /* exp: exp MOD exp  */
+#line 88 "src/parser.y"
+                        { (yyval.num) = std::fmod((yyvsp[-2].num), (yyvsp[0].num)); printf("mod ( %g, %g )\n", (yyvsp[-2].num), (yyvsp[0].num));}
+#line 1273 "build/parser.tab.cpp"
+    break;
+
+  case 15: /* exp: SUB exp  */
+#line 89 "src/parser.y"
+                        { (yyval.num) = - (yyvsp[0].num); printf("Número negativo: %g\n", (yyval.num));}
+#line 1279 "build/parser.tab.cpp"
+    break;
+
+  case 16: /* str_exp: STRING  */
+#line 94 "src/parser.y"
                 {   
                     (yyval.str) = new std::string(*(yyvsp[0].str));
                     printf("Texto reconocido: %s\n", (yyval.str)->c_str()); 
                     delete (yyvsp[0].str);  // Clean up allocated string
                 }
-#line 1246 "build/parser.tab.cpp"
+#line 1289 "build/parser.tab.cpp"
     break;
 
-  case 12: /* bool_exp: BOOL  */
-#line 88 "src/parser.y"
+  case 17: /* bool_exp: BOOL  */
+#line 102 "src/parser.y"
              { (yyval.boolean) = (yyvsp[0].boolean); printf("Booleano: %s\n", (yyval.boolean) ? "true" : "false"); }
-#line 1252 "build/parser.tab.cpp"
+#line 1295 "build/parser.tab.cpp"
     break;
 
-  case 13: /* null_exp: NULL_VAL ';'  */
-#line 92 "src/parser.y"
+  case 18: /* null_exp: NULL_VAL ';'  */
+#line 106 "src/parser.y"
                          { std::cout << "Null valor reconocido\n"; }
-#line 1258 "build/parser.tab.cpp"
+#line 1301 "build/parser.tab.cpp"
     break;
 
 
-#line 1262 "build/parser.tab.cpp"
+#line 1305 "build/parser.tab.cpp"
 
       default: break;
     }
@@ -1456,7 +1499,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 96 "src/parser.y"
+#line 110 "src/parser.y"
 
 
 void yyerror(const char *msg) {

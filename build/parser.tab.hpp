@@ -49,8 +49,9 @@ extern int yydebug;
 
     #include <string>
     #include <iostream>
+    #include <cmath>
 
-#line 54 "build/parser.tab.hpp"
+#line 55 "build/parser.tab.hpp"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -65,7 +66,11 @@ extern int yydebug;
     STRING = 259,                  /* STRING  */
     BOOL = 260,                    /* BOOL  */
     NULL_VAL = 261,                /* NULL_VAL  */
-    ADD = 262                      /* ADD  */
+    ADD = 262,                     /* ADD  */
+    SUB = 263,                     /* SUB  */
+    MUL = 264,                     /* MUL  */
+    DIV = 265,                     /* DIV  */
+    MOD = 266                      /* MOD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -74,14 +79,14 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 27 "src/parser.y"
+#line 28 "src/parser.y"
 
     double num;  // Tipo para números (enteros y decimales)
     std::string* str; 
     bool boolean;
     std::string* stmt;
 
-#line 85 "build/parser.tab.hpp"
+#line 90 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

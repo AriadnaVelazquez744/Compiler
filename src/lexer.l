@@ -26,7 +26,8 @@ int yycolumn = 1;
                             return NUMBER; 
                         }
 \"([^\"]*)\"            {
-                            yylval.str = new std::string(yytext);
+                            std::string raw = yytext;
+                            yylval.str = new std::string(raw.substr(1, raw.size() - 2));
                             printf("String: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
                             return STRING;
                         }
@@ -83,6 +84,7 @@ int yycolumn = 1;
 
 "print"                 { printf("print\n"); return PRINT; }
 "read"                  { printf("read\n"); return READ; } 
+"parse"                 { printf("parse\n"); return PARSE; }
 
 
 "("                     { printf(" ( \n"); return '('; }

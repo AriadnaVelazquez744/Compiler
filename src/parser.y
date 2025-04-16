@@ -82,6 +82,7 @@ typedef struct YYLTYPE {
 // funciones predeterminadas
 %token PRINT
 %token READ
+%token PARSE
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
@@ -121,7 +122,23 @@ statement:
                                 //$$ = new std::string(input); 
                                 std::cout << "Entrada: " << input << std::endl;
                             }
-
+    | PARSE value ';'       {
+                                const std::string& raw = *$2;
+                                // Try parse as number
+                                try {
+                                    double num = std::stod(raw);
+                                    std::cout << "Parseado como número: " << num << std::endl;
+                                } catch (...) {
+                                    // Try parse as boolean
+                                    if (raw == "true" || raw == "True")
+                                        std::cout << "Parseado como booleano: true" << std::endl;
+                                    else if (raw == "false" || raw == "False")
+                                        std::cout << "Parseado como booleano: false" << std::endl;
+                                    else
+                                        std::cout << "Parse fallido: " << raw << std::endl;
+                                }
+                                delete $2;
+                            }
 ;
 
     value:

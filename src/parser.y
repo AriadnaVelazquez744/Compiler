@@ -67,6 +67,12 @@ typedef struct YYLTYPE {
 %token CONCAT
 %token CONCAT_SPACE
 
+// funciones matemáticas básicas
+%token SIN
+%token COS
+%token MAX
+%token MIN
+
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
 %type <num> exp
@@ -77,6 +83,7 @@ typedef struct YYLTYPE {
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
 %left ADD SUB
 %left MUL DIV MOD
+%right SIN COS MIN MAX
 %left LT GT LE GE EQ NE
 %left AND OR 
 %right NOT
@@ -109,6 +116,10 @@ statement:
         | exp MOD exp   { $$ = std::fmod($1, $3); printf("mod ( %g, %g )\n", $1, $3); }
         | SUB exp       { $$ = - $2; printf("Número negativo: %g\n", $$); }
         | '(' exp ')'   { $$ = $2; printf("( %g )\n", $2); }
+        | SIN exp       { $$ = std::sin($2); }
+        | COS exp       { $$ = std::cos($2); }
+        | MIN exp exp   { $$ = std::min($2, $3); }
+        | MAX exp exp   { $$ = std::max($2, $3); }
 
     ;
 

@@ -25,75 +25,67 @@ int yycolumn = 1;
                             printf("Token: %s → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
                             return NUMBER; 
                         }
-
 \"([^\"]*)\"            {
                             yylval.str = new std::string(yytext);
                             printf("String: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
                             return STRING;
                         }
-
 "True"                  {
                             yylval.boolean = true;
                             printf("Boolean: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
                             return BOOL;
                         }
-
 "False"                 {
                             yylval.boolean = false;
                             printf("Boolean: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
                             return BOOL;
                         }
-
 "Null"                  { 
                             printf("Null value → Línea %d, Columna %d\n", yylineno, yylloc.first_column);
                             return NULL_VAL; 
                         }
 
+
 [+]                     { printf(" + \n"); return ADD; }
-
 [-]                     { printf(" - \n"); return SUB; }
-
 [*]                     { printf(" * \n"); return MUL; }
-
 [/]                     { printf(" / \n"); return DIV; }
-
 [%]                     { printf(" mod \n"); return MOD; }
 
+
 [<]                     { printf(" < \n"); return LT; }
-
 [>]                     { printf(" > \n"); return GT; }
-
 "<="                    { printf(" <= \n"); return LE; }
-
 ">="                    { printf(" >= \n"); return GE; }
-
 "=="                    { printf(" == \n"); return EQ; }
-
 "!="                    { printf(" != \n"); return NE; }
 
+
 "&"                     { printf(" & \n"); return AND; }
-
 "!"                     { printf(" ! \n"); return NOT; }
-
 [|]                     { printf(" | \n"); return OR; }
 
-"@"                     { printf(" @ \n"); return CONCAT; }
 
+"@"                     { printf(" @ \n"); return CONCAT; }
 "@@"                    { printf(" @@ \n"); return CONCAT_SPACE; }
 
+
+"sin"                   { printf(" sin \n"); return SIN; }
+"cos"                   { printf(" cos \n"); return COS; }
+"max"                   { printf(" max \n"); return MAX; }
+"min"                   { printf(" min \n"); return MIN; }
+
+
 "("                     { printf(" ( \n"); return '('; }
-
 ")"                     { printf(" ) \n"); return ')'; }
-
 ";"                     { 
                             printf("';' symbol  → Línea %d, Columna %d\n", yylineno, yylloc.first_column);
                             return ';'; 
                         }
 
+
 [ \t]+                  { /* Whitespace handled by YY_USER_ACTION */ }  // Ignorar espacios
-
 \n                      { yycolumn = 1; }        // Resetear columna al salto de línea
-
 .                       { 
                             fprintf(stderr, "Error léxico: '%s' en %d:%d\n", yytext, yylineno, yylloc.first_column); 
                         }

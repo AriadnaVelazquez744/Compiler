@@ -50,13 +50,15 @@ typedef struct YYLTYPE {
 %token DIV
 %token MOD
 
-// operadores booleanos entre números
+// operadores booleanos entre expresiones numéricas
 %token LT
 %token GT 
 %token LE 
 %token GE 
 %token EQ
 %token NE
+
+// operadores booleanos entre expresiones booleanas
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
@@ -67,7 +69,8 @@ typedef struct YYLTYPE {
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
 %left ADD SUB
-%left MUL DIV MOD 
+%left MUL DIV MOD
+%left LT GT LE GE EQ NE
 
 
 %%

@@ -530,9 +530,9 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int8 yyrline[] =
 {
-       0,    75,    75,    77,    78,    82,    83,    84,    85,    89,
-      90,    91,    92,    93,    97,    98,    99,   104,   112,   113,
-     114,   115,   116,   117,   118,   122
+       0,    78,    78,    80,    81,    85,    86,    87,    88,    92,
+      93,    94,    95,    96,   100,   101,   102,   107,   115,   116,
+     117,   118,   119,   120,   121,   125
 };
 #endif
 
@@ -1230,55 +1230,55 @@ yyreduce:
   switch (yyn)
     {
   case 4: /* program: program error ';'  */
-#line 78 "src/parser.y"
+#line 81 "src/parser.y"
                         { yyerrok; }
 #line 1236 "build/parser.tab.cpp"
     break;
 
   case 5: /* statement: exp ';'  */
-#line 82 "src/parser.y"
+#line 85 "src/parser.y"
                     { std::cout << "Resultado: " << (yyvsp[-1].num) << std::endl; }
 #line 1242 "build/parser.tab.cpp"
     break;
 
   case 6: /* statement: str_exp ';'  */
-#line 83 "src/parser.y"
+#line 86 "src/parser.y"
                     { std::cout << "Texto: " << (yyvsp[-1].str)->c_str() << std::endl; delete (yyvsp[-1].str); }
 #line 1248 "build/parser.tab.cpp"
     break;
 
   case 7: /* statement: bool_exp ';'  */
-#line 84 "src/parser.y"
+#line 87 "src/parser.y"
                     { std::cout << "Booleano: " << ((yyvsp[-1].boolean) ? "true" : "false") << std::endl; }
 #line 1254 "build/parser.tab.cpp"
     break;
 
   case 9: /* exp: NUMBER  */
-#line 89 "src/parser.y"
+#line 92 "src/parser.y"
                         { (yyval.num) = (yyvsp[0].num); printf("Número reconocido: %g\n", (yyval.num)); }
 #line 1260 "build/parser.tab.cpp"
     break;
 
   case 10: /* exp: exp ADD exp  */
-#line 90 "src/parser.y"
+#line 93 "src/parser.y"
                         { (yyval.num) = (yyvsp[-2].num) + (yyvsp[0].num); printf("%g + %g\n", (yyvsp[-2].num), (yyvsp[0].num)); }
 #line 1266 "build/parser.tab.cpp"
     break;
 
   case 11: /* exp: exp SUB exp  */
-#line 91 "src/parser.y"
+#line 94 "src/parser.y"
                         { (yyval.num) = (yyvsp[-2].num) - (yyvsp[0].num); printf("%g - %g\n", (yyvsp[-2].num), (yyvsp[0].num)); }
 #line 1272 "build/parser.tab.cpp"
     break;
 
   case 12: /* exp: exp MUL exp  */
-#line 92 "src/parser.y"
+#line 95 "src/parser.y"
                         { (yyval.num) = (yyvsp[-2].num) * (yyvsp[0].num); printf("%g * %g\n", (yyvsp[-2].num), (yyvsp[0].num)); }
 #line 1278 "build/parser.tab.cpp"
     break;
 
   case 13: /* exp: exp DIV exp  */
-#line 93 "src/parser.y"
+#line 96 "src/parser.y"
                         { 
                             (yyval.num) = ((yyvsp[0].num) != 0) ? (yyvsp[-2].num) / (yyvsp[0].num) : throw std::runtime_error("División por cero"); 
                             printf("%g / %g\n", (yyvsp[-2].num), (yyvsp[0].num));
@@ -1287,25 +1287,25 @@ yyreduce:
     break;
 
   case 14: /* exp: exp MOD exp  */
-#line 97 "src/parser.y"
+#line 100 "src/parser.y"
                         { (yyval.num) = std::fmod((yyvsp[-2].num), (yyvsp[0].num)); printf("mod ( %g, %g )\n", (yyvsp[-2].num), (yyvsp[0].num)); }
 #line 1293 "build/parser.tab.cpp"
     break;
 
   case 15: /* exp: SUB exp  */
-#line 98 "src/parser.y"
+#line 101 "src/parser.y"
                         { (yyval.num) = - (yyvsp[0].num); printf("Número negativo: %g\n", (yyval.num)); }
 #line 1299 "build/parser.tab.cpp"
     break;
 
   case 16: /* exp: '(' exp ')'  */
-#line 99 "src/parser.y"
+#line 102 "src/parser.y"
                         { (yyval.num) = (yyvsp[-1].num); printf("( %g )\n", (yyvsp[-1].num)); }
 #line 1305 "build/parser.tab.cpp"
     break;
 
   case 17: /* str_exp: STRING  */
-#line 104 "src/parser.y"
+#line 107 "src/parser.y"
                 {   
                     (yyval.str) = new std::string(*(yyvsp[0].str));
                     printf("Texto reconocido: %s\n", (yyval.str)->c_str()); 
@@ -1315,49 +1315,49 @@ yyreduce:
     break;
 
   case 18: /* bool_exp: BOOL  */
-#line 112 "src/parser.y"
+#line 115 "src/parser.y"
              { (yyval.boolean) = (yyvsp[0].boolean); printf("Booleano: %s\n", (yyval.boolean) ? "true" : "false"); }
 #line 1321 "build/parser.tab.cpp"
     break;
 
   case 19: /* bool_exp: exp LT exp  */
-#line 113 "src/parser.y"
+#line 116 "src/parser.y"
                                { (yyval.boolean) = (yyvsp[-2].num) < (yyvsp[0].num); }
 #line 1327 "build/parser.tab.cpp"
     break;
 
   case 20: /* bool_exp: exp GT exp  */
-#line 114 "src/parser.y"
+#line 117 "src/parser.y"
                                { (yyval.boolean) = (yyvsp[-2].num) > (yyvsp[0].num); }
 #line 1333 "build/parser.tab.cpp"
     break;
 
   case 21: /* bool_exp: exp LE exp  */
-#line 115 "src/parser.y"
+#line 118 "src/parser.y"
                                { (yyval.boolean) = (yyvsp[-2].num) <= (yyvsp[0].num); }
 #line 1339 "build/parser.tab.cpp"
     break;
 
   case 22: /* bool_exp: exp GE exp  */
-#line 116 "src/parser.y"
+#line 119 "src/parser.y"
                                { (yyval.boolean) = (yyvsp[-2].num) >= (yyvsp[0].num); }
 #line 1345 "build/parser.tab.cpp"
     break;
 
   case 23: /* bool_exp: exp EQ exp  */
-#line 117 "src/parser.y"
+#line 120 "src/parser.y"
                                { (yyval.boolean) = (yyvsp[-2].num) == (yyvsp[0].num); }
 #line 1351 "build/parser.tab.cpp"
     break;
 
   case 24: /* bool_exp: exp NE exp  */
-#line 118 "src/parser.y"
+#line 121 "src/parser.y"
                                { (yyval.boolean) = (yyvsp[-2].num) != (yyvsp[0].num); }
 #line 1357 "build/parser.tab.cpp"
     break;
 
   case 25: /* null_exp: NULL_VAL ';'  */
-#line 122 "src/parser.y"
+#line 125 "src/parser.y"
                          { std::cout << "Null valor reconocido\n"; }
 #line 1363 "build/parser.tab.cpp"
     break;
@@ -1561,7 +1561,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 126 "src/parser.y"
+#line 129 "src/parser.y"
 
 
 void yyerror(const char *msg) {

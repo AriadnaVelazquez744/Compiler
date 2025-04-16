@@ -81,6 +81,7 @@ typedef struct YYLTYPE {
 
 // funciones predeterminadas
 %token PRINT
+%token READ
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
@@ -113,6 +114,14 @@ statement:
     | bool_expr ';'         { std::cout << "Booleano: " << ($1 ? "true" : "false") << std::endl; }
     | null_expr ';'         { std::cout << "Null valor reconocido\n"; delete $1; }
     | PRINT value ';'       { std::cout << "Salida: " << *$2 << std::endl; }
+    | READ ';'              { 
+                                std::string input; 
+                                //std::cin >> input;
+                                std::getline(std::cin, input); 
+                                //$$ = new std::string(input); 
+                                std::cout << "Entrada: " << input << std::endl;
+                            }
+
 ;
 
     value:

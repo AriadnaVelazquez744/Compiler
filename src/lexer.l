@@ -82,6 +82,7 @@ int yycolumn = 1;
 
 
 "print"                 { printf("print\n"); return PRINT; }
+"read"                  { printf("read\n"); return READ; } 
 
 
 "("                     { printf(" ( \n"); return '('; }

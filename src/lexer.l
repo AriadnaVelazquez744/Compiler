@@ -74,6 +74,11 @@ int yycolumn = 1;
 "cos"                   { printf(" cos \n"); return COS; }
 "max"                   { printf(" max \n"); return MAX; }
 "min"                   { printf(" min \n"); return MIN; }
+"pow"                   { printf(" pow \n"); return POW; }
+"sqrt"                  { printf(" sqrt \n"); return SQRT; }
+"exp"                   { printf(" exp \n"); return EXP; }
+"log"                   { printf(" log \n"); return LOG; }
+"random"                { printf(" random \n"); return RANDOM; }
 
 
 "("                     { printf(" ( \n"); return '('; }

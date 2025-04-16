@@ -85,7 +85,12 @@ extern int yydebug;
     SIN = 278,                     /* SIN  */
     COS = 279,                     /* COS  */
     MAX = 280,                     /* MAX  */
-    MIN = 281                      /* MIN  */
+    MIN = 281,                     /* MIN  */
+    POW = 282,                     /* POW  */
+    SQRT = 283,                    /* SQRT  */
+    EXP = 284,                     /* EXP  */
+    LOG = 285,                     /* LOG  */
+    RANDOM = 286                   /* RANDOM  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -101,7 +106,7 @@ union YYSTYPE
     bool boolean;
     std::string* stmt;
 
-#line 105 "build/parser.tab.hpp"
+#line 110 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

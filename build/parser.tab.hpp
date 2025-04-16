@@ -64,7 +64,8 @@ extern int yydebug;
     NUMBER = 258,                  /* NUMBER  */
     STRING = 259,                  /* STRING  */
     BOOL = 260,                    /* BOOL  */
-    NULL_VAL = 261                 /* NULL_VAL  */
+    NULL_VAL = 261,                /* NULL_VAL  */
+    ADD = 262                      /* ADD  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -80,7 +81,7 @@ union YYSTYPE
     bool boolean;
     std::string* stmt;
 
-#line 84 "build/parser.tab.hpp"
+#line 85 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

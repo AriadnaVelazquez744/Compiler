@@ -41,6 +41,9 @@ typedef struct YYLTYPE {
 
 %token ';'
 
+// operadores aritméticos
+%token ADD
+
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
 %type <num> exp
@@ -48,12 +51,16 @@ typedef struct YYLTYPE {
 %type <boolean> bool_exp
 %type <stmt> null_exp
 
+// ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
+%left ADD
+
 
 %%
 
 program:
     /* vacío */
     | program statement
+    | program error ';' { yyerrok; }
 ;
 
 statement:
@@ -65,6 +72,7 @@ statement:
 
     exp:
         NUMBER  {   $$ = $1; printf("Número reconocido: %g\n", $$); }
+        | exp ADD exp   { $$ = $1 + $3; printf("%g + %g\n", $1, $3);}
     ;
 
     str_exp:

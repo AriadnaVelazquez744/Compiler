@@ -49,6 +49,8 @@ int yycolumn = 1;
                             return NULL_VAL; 
                         }
 
+[+]                     { return ADD; printf(" + ");}
+
 ";"                     { 
                             printf("';' symbol  → Línea %d, Columna %d\n", yylineno, yylloc.first_column);
                             return ';'; 

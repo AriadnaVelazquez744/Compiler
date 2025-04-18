@@ -52,6 +52,7 @@ int yycolumn = 1;
 [*]                     { printf(" * \n"); return MUL; }
 [/]                     { printf(" / \n"); return DIV; }
 [%]                     { printf(" mod \n"); return MOD; }
+[\^]                     { printf(" ^ \n"); return POW; }
 
 
 [<]                     { printf(" < \n"); return LT; }
@@ -75,11 +76,10 @@ int yycolumn = 1;
 "cos"                   { printf(" cos \n"); return COS; }
 "max"                   { printf(" max \n"); return MAX; }
 "min"                   { printf(" min \n"); return MIN; }
-"pow"                   { printf(" pow \n"); return POW; }
 "sqrt"                  { printf(" sqrt \n"); return SQRT; }
 "exp"                   { printf(" exp \n"); return EXP; }
 "log"                   { printf(" log \n"); return LOG; }
-"random"                { printf(" random \n"); return RANDOM; }
+"rand"                  { printf(" rand \n"); return RANDOM; }
 
 
 "print"                 { printf("print\n"); return PRINT; }

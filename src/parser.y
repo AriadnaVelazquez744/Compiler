@@ -49,6 +49,7 @@ typedef struct YYLTYPE {
 %token MUL
 %token DIV
 %token MOD
+%token POW
 
 // operadores booleanos entre exprresiones numéricas
 %token LT
@@ -72,7 +73,6 @@ typedef struct YYLTYPE {
 %token COS
 %token MAX
 %token MIN
-%token POW
 %token SQRT
 %token EXP
 %token LOG
@@ -159,6 +159,7 @@ statement:
                                         printf("%g / %g\n", $1, $3);
                                     }
         | expr MOD expr             { $$ = std::fmod($1, $3); printf("mod ( %g, %g )\n", $1, $3); }
+        | expr POW expr             { $$ = std::pow($1, $3); }
         | SUB expr                  { $$ = - $2; printf("Número negativo: %g\n", $$); }
         | SIN '(' expr ')'          { $$ = std::sin($3); }
         | COS '(' expr ')'          { $$ = std::cos($3); }
@@ -167,8 +168,7 @@ statement:
         | SQRT '(' expr ')'         { $$ = std::sqrt($3); }
         //| LOG '(' expr expr ')'     { $$ = std::log($3, $4); }
         | EXP '(' expr ')'          { $$ = std::exp($3); }
-        | RANDOM                    { $$ = rand() / (RAND_MAX + 1.0); }
-        | POW expr expr             { $$ = std::pow($2, $3); }
+        | RANDOM '(' ')'            { $$ = rand() / (RAND_MAX + 1.0); }
     ;
 
     str_expr:

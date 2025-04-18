@@ -1,0 +1,25 @@
+#pragma once
+#include <vector>
+#include <unordered_map>
+#include <string>
+
+struct Symbol {
+    std::string kind; // "variable", "function"
+    std::string type;
+    bool is_const;
+    std::vector<std::string> params; // Solo para funciones
+};
+
+class SymbolTable {
+    private:
+        std::vector<std::unordered_map<std::string, Symbol>> scopes;
+    
+    public:
+        SymbolTable();
+        void enterScope();
+        void exitScope();
+        bool addSymbol(const std::string& name, const std::string& type, bool is_const);
+        bool addFunction(const std::string& name, const std::string& returnType, const std::vector<std::string>& params);
+        Symbol* lookup(const std::string& name);
+        bool existsInCurrentScope(const std::string& name);
+    };

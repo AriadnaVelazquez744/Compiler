@@ -1,40 +1,82 @@
-// TestSemantic.cpp
 #include <iostream>
-#include "AST.h"
-#include "SemanticAnalyzer.h"
+#include "AST.hpp"
+#include "SemanticAnalyzer.hpp"
 
-// Función para probar un caso básico
-void testBasicArithmetic() {
-    // AST para la expresión: (5 + 3) * 2
-    ASTNode* expr = new BinaryOpNode(
-        "*",
-        new BinaryOpNode(
-            "+",
-            new LiteralNode("5", "number", 1),
-            new LiteralNode("3", "number", 1),
-            1
-        ),
-        new LiteralNode("\"error\"", "string", 1), // ¡Tipo incorrecto!
+void testFunctionSemantics() {
+    // Test 1: Parámetros duplicados
+    auto params = std::vector<Parameter>{{"x", "number"}, {"x", "number"}};
+    ASTNode* func = new FunctionDeclarationNode(
+        "suma",
+        "number",
+        params,
+        new BinaryOpNode("+", new IdentifierNode("x", 1), new IdentifierNode("x", 1), 1),
+        false,
         1
     );
 
     SemanticAnalyzer analyzer;
-    expr->accept(analyzer); // Ejecutar análisis semántico
+    analyzer.analyze(func);
 
-    if (analyzer.getErrors().empty()) {
-        std::cout << "✅ Test básico PASÓ: Expresión aritmética válida\n";
-        std::cout << "Tipo inferido: " << expr->type() << "\n"; // Debe ser "number"
+    if (!analyzer.getErrors().empty()) {
+        std::cout << "✅ Test 1 PASÓ: Detectó parámetros duplicados\n";
     } else {
-        std::cerr << "❌ Test básico FALLÓ:\n";
-        for (auto& error : analyzer.getErrors()) {
-            std::cerr << "Línea " << error.line << ": " << error.message << "\n";
-        }
+        std::cout << "❌ Test 1 FALLÓ\n";
     }
 
-    delete expr; // Liberar memoria
+    delete func;
+}
+
+void testVariableShadowing() {
+    // Test 2: Shadowing válido
+    LetDeclaration outerDecl{"a", "", new LiteralNode("5", "number", 1)};
+    LetDeclaration innerDecl{"a", "", new LiteralNode("\"Hulk\"", "string", 2)};
+    
+    ASTNode* innerLet = new LetNode(
+        {innerDecl}, 
+        new FunctionCallNode("print", {new IdentifierNode("a", 2)}, 2),
+        2
+    );
+    
+    ASTNode* outerLet = new LetNode(
+        {outerDecl}, 
+        innerLet, 
+        1
+    );
+
+    SemanticAnalyzer analyzer;
+    outerLet->accept(analyzer);
+
+    if (analyzer.getErrors().empty()) {
+        std::cout << "✅ Test 2 PASÓ: Shadowing válido\n";
+    } else {
+        std::cout << "❌ Test 2 FALLÓ\n";
+    }
+
+    delete outerLet;
+}
+
+void testInvalidAssignment() {
+    // Test 3: Asignación inválida
+    LetDeclaration decl{"a", "", new LiteralNode("5", "number", 1)};
+    ASTNode* body = new AssignmentNode("a", new LiteralNode("\"Hulk\"", "string", 1), 1);
+    ASTNode* letExpr = new LetNode({decl}, body, 1);
+
+    SemanticAnalyzer analyzer;
+    letExpr->accept(analyzer);
+
+    if (analyzer.getErrors().size() == 1) {
+        std::cout << "✅ Test 3 PASÓ: Detectó asignación inválida\n";
+    } else {
+        std::cout << "❌ Test 3 FALLÓ\n";
+    }
+
+    delete letExpr;
 }
 
 int main() {
-    testBasicArithmetic();
+    testFunctionSemantics();
+    testVariableShadowing();
+    testInvalidAssignment();
+    
     return 0;
 }

@@ -40,7 +40,7 @@ typedef struct YYLTYPE {
 %token <boolean> BOOL
 %token NULL_VAL
 
-%token ';'
+%token ',' ';'
 %token '(' ')'
 
 // operadores aritméticos
@@ -163,10 +163,10 @@ statement:
         | SUB expr                  { $$ = - $2; printf("Número negativo: %g\n", $$); }
         | SIN '(' expr ')'          { $$ = std::sin($3); }
         | COS '(' expr ')'          { $$ = std::cos($3); }
-        | MIN '(' expr expr ')'     { $$ = std::min($3, $4); }
-        | MAX '(' expr expr ')'     { $$ = std::max($3, $4); }
+        | MIN '(' expr ',' expr ')' { $$ = std::min($3, $5); }
+        | MAX '(' expr ',' expr ')' { $$ = std::max($3, $5); }
         | SQRT '(' expr ')'         { $$ = std::sqrt($3); }
-        //| LOG '(' expr expr ')'     { $$ = std::log($3, $4); }
+        //| LOG '(' expr ',' expr ')'     { $$ = std::log($3, $5); }
         | EXP '(' expr ')'          { $$ = std::exp($3); }
         | RANDOM '(' ')'            { $$ = rand() / (RAND_MAX + 1.0); }
     ;

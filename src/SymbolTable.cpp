@@ -1,4 +1,4 @@
-#include "SymbolTable.h"
+#include "SymbolTable.hpp"
 
 SymbolTable::SymbolTable() {
     enterScope(); // Scope global
@@ -19,7 +19,7 @@ bool SymbolTable::addSymbol(const std::string& name, const std::string& type, bo
     if (scopes.empty()) return false;
     auto& current = scopes.back();
     if (current.find(name) != current.end()) return false;
-    current[name] = {type, is_const};
+    current[name] = Symbol{"variable", type, is_const, {}}; // Variables son mutables por defecto
     return true;
 }
 
@@ -34,4 +34,12 @@ Symbol* SymbolTable::lookup(const std::string& name) {
 bool SymbolTable::existsInCurrentScope(const std::string& name) {
     if (scopes.empty()) return false;
     return scopes.back().find(name) != scopes.back().end();
+}
+
+bool SymbolTable::addFunction(const std::string& name, const std::string& returnType, const std::vector<std::string>& params) {
+    if (scopes.empty()) return false;
+    auto& current = scopes.back();
+    if (current.find(name) != current.end()) return false;
+    current[name] = Symbol{"function", returnType, false, params};
+    return true;
 }

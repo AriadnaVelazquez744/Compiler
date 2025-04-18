@@ -1,7 +1,8 @@
 #pragma once
-#include "ASTVisitor.h"
+#include "ASTVisitor.hpp"
 #include <vector>
 #include <string>
+#include <memory>
 
 // Clase base para todos los nodos del AST
 class ASTNode {
@@ -125,6 +126,78 @@ public:
 
     IdentifierNode(std::string name, int ln)
         : name(name), _line(ln), _type("") {}
+
+    void accept(ASTVisitor& visitor) override {
+        visitor.visit(*this);
+    }
+
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
+struct Parameter {
+    std::string name;
+    std::string type;
+};
+
+// Nodo para declaración de funciones
+class FunctionDeclarationNode : public ASTNode {
+public:
+    std::string name;
+    std::string returnType;
+    std::vector<Parameter> params;
+    ASTNode* body;
+    bool isInline;
+    int _line;
+    std::string _type;
+
+    FunctionDeclarationNode(std::string name, std::string returnType, 
+                            std::vector<Parameter> params, ASTNode* body, 
+                            bool isInline, int ln)
+        : name(name), returnType(returnType), params(params), 
+          body(body), isInline(isInline), _line(ln), _type("") {}
+
+    void accept(ASTVisitor& visitor) override {
+        visitor.visit(*this); // Llama a visit(FunctionDeclarationNode&)
+    }
+
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
+struct LetDeclaration {
+    std::string name;
+    std::string declaredType; // Puede estar vacío
+    ASTNode* initializer;
+};
+
+class LetNode : public ASTNode {
+public:
+    std::vector<LetDeclaration> declarations;
+    ASTNode* body;
+    int _line;
+    std::string _type;
+
+    LetNode(std::vector<LetDeclaration> decls, ASTNode* body, int ln)
+        : declarations(decls), body(body), _line(ln), _type("") {}
+
+    void accept(ASTVisitor& visitor) override {
+        visitor.visit(*this);
+    }
+
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
+class AssignmentNode : public ASTNode {
+public:
+    std::string name;
+    ASTNode* rhs;
+    int _line;
+    std::string _type;
+
+    AssignmentNode(std::string name, ASTNode* rhs, int ln)
+        : name(name), rhs(rhs), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
         visitor.visit(*this);

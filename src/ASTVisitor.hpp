@@ -8,6 +8,10 @@ class LiteralNode;
 class BlockNode;
 class VariableDeclarationNode;
 class IdentifierNode;
+class FunctionDeclarationNode; // <--- Añadir esta línea
+class LetNode;
+class AssignmentNode;
+
 
 class ASTVisitor {
 public:
@@ -21,4 +25,7 @@ public:
     virtual void visit(BlockNode& node) = 0;
     virtual void visit(VariableDeclarationNode& node) = 0;
     virtual void visit(IdentifierNode& node) = 0;
+    virtual void visit(FunctionDeclarationNode& node) = 0; // <--- Añadir esta línea
+    virtual void visit(LetNode& node) = 0;
+    virtual void visit(AssignmentNode& node) = 0;
 };

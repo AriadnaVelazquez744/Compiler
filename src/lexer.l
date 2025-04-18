@@ -87,6 +87,10 @@ int yycolumn = 1;
 "parse"                 { printf("parse\n"); return PARSE; }
 
 
+"PI"                    { printf("PI\n"); return PI; }
+"E"                     { printf("E\n"); return E; }
+
+
 "("                     { printf(" ( \n"); return '('; }
 ")"                     { printf(" ) \n"); return ')'; }
 ","                     { printf(" , \n"); return ','; }            

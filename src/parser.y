@@ -78,11 +78,14 @@ typedef struct YYLTYPE {
 %token LOG
 %token RANDOM
 
-
 // funciones predeterminadas
 %token PRINT
 %token READ
 %token PARSE
+
+// constantes 
+%token PI 
+%token E
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
@@ -169,6 +172,8 @@ statement:
         //| LOG '(' expr ',' expr ')'     { $$ = std::log($3, $5); }
         | EXP '(' expr ')'          { $$ = std::exp($3); }
         | RANDOM '(' ')'            { $$ = rand() / (RAND_MAX + 1.0); }
+        | E                         { $$ = std::exp(1); }
+        //| PI                        { $$ = ; }
     ;
 
     str_expr:

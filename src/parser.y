@@ -114,7 +114,7 @@ statement:
     | str_expr ';'          { std::cout << "Texto: " << $1->c_str() << std::endl; delete $1; }
     | bool_expr ';'         { std::cout << "Booleano: " << ($1 ? "true" : "false") << std::endl; }
     | null_expr ';'         { std::cout << "Null valor reconocido\n"; delete $1; }
-    | PRINT value ';'       { std::cout << "Salida: " << *$2 << std::endl; }
+    | PRINT '(' value ')' ';'       { std::cout << "Salida: " << *$3 << std::endl; }
     | READ ';'              { 
                                 std::string input; 
                                 //std::cin >> input;
@@ -122,8 +122,8 @@ statement:
                                 //$$ = new std::string(input); 
                                 std::cout << "Entrada: " << input << std::endl;
                             }
-    | PARSE value ';'       {
-                                const std::string& raw = *$2;
+    | PARSE '(' value ')' ';'       {
+                                const std::string& raw = *$3;
                                 // Try parse as number
                                 try {
                                     double num = std::stod(raw);
@@ -137,7 +137,7 @@ statement:
                                     else
                                         std::cout << "Parse fallido: " << raw << std::endl;
                                 }
-                                delete $2;
+                                delete $3;
                             }
 ;
 
@@ -150,25 +150,25 @@ statement:
     ;
 
     expr:
-        NUMBER              { $$ = $1; printf("Número reconocido: %g\n", $$); }
-        | expr ADD expr     { $$ = $1 + $3; printf("%g + %g\n", $1, $3); }
-        | expr SUB expr     { $$ = $1 - $3; printf("%g - %g\n", $1, $3); }
-        | expr MUL expr     { $$ = $1 * $3; printf("%g * %g\n", $1, $3); }
-        | expr DIV expr     { 
-                                $$ = ($3 != 0) ? $1 / $3 : throw std::runtime_error("División por cero"); 
-                                printf("%g / %g\n", $1, $3);
-                            }
-        | expr MOD expr     { $$ = std::fmod($1, $3); printf("mod ( %g, %g )\n", $1, $3); }
-        | SUB expr          { $$ = - $2; printf("Número negativo: %g\n", $$); }
-        | SIN expr          { $$ = std::sin($2); }
-        | COS expr          { $$ = std::cos($2); }
-        | MIN expr expr     { $$ = std::min($2, $3); }
-        | MAX expr expr     { $$ = std::max($2, $3); }
-        | SQRT expr         { $$ = std::sqrt($2); }
-        | LOG expr          { $$ = std::log($2); }
-        | EXP expr          { $$ = std::exp($2); }
-        | RANDOM            { $$ = rand() / (RAND_MAX + 1.0); }
-        | POW expr expr     { $$ = std::pow($2, $3); }
+        NUMBER                      { $$ = $1; printf("Número reconocido: %g\n", $$); }
+        | expr ADD expr             { $$ = $1 + $3; printf("%g + %g\n", $1, $3); }
+        | expr SUB expr             { $$ = $1 - $3; printf("%g - %g\n", $1, $3); }
+        | expr MUL expr             { $$ = $1 * $3; printf("%g * %g\n", $1, $3); }
+        | expr DIV expr             { 
+                                        $$ = ($3 != 0) ? $1 / $3 : throw std::runtime_error("División por cero"); 
+                                        printf("%g / %g\n", $1, $3);
+                                    }
+        | expr MOD expr             { $$ = std::fmod($1, $3); printf("mod ( %g, %g )\n", $1, $3); }
+        | SUB expr                  { $$ = - $2; printf("Número negativo: %g\n", $$); }
+        | SIN '(' expr ')'          { $$ = std::sin($3); }
+        | COS '(' expr ')'          { $$ = std::cos($3); }
+        | MIN '(' expr expr ')'     { $$ = std::min($3, $4); }
+        | MAX '(' expr expr ')'     { $$ = std::max($3, $4); }
+        | SQRT '(' expr ')'         { $$ = std::sqrt($3); }
+        //| LOG '(' expr expr ')'     { $$ = std::log($3, $4); }
+        | EXP '(' expr ')'          { $$ = std::exp($3); }
+        | RANDOM                    { $$ = rand() / (RAND_MAX + 1.0); }
+        | POW expr expr             { $$ = std::pow($2, $3); }
     ;
 
     str_expr:

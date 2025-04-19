@@ -13,6 +13,8 @@ typedef struct YYLTYPE {
 } YYLTYPE;
 #define YYLTYPE_IS_DECLARED 1
 
+#define PI_VAL 3.14159265358979323846
+
 %}
 
 %code requires {
@@ -169,11 +171,11 @@ statement:
         | MIN '(' expr ',' expr ')' { $$ = std::min($3, $5); }
         | MAX '(' expr ',' expr ')' { $$ = std::max($3, $5); }
         | SQRT '(' expr ')'         { $$ = std::sqrt($3); }
-        //| LOG '(' expr ',' expr ')'     { $$ = std::log($3, $5); }
+        | LOG '(' expr ',' expr ')' { $$ = std::log($5) / std::log($3); }
         | EXP '(' expr ')'          { $$ = std::exp($3); }
         | RANDOM '(' ')'            { $$ = rand() / (RAND_MAX + 1.0); }
         | E                         { $$ = std::exp(1); }
-        //| PI                        { $$ = ; }
+        | PI                        { $$ = PI_VAL; }
     ;
 
     str_expr:
@@ -183,7 +185,11 @@ statement:
                                                 delete $1;  // Clean up allocated string
                                             }
         | str_expr CONCAT str_expr          { $$ = new std::string(*$1 + *$3); delete $1; delete $3; }
+        | str_expr CONCAT expr              { $$ = new std::string(*$1 + std::to_string($3)); delete $1; }
+        | expr CONCAT str_expr              { $$ = new std::string(std::to_string($1) + *$3); delete $3; }
         | str_expr CONCAT_SPACE str_expr    { $$ = new std::string(*$1 + " " + *$3); delete $1; delete $3; }
+        | str_expr CONCAT_SPACE expr        { $$ = new std::string(*$1 + " " + std::to_string($3)); delete $1; }
+        | expr CONCAT_SPACE str_expr        { $$ = new std::string(std::to_string($1) + " " + *$3); delete $3; }
     ;
 
     bool_expr:

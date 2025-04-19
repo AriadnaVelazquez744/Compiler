@@ -196,6 +196,38 @@ void testInvalidForLoop() {
     delete forLoop;
 }
 
+void testValidTypeInheritance() {
+    // type PolarPoint(phi, rho) inherits Point(rho * sin(phi), rho * cos(phi)) {}
+    ASTNode* parentArg1 = new BinaryOpNode("*", 
+        new IdentifierNode("rho", 1), 
+        new FunctionCallNode("sin", {new IdentifierNode("phi", 1)}, 1), 
+        1
+    );
+    ASTNode* parentArg2 = new BinaryOpNode("*", 
+        new IdentifierNode("rho", 1), 
+        new FunctionCallNode("cos", {new IdentifierNode("phi", 1)}, 1), 
+        1
+    );
+    TypeDeclarationNode* type = new TypeDeclarationNode(
+        "PolarPoint",
+        {"phi", "rho"},
+        {}, // Atributos (simplificado)
+        {}, // Métodos (simplificado)
+        "Point",
+        {parentArg1, parentArg2},
+        1
+    );
+
+    SemanticAnalyzer analyzer;
+    type->accept(analyzer);
+
+    if (analyzer.getErrors().empty()) {
+        std::cout << "✅ Test 1 PASÓ: Herencia válida\n";
+    } else {
+        std::cout << "❌ Test 1 FALLÓ\n";
+    }
+}
+
 int main() {
     testFunctionSemantics();
     testVariableShadowing();
@@ -205,5 +237,6 @@ int main() {
     testTypeMismatch();
     testValidWhileLoop();
     testInvalidForLoop();
+    testValidTypeInheritance();
     return 0;
 }

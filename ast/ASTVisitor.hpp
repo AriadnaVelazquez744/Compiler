@@ -14,7 +14,8 @@ class AssignmentNode;
 class IfNode;
 class WhileNode;
 class ForNode;
-
+class TypeDeclarationNode;
+class NewNode;
 
 
 class ASTVisitor {
@@ -35,4 +36,6 @@ public:
     virtual void visit(IfNode& node) = 0;
     virtual void visit(WhileNode& node) = 0;
     virtual void visit(ForNode& node) = 0;
+    virtual void visit(TypeDeclarationNode& node) = 0;
+    virtual void visit(NewNode& node) = 0;
 };

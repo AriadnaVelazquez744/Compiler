@@ -23,4 +23,7 @@ class FunctionCollector : public ASTVisitor {
         void visit(IdentifierNode& node) override {}
         void visit(LetNode& node) override {}
         void visit(AssignmentNode& node) override {}
+        void visit(IfNode& node) override {}
+        void visit(WhileNode& node) override {}
+        void visit(ForNode& node) override {}
     };

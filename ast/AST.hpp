@@ -206,3 +206,63 @@ public:
     int line() const override { return _line; }
     std::string type() const override { return _type; }
 };
+
+struct IfBranch {
+    ASTNode* condition;
+    ASTNode* body;
+};
+
+class IfNode : public ASTNode {
+public:
+    std::vector<IfBranch> branches; // if + elifs
+    ASTNode* elseBody;
+    int _line;
+    std::string _type;
+
+    IfNode(std::vector<IfBranch> branches, ASTNode* elseBody, int ln)
+        : branches(branches), elseBody(elseBody), _line(ln), _type("") {}
+
+    void accept(ASTVisitor& visitor) override {
+        visitor.visit(*this);
+    }
+
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
+class WhileNode : public ASTNode {
+    public:
+        ASTNode* condition;
+        ASTNode* body;
+        int _line;
+        std::string _type;
+    
+        WhileNode(ASTNode* cond, ASTNode* b, int ln)
+            : condition(cond), body(b), _line(ln), _type("") {}
+    
+        void accept(ASTVisitor& visitor) override {
+            visitor.visit(*this);
+        }
+    
+        int line() const override { return _line; }
+        std::string type() const override { return _type; }
+    };
+    
+    class ForNode : public ASTNode {
+    public:
+        std::string varName;
+        ASTNode* iterable;
+        ASTNode* body;
+        int _line;
+        std::string _type;
+    
+        ForNode(const std::string& var, ASTNode* iter, ASTNode* b, int ln)
+            : varName(var), iterable(iter), body(b), _line(ln), _type("") {}
+    
+        void accept(ASTVisitor& visitor) override {
+            visitor.visit(*this);
+        }
+    
+        int line() const override { return _line; }
+        std::string type() const override { return _type; }
+    };

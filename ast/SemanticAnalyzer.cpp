@@ -2,6 +2,7 @@
 #include "AST.hpp"
 #include "FunctionCollector.hpp"
 #include <cctype>
+#include <set> 
 
 
 void SemanticAnalyzer::analyze(ASTNode* root) {
@@ -114,7 +115,20 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
     std::string leftType = node.left->type();
     std::string rightType = node.right->type();
 
-    if (node.op == "@") {
+    // Operadores de comparación (devuelven boolean)
+    const std::set<std::string> comparisonOps = {"==", "!=", "<", ">", "<=", ">="};
+    
+    if (comparisonOps.count(node.op)) {
+        if (leftType != "number" || rightType != "number") {
+            errors.emplace_back("Operandos de " + node.op + " deben ser números", node.line());
+            node._type = "error"; // Marcar como error si los tipos son inválidos
+        } else {
+            node._type = "boolean"; // Solo asignar boolean si los operandos son válidos
+        }
+    }
+    // Operador de concatenación @
+
+    else if (node.op == "@") {
         if (leftType != "string" && leftType != "number") {
             errors.emplace_back("Operando izquierdo de @ debe ser string o number", node.line());
         }
@@ -246,4 +260,89 @@ void SemanticAnalyzer::visit(AssignmentNode& node) {
     }
 
     node._type = symbol->type; // Tipo de la expresión es el de la variable
+}
+
+void SemanticAnalyzer::visit(IfNode& node) {
+    // 1. Verificar que existe else
+    if (!node.elseBody) {
+        errors.emplace_back("La expresión if debe tener cláusula else", node.line());
+        return;
+    }
+
+    std::vector<std::string> branchTypes;
+    bool hasErrors = false;
+
+    // 2. Verificar condiciones y recolectar tipos
+    for (auto& branch : node.branches) {
+        // Analizar condición
+        branch.condition->accept(*this);
+        std::string condType = branch.condition->type();
+        if (condType != "boolean") {
+            errors.emplace_back("Condición debe ser booleana", branch.condition->line());
+            hasErrors = true;
+        }
+
+        // Analizar cuerpo de la rama
+        branch.body->accept(*this);
+        branchTypes.push_back(branch.body->type());
+    }
+
+    // 3. Analizar else
+    node.elseBody->accept(*this);
+    branchTypes.push_back(node.elseBody->type());
+
+    // 4. Verificar compatibilidad de tipos
+    if (!hasErrors) {
+        std::string commonType = branchTypes[0];
+        for (size_t i = 1; i < branchTypes.size(); ++i) {
+            if (branchTypes[i] != commonType) {
+                errors.emplace_back("Tipos incompatibles en ramas del if", node.line());
+                break;
+            }
+        }
+        node._type = commonType;
+    }
+}
+
+void SemanticAnalyzer::visit(WhileNode& node) {
+    // Verificar condición es booleana
+    node.condition->accept(*this);
+    std::string condType = node.condition->type();
+    if (condType != "boolean") {
+        errors.emplace_back("Condición del while debe ser booleana", node.line());
+    }
+
+    // Analizar cuerpo
+    node.body->accept(*this);
+    node._type = node.body->type(); // Tipo del while = tipo del cuerpo
+}
+
+void SemanticAnalyzer::visit(ForNode& node) {
+    // Verificar iterable es válido (range o list)
+    node.iterable->accept(*this);
+    std::string iterableType = node.iterable->type();
+
+    // Determinar tipo del elemento (ej: number para range)
+    std::string elementType;
+    if (iterableType == "range") {
+        elementType = "number";
+    } else if (iterableType.substr(0, 5) == "list<") {
+        // Extraer tipo de la lista (ej: list<number> => number)
+        size_t start = iterableType.find('<') + 1;
+        size_t end = iterableType.find('>');
+        elementType = iterableType.substr(start, end - start);
+    } else {
+        errors.emplace_back("Tipo no iterable en for: " + iterableType, node.line());
+        return;
+    }
+
+    // Nuevo ámbito para la variable del for
+    symbolTable.enterScope();
+    symbolTable.addSymbol(node.varName, elementType, false); // Variable mutable
+
+    // Analizar cuerpo
+    node.body->accept(*this);
+    node._type = node.body->type();
+
+    symbolTable.exitScope();
 }

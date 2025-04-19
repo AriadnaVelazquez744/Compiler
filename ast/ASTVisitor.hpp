@@ -11,6 +11,10 @@ class IdentifierNode;
 class FunctionDeclarationNode; // <--- Añadir esta línea
 class LetNode;
 class AssignmentNode;
+class IfNode;
+class WhileNode;
+class ForNode;
+
 
 
 class ASTVisitor {
@@ -28,4 +32,7 @@ public:
     virtual void visit(FunctionDeclarationNode& node) = 0; // <--- Añadir esta línea
     virtual void visit(LetNode& node) = 0;
     virtual void visit(AssignmentNode& node) = 0;
+    virtual void visit(IfNode& node) = 0;
+    virtual void visit(WhileNode& node) = 0;
+    virtual void visit(ForNode& node) = 0;
 };

@@ -31,6 +31,8 @@ public:
     void visit(IfNode& node) override;
     void visit(WhileNode& node) override;
     void visit(ForNode& node) override;
+    void visit(TypeDeclarationNode& node) override;
+    void visit(NewNode& node) override;
 
     const std::vector<SemanticError>& getErrors() const { return errors; }
 };

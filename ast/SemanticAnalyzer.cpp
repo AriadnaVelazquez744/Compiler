@@ -45,6 +45,20 @@ void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
 }
 
 void SemanticAnalyzer::visit(FunctionCallNode& node) {
+
+    if (node.funcName == "base") {
+        // Verificar que estamos en un método de una clase derivada
+        Symbol* selfSym = symbolTable.lookup("self");
+        if (!selfSym) {
+            errors.emplace_back("'base' solo puede usarse en métodos", node.line());
+            return;
+        }
+        TypeSymbol* typeSym = symbolTable.lookupType(selfSym->type);
+        if (!typeSym || typeSym->parentType == "Object") {
+            errors.emplace_back("'base' no disponible en este contexto", node.line());
+        }
+    }
+
     // Manejar funciones built-in primero
     if (node.funcName == "print") {
         for (auto arg : node.args) {
@@ -243,6 +257,11 @@ void SemanticAnalyzer::visit(LetNode& node) {
 void SemanticAnalyzer::visit(AssignmentNode& node) {
     Symbol* symbol = symbolTable.lookup(node.name);
     
+    if (node.name == "self") {
+        errors.emplace_back("No se puede reasignar 'self'", node.line());
+        return;
+    }
+
     if (!symbol) {
         errors.emplace_back("Variable '" + node.name + "' no declarada", node.line());
         return;
@@ -345,4 +364,101 @@ void SemanticAnalyzer::visit(ForNode& node) {
     node._type = node.body->type();
 
     symbolTable.exitScope();
+}
+
+void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
+    // 1. Verificar que el tipo no existe
+    if (symbolTable.lookupType(node.name)) {
+        errors.emplace_back("Tipo '" + node.name + "' ya declarado", node.line());
+        return;
+    }
+
+    // 2. Verificar herencia de tipos básicos
+    const std::set<std::string> builtinTypes = {"Number", "String", "Boolean"};
+    if (builtinTypes.count(node.parentType)) {
+        errors.emplace_back("No se puede heredar de tipos básicos", node.line());
+        return;
+    }
+
+    // 3. Registrar tipo en la tabla de símbolos
+    if (!symbolTable.addType(node.name, node.parentType.empty() ? "Object" : node.parentType, node.typeParams)) {
+        errors.emplace_back("Tipo '" + node.name + "' ya declarado", node.line());
+        return;
+    }
+
+    TypeSymbol* typeSym = symbolTable.lookupType(node.name);
+    if (!typeSym) return;
+
+    // 4. Analizar atributos (sin acceso a self)
+    for (size_t i = 0; i < node.attributeInits.size(); ++i) {
+        node.attributeInits[i]->accept(*this);
+        // Registrar atributo como Symbol
+        symbolTable.addTypeAttribute(
+            node.name, 
+            "attr" + std::to_string(i), 
+            node.attributeInits[i]->type()
+        );
+    }
+
+    // 5. Analizar métodos (con acceso a self)
+    for (auto method : node.methods) {
+        symbolTable.enterScope();
+        symbolTable.addSymbol("self", node.name, true); // self es constante
+
+        // Registrar parámetros del método
+        for (auto& param : method->params) {
+            symbolTable.addSymbol(param.name, param.type, false);
+        }
+
+        method->body->accept(*this);
+        symbolTable.exitScope();
+
+        // Registrar método en el tipo
+        std::vector<std::string> paramTypes;
+        for (auto& param : method->params) {
+            paramTypes.push_back(param.type);
+        }
+        symbolTable.addTypeMethod(
+            node.name,
+            method->name,
+            method->returnType,
+            paramTypes
+        );
+
+        // Verificar firma con el padre
+        TypeSymbol* parent = symbolTable.lookupType(typeSym->parentType);
+        if (parent) {
+            auto it = parent->methods.find(method->name);
+            if (it != parent->methods.end()) {
+                Symbol& parentMethod = it->second;
+                if (parentMethod.params != paramTypes || parentMethod.type != method->returnType) {
+                    errors.emplace_back("Firma de método no coincide con el padre", method->line());
+                }
+            }
+        }
+    }
+}
+
+void SemanticAnalyzer::visit(NewNode& node) {
+    TypeSymbol* typeSym = symbolTable.lookupType(node.typeName);
+    if (!typeSym) {
+        errors.emplace_back("Tipo '" + node.typeName + "' no definido", node.line());
+        return;
+    }
+
+    // Verificar argumentos del constructor
+    if (node.args.size() != typeSym->typeParams.size()) {
+        errors.emplace_back("Número incorrecto de argumentos para el tipo", node.line());
+        return;
+    }
+
+    for (size_t i = 0; i < node.args.size(); ++i) {
+        node.args[i]->accept(*this);
+        std::string argType = node.args[i]->type();
+        if (argType != "Number") { // Ejemplo: validar tipo según parámetro genérico
+            errors.emplace_back("Tipo incorrecto para argumento del constructor", node.line());
+        }
+    }
+
+    node._type = node.typeName;
 }

@@ -103,7 +103,9 @@ typedef struct YYLTYPE {
 %type <stmt> expression
 %type <stmt> elem_expr
 %type <stmt> block_expr
+%type <stmt> func_call_expr
 %type <list> block_body
+%type <list> params
 %type <list> args
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
@@ -151,7 +153,7 @@ statement:
                                         delete $3;
                                     }
     | block_expr                    { $$ = $1; }
-    | FUNC ID '(' args ')' LAMBDA statement
+    | FUNC ID '(' params ')' LAMBDA statement
                                     {
                                         std::cout << "Definición función inline: " << *$2 << std::endl;
                                         delete $2;
@@ -159,7 +161,7 @@ statement:
                                         delete $4;
                                         $$ = nullptr;
                                     }
-    | FUNC ID '(' args ')' block_expr
+    | FUNC ID '(' params ')' block_expr
                                     {
                                         std::cout << "Definición función bloque: " << *$2 << std::endl;
                                         delete $2;
@@ -170,13 +172,14 @@ statement:
 ;
 
     expression:
-          NUMBER        { $$ = new std::string(std::to_string($1)); }
-        | STRING        { $$ = new std::string(*$1); delete $1; }
-        | BOOL          { $$ = new std::string($1 ? "true" : "false"); }
-        | NULL_VAL      { $$ = new std::string("null"); }
-        | ID            { $$ = $1; }
-        | elem_expr     { $$ = $1; }
-        | block_expr    { $$ = $1; }
+          NUMBER                { $$ = new std::string(std::to_string($1)); }
+        | STRING                { $$ = new std::string(*$1); delete $1; }
+        | BOOL                  { $$ = new std::string($1 ? "true" : "false"); }
+        | NULL_VAL              { $$ = new std::string("null"); }
+        | ID                    { $$ = $1; }
+        | elem_expr             { $$ = $1; }
+        | block_expr            { $$ = $1; }
+        | func_call_expr        { $$ = $1; }
     ;
 
         elem_expr:
@@ -342,12 +345,21 @@ statement:
             | block_body statement          { $1->push_back($2); $$ = $1; }
         ;
 
-        args:
+        params:
             /* empty */         { $$ = new std::vector<std::string*>(); }
             | ID                { $$ = new std::vector<std::string*>(); $$->push_back($1); }
-            | args ',' ID       { $1->push_back($3); $$ = $1; }
+            | params ',' ID     { $1->push_back($3); $$ = $1; }
         ;
 
+        func_call_expr:
+            ID '(' args ')'     { $$ = new std::string("calling function " + *$1); }
+        ;
+
+        args: 
+            /* empty */                 { $$ = new std::vector<std::string*>(); }
+            | expression                { $$ = new std::vector<std::string*>(); $$->push_back($1); }
+            | args ',' expression       { $1->push_back($3); $$ = $1; }
+        ;
 
 %%
 

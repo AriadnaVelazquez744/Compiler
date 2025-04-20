@@ -46,6 +46,7 @@ typedef struct YYLTYPE {
 
 %token ',' ';'
 %token '(' ')'
+%token '{' '}'
 
 // operadores aritméticos
 %token ADD
@@ -95,6 +96,9 @@ typedef struct YYLTYPE {
 %type <stmt> statement
 %type <stmt> expression
 %type <stmt> elem_expr
+%type <stmt> block_expr
+/* %type <stmt> block_body */
+%type <stmt> block_body
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
 %left ADD SUB
@@ -140,6 +144,7 @@ statement:
                                         }
                                         delete $3;
                                     }
+    | block_expr
 ;
 
     expression:
@@ -149,6 +154,7 @@ statement:
         | NULL_VAL      { $$ = new std::string("null"); }
         | ID            { $$ = $1; }
         | elem_expr     { $$ = $1; }
+        | block_expr    { $$ = $1; }
     ;
 
         elem_expr:
@@ -301,6 +307,15 @@ statement:
             }
         ;
 
+        block_expr:
+            '{' block_body '}'  { $$ = $2 ? $2 : new std::string("null"); /* empty block returns null */ }
+        ;
+
+        block_body:
+            /* empty */                         { $$ = nullptr; }
+            | statement                         { $$ = $1; }
+            | block_body statement              { $$ = $2; delete $1; }
+        ;
 
 %%
 

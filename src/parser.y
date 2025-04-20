@@ -41,6 +41,7 @@ typedef struct YYLTYPE {
 %token <str> STRING
 %token <boolean> BOOL
 %token NULL_VAL
+%token <str> ID
 
 %token ',' ';'
 %token '(' ')'
@@ -94,7 +95,7 @@ typedef struct YYLTYPE {
 %type <num> expr
 %type <str> str_expr
 %type <boolean> bool_expr
-%type <stmt> null_expr
+%type <str> null_expr
 %type <stmt> value
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
@@ -152,6 +153,7 @@ statement:
         | bool_expr         { $$ = new std::string($1 ? "true" : "false"); }
         | null_expr         { $$ = new std::string("null"); }
         | '(' value ')'     { $$ = $2; }
+        | ID                { $$ = $1; std::cout << "Uso de ID: " << $1->c_str() << std::endl; }
     ;
 
     expr:

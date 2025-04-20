@@ -66,36 +66,37 @@ extern int yydebug;
     STRING = 259,                  /* STRING  */
     BOOL = 260,                    /* BOOL  */
     NULL_VAL = 261,                /* NULL_VAL  */
-    ADD = 262,                     /* ADD  */
-    SUB = 263,                     /* SUB  */
-    MUL = 264,                     /* MUL  */
-    DIV = 265,                     /* DIV  */
-    MOD = 266,                     /* MOD  */
-    POW = 267,                     /* POW  */
-    LT = 268,                      /* LT  */
-    GT = 269,                      /* GT  */
-    LE = 270,                      /* LE  */
-    GE = 271,                      /* GE  */
-    EQ = 272,                      /* EQ  */
-    NE = 273,                      /* NE  */
-    AND = 274,                     /* AND  */
-    OR = 275,                      /* OR  */
-    NOT = 276,                     /* NOT  */
-    CONCAT = 277,                  /* CONCAT  */
-    CONCAT_SPACE = 278,            /* CONCAT_SPACE  */
-    SIN = 279,                     /* SIN  */
-    COS = 280,                     /* COS  */
-    MAX = 281,                     /* MAX  */
-    MIN = 282,                     /* MIN  */
-    SQRT = 283,                    /* SQRT  */
-    EXP = 284,                     /* EXP  */
-    LOG = 285,                     /* LOG  */
-    RANDOM = 286,                  /* RANDOM  */
-    PRINT = 287,                   /* PRINT  */
-    READ = 288,                    /* READ  */
-    PARSE = 289,                   /* PARSE  */
-    PI = 290,                      /* PI  */
-    E = 291                        /* E  */
+    ID = 262,                      /* ID  */
+    ADD = 263,                     /* ADD  */
+    SUB = 264,                     /* SUB  */
+    MUL = 265,                     /* MUL  */
+    DIV = 266,                     /* DIV  */
+    MOD = 267,                     /* MOD  */
+    POW = 268,                     /* POW  */
+    LT = 269,                      /* LT  */
+    GT = 270,                      /* GT  */
+    LE = 271,                      /* LE  */
+    GE = 272,                      /* GE  */
+    EQ = 273,                      /* EQ  */
+    NE = 274,                      /* NE  */
+    AND = 275,                     /* AND  */
+    OR = 276,                      /* OR  */
+    NOT = 277,                     /* NOT  */
+    CONCAT = 278,                  /* CONCAT  */
+    CONCAT_SPACE = 279,            /* CONCAT_SPACE  */
+    SIN = 280,                     /* SIN  */
+    COS = 281,                     /* COS  */
+    MAX = 282,                     /* MAX  */
+    MIN = 283,                     /* MIN  */
+    SQRT = 284,                    /* SQRT  */
+    EXP = 285,                     /* EXP  */
+    LOG = 286,                     /* LOG  */
+    RANDOM = 287,                  /* RANDOM  */
+    PRINT = 288,                   /* PRINT  */
+    READ = 289,                    /* READ  */
+    PARSE = 290,                   /* PARSE  */
+    PI = 291,                      /* PI  */
+    E = 292                        /* E  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -111,7 +112,7 @@ union YYSTYPE
     bool boolean;
     std::string* stmt;
 
-#line 115 "build/parser.tab.hpp"
+#line 116 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

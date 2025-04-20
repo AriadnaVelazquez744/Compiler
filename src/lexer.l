@@ -90,6 +90,11 @@ int yycolumn = 1;
 "PI"                    { printf("PI\n"); return PI; }
 "E"                     { printf("E\n"); return E; }
 
+[a-zA-Z_][a-zA-Z0-9_]*  {
+                            yylval.str = new std::string(yytext);
+                            printf("ID: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
+                            return ID;
+                        }
 
 "("                     { printf(" ( \n"); return '('; }
 ")"                     { printf(" ) \n"); return ')'; }

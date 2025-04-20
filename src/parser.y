@@ -22,6 +22,7 @@ typedef struct YYLTYPE {
     #include <string>
     #include <iostream>
     #include <cmath>
+    #include <vector>
 }
 
 // Habilitar seguimiento de ubicaciones
@@ -33,6 +34,7 @@ typedef struct YYLTYPE {
     std::string* str; 
     bool boolean;
     std::string* stmt;
+    std::vector<std::string*>* list;
 }
 
 // --------------------------------------/* Definición de Tokens */------------------------------------------- //
@@ -47,6 +49,7 @@ typedef struct YYLTYPE {
 %token ',' ';'
 %token '(' ')'
 %token '{' '}'
+%token LAMBDA 
 
 // operadores aritméticos
 %token ADD
@@ -92,13 +95,16 @@ typedef struct YYLTYPE {
 %token PI 
 %token E
 
+// palabras clave
+%token FUNC
+
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
 %type <stmt> expression
 %type <stmt> elem_expr
 %type <stmt> block_expr
-/* %type <stmt> block_body */
 %type <stmt> block_body
+%type <list> args
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
 %left ADD SUB
@@ -144,7 +150,23 @@ statement:
                                         }
                                         delete $3;
                                     }
-    | block_expr
+    | block_expr                    { $$ = $1; }
+    | FUNC ID '(' args ')' LAMBDA expression ';'
+                                    {
+                                        std::cout << "Definición función inline: " << *$2 << std::endl;
+                                        delete $2;
+                                        for (auto s : *$4) delete s;
+                                        delete $4; delete $7;
+                                        $$ = nullptr;
+                                    }
+    | FUNC ID '(' args ')' block_expr
+                                    {
+                                        std::cout << "Definición función bloque: " << *$2 << std::endl;
+                                        delete $2;
+                                        for (auto s : *$4) delete s;
+                                        delete $4; delete $6;
+                                        $$ = nullptr;
+                                    }
 ;
 
     expression:
@@ -316,6 +338,13 @@ statement:
             | statement                         { $$ = $1; }
             | block_body statement              { $$ = $2; delete $1; }
         ;
+
+        args:
+            /* empty */         { $$ = new std::vector<std::string*>(); }
+            | ID                { $$ = new std::vector<std::string*>(); $$->push_back($1); }
+            | args ',' ID       { $1->push_back($3); $$ = $1; }
+        ;
+
 
 %%
 

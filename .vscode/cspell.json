@@ -12,6 +12,7 @@
         "nonassoc",
         "nounput",
         "noyywrap",
+        "nullptr",
         "Parseado",
         "stod",
         "typedef",

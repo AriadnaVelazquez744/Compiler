@@ -50,8 +50,9 @@ extern int yydebug;
     #include <string>
     #include <iostream>
     #include <cmath>
+    #include <vector>
 
-#line 55 "build/parser.tab.hpp"
+#line 56 "build/parser.tab.hpp"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -67,36 +68,38 @@ extern int yydebug;
     BOOL = 260,                    /* BOOL  */
     NULL_VAL = 261,                /* NULL_VAL  */
     ID = 262,                      /* ID  */
-    ADD = 263,                     /* ADD  */
-    SUB = 264,                     /* SUB  */
-    MUL = 265,                     /* MUL  */
-    DIV = 266,                     /* DIV  */
-    MOD = 267,                     /* MOD  */
-    POW = 268,                     /* POW  */
-    LT = 269,                      /* LT  */
-    GT = 270,                      /* GT  */
-    LE = 271,                      /* LE  */
-    GE = 272,                      /* GE  */
-    EQ = 273,                      /* EQ  */
-    NE = 274,                      /* NE  */
-    AND = 275,                     /* AND  */
-    OR = 276,                      /* OR  */
-    NOT = 277,                     /* NOT  */
-    CONCAT = 278,                  /* CONCAT  */
-    CONCAT_SPACE = 279,            /* CONCAT_SPACE  */
-    SIN = 280,                     /* SIN  */
-    COS = 281,                     /* COS  */
-    MAX = 282,                     /* MAX  */
-    MIN = 283,                     /* MIN  */
-    SQRT = 284,                    /* SQRT  */
-    EXP = 285,                     /* EXP  */
-    LOG = 286,                     /* LOG  */
-    RANDOM = 287,                  /* RANDOM  */
-    PRINT = 288,                   /* PRINT  */
-    READ = 289,                    /* READ  */
-    PARSE = 290,                   /* PARSE  */
-    PI = 291,                      /* PI  */
-    E = 292                        /* E  */
+    LAMBDA = 263,                  /* LAMBDA  */
+    ADD = 264,                     /* ADD  */
+    SUB = 265,                     /* SUB  */
+    MUL = 266,                     /* MUL  */
+    DIV = 267,                     /* DIV  */
+    MOD = 268,                     /* MOD  */
+    POW = 269,                     /* POW  */
+    LT = 270,                      /* LT  */
+    GT = 271,                      /* GT  */
+    LE = 272,                      /* LE  */
+    GE = 273,                      /* GE  */
+    EQ = 274,                      /* EQ  */
+    NE = 275,                      /* NE  */
+    AND = 276,                     /* AND  */
+    OR = 277,                      /* OR  */
+    NOT = 278,                     /* NOT  */
+    CONCAT = 279,                  /* CONCAT  */
+    CONCAT_SPACE = 280,            /* CONCAT_SPACE  */
+    SIN = 281,                     /* SIN  */
+    COS = 282,                     /* COS  */
+    MAX = 283,                     /* MAX  */
+    MIN = 284,                     /* MIN  */
+    SQRT = 285,                    /* SQRT  */
+    EXP = 286,                     /* EXP  */
+    LOG = 287,                     /* LOG  */
+    RANDOM = 288,                  /* RANDOM  */
+    PRINT = 289,                   /* PRINT  */
+    READ = 290,                    /* READ  */
+    PARSE = 291,                   /* PARSE  */
+    PI = 292,                      /* PI  */
+    E = 293,                       /* E  */
+    FUNC = 294                     /* FUNC  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -105,14 +108,15 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 31 "src/parser.y"
+#line 32 "src/parser.y"
 
     double num;  // Tipo para números (enteros y decimales)
     std::string* str; 
     bool boolean;
     std::string* stmt;
+    std::vector<std::string*>* list;
 
-#line 116 "build/parser.tab.hpp"
+#line 120 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

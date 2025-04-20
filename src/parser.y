@@ -14,6 +14,7 @@ typedef struct YYLTYPE {
 #define YYLTYPE_IS_DECLARED 1
 
 #define PI_VAL 3.14159265358979323846
+#define TRACE(EXPR) std::cout << "elem_expr: " << *EXPR << std::endl;
 
 %}
 
@@ -54,7 +55,7 @@ typedef struct YYLTYPE {
 %token MOD
 %token POW
 
-// operadores booleanos entre exprresiones numéricas
+// operadores booleanos entre expresiones numéricas
 %token LT
 %token GT 
 %token LE 
@@ -62,7 +63,7 @@ typedef struct YYLTYPE {
 %token EQ
 %token NE
 
-// operadores booleanos entre exprresiones booleanas
+// operadores booleanos entre expresiones booleanas
 %token AND
 %token OR 
 %token NOT
@@ -92,11 +93,8 @@ typedef struct YYLTYPE {
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
-%type <num> expr
-%type <str> str_expr
-%type <boolean> bool_expr
-%type <str> null_expr
-%type <stmt> value
+%type <stmt> expression
+%type <stmt> elem_expr
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
 %left ADD SUB
@@ -116,100 +114,193 @@ program:
 ;
 
 statement:
-    expr ';'                { std::cout << "Resultado: " << $1 << std::endl; }
-    | str_expr ';'          { std::cout << "Texto: " << $1->c_str() << std::endl; delete $1; }
-    | bool_expr ';'         { std::cout << "Booleano: " << ($1 ? "true" : "false") << std::endl; }
-    | null_expr ';'         { std::cout << "Null valor reconocido\n"; delete $1; }
-    | PRINT '(' value ')' ';'       { std::cout << "Salida: " << *$3 << std::endl; }
-    | READ ';'              { 
-                                std::string input; 
-                                //std::cin >> input;
-                                std::getline(std::cin, input); 
-                                //$$ = new std::string(input); 
-                                std::cout << "Entrada: " << input << std::endl;
-                            }
-    | PARSE '(' value ')' ';'       {
-                                const std::string& raw = *$3;
-                                // Try parse as number
-                                try {
-                                    double num = std::stod(raw);
-                                    std::cout << "Parseado como número: " << num << std::endl;
-                                } catch (...) {
-                                    // Try parse as boolean
-                                    if (raw == "true" || raw == "True")
-                                        std::cout << "Parseado como booleano: true" << std::endl;
-                                    else if (raw == "false" || raw == "False")
-                                        std::cout << "Parseado como booleano: false" << std::endl;
-                                    else
-                                        std::cout << "Parse fallido: " << raw << std::endl;
-                                }
-                                delete $3;
-                            }
+    expression ';'                  { }
+    | PRINT '(' expression ')' ';'  { std::cout << "Salida: " << *$3 << std::endl; }
+    | READ ';'                      { 
+                                        std::string input; 
+                                        //std::cin >> input;
+                                        std::getline(std::cin, input); 
+                                        //$$ = new std::string(input); 
+                                        std::cout << "Entrada: " << input << std::endl;
+                                    }
+    | PARSE '(' expression ')' ';'  {
+                                        const std::string& raw = *$3;
+                                        // Try parse as number
+                                        try {
+                                            double num = std::stod(raw);
+                                            std::cout << "Parseado como número: " << num << std::endl;
+                                        } catch (...) {
+                                            // Try parse as boolean
+                                            if (raw == "true" || raw == "True")
+                                                std::cout << "Parseado como booleano: true" << std::endl;
+                                            else if (raw == "false" || raw == "False")
+                                                std::cout << "Parseado como booleano: false" << std::endl;
+                                            else
+                                                std::cout << "Parse fallido: " << raw << std::endl;
+                                        }
+                                        delete $3;
+                                    }
 ;
 
-    value:
-        expr                { $$ = new std::string(std::to_string($1)); }
-        | str_expr          { $$ = new std::string(*$1); delete $1; }
-        | bool_expr         { $$ = new std::string($1 ? "true" : "false"); }
-        | null_expr         { $$ = new std::string("null"); }
-        | '(' value ')'     { $$ = $2; }
-        | ID                { $$ = $1; std::cout << "Uso de ID: " << $1->c_str() << std::endl; }
+    expression:
+          NUMBER        { $$ = new std::string(std::to_string($1)); }
+        | STRING        { $$ = new std::string(*$1); delete $1; }
+        | BOOL          { $$ = new std::string($1 ? "true" : "false"); }
+        | NULL_VAL      { $$ = new std::string("null"); }
+        | ID            { $$ = $1; }
+        | elem_expr     { $$ = $1; }
     ;
 
-    expr:
-        NUMBER                      { $$ = $1; printf("Número reconocido: %g\n", $$); }
-        | expr ADD expr             { $$ = $1 + $3; printf("%g + %g\n", $1, $3); }
-        | expr SUB expr             { $$ = $1 - $3; printf("%g - %g\n", $1, $3); }
-        | expr MUL expr             { $$ = $1 * $3; printf("%g * %g\n", $1, $3); }
-        | expr DIV expr             { 
-                                        $$ = ($3 != 0) ? $1 / $3 : throw std::runtime_error("División por cero"); 
-                                        printf("%g / %g\n", $1, $3);
-                                    }
-        | expr MOD expr             { $$ = std::fmod($1, $3); printf("mod ( %g, %g )\n", $1, $3); }
-        | expr POW expr             { $$ = std::pow($1, $3); }
-        | SUB expr                  { $$ = - $2; printf("Número negativo: %g\n", $$); }
-        | SIN '(' expr ')'          { $$ = std::sin($3); }
-        | COS '(' expr ')'          { $$ = std::cos($3); }
-        | MIN '(' expr ',' expr ')' { $$ = std::min($3, $5); }
-        | MAX '(' expr ',' expr ')' { $$ = std::max($3, $5); }
-        | SQRT '(' expr ')'         { $$ = std::sqrt($3); }
-        | LOG '(' expr ',' expr ')' { $$ = std::log($5) / std::log($3); }
-        | EXP '(' expr ')'          { $$ = std::exp($3); }
-        | RANDOM '(' ')'            { $$ = rand() / (RAND_MAX + 1.0); }
-        | E                         { $$ = std::exp(1); }
-        | PI                        { $$ = PI_VAL; }
-    ;
+        elem_expr:
+              expression ADD expression {
+                $$ = new std::string("(" + *$1 + " + " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | expression SUB expression {
+                $$ = new std::string("(" + *$1 + " - " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | expression MUL expression {
+                $$ = new std::string("(" + *$1 + " * " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | expression DIV expression {
+                $$ = new std::string("(" + *$1 + " / " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | expression MOD expression {
+                $$ = new std::string("mod(" + *$1 + ", " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | expression POW expression {
+                $$ = new std::string("pow(" + *$1 + ", " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
 
-    str_expr:
-        STRING                              {   
-                                                $$ = new std::string(*$1);
-                                                printf("Texto reconocido: %s\n", $$->c_str()); 
-                                                delete $1;  // Clean up allocated string
-                                            }
-        | str_expr CONCAT str_expr          { $$ = new std::string(*$1 + *$3); delete $1; delete $3; }
-        | str_expr CONCAT expr              { $$ = new std::string(*$1 + std::to_string($3)); delete $1; }
-        | expr CONCAT str_expr              { $$ = new std::string(std::to_string($1) + *$3); delete $3; }
-        | str_expr CONCAT_SPACE str_expr    { $$ = new std::string(*$1 + " " + *$3); delete $1; delete $3; }
-        | str_expr CONCAT_SPACE expr        { $$ = new std::string(*$1 + " " + std::to_string($3)); delete $1; }
-        | expr CONCAT_SPACE str_expr        { $$ = new std::string(std::to_string($1) + " " + *$3); delete $3; }
-    ;
+            | SUB NUMBER {
+                $$ = new std::string("-" + std::to_string($2));
+                TRACE($$);
+            }
 
-    bool_expr:
-        BOOL                        { $$ = $1; printf("Booleano: %s\n", $$ ? "true" : "false"); }
-        | expr LT expr              { $$ = $1 < $3; }
-        | expr GT expr              { $$ = $1 > $3; }
-        | expr LE expr              { $$ = $1 <= $3; }
-        | expr GE expr              { $$ = $1 >= $3; }
-        | value EQ value            { $$ = (*$1 == *$3); delete $1; delete $3; }
-        | value NE value            { $$ = (*$1 != *$3); delete $1; delete $3; }
-        | bool_expr AND bool_expr   { $$ = $1 && $3; }
-        | bool_expr OR bool_expr    { $$ = $1 || $3; }
-        | NOT bool_expr             { $$ = !$2; }
-    ;
+            | '(' expression ')' {
+                $$ = $2;    TRACE($$);
+            }
 
-    null_expr:
-        NULL_VAL     { $$ = new std::string("null"); }
-    ;
+            | SIN '(' expression ')' {
+                $$ = new std::string("sin(" + *$3 + ")");
+                delete $3;
+                TRACE($$);
+            }
+            | COS '(' expression ')' {
+                $$ = new std::string("cos(" + *$3 + ")");
+                delete $3;
+                TRACE($$);
+            }
+            | MIN '(' expression ',' expression ')' {
+                $$ = new std::string("min(" + *$3 + ", " + *$5 + ")");
+                delete $3; delete $5;
+                TRACE($$);
+            }
+            | MAX '(' expression ',' expression ')' {
+                $$ = new std::string("max(" + *$3 + ", " + *$5 + ")");
+                delete $3; delete $5;
+                TRACE($$);
+            }
+            | SQRT '(' expression ')' {
+                $$ = new std::string("sqrt(" + *$3 + ")");
+                delete $3;
+                TRACE($$);
+            }
+            | LOG '(' expression ',' expression ')' {
+                $$ = new std::string("log(" + *$3 + ", " + *$5 + ")");
+                delete $3; delete $5;
+                TRACE($$);
+            }
+            | EXP '(' expression ')' {
+                $$ = new std::string("exp(" + *$3 + ")");
+                delete $3;
+                TRACE($$);
+            }
+
+            | RANDOM '(' ')' {
+                $$ = new std::string("random()");
+                TRACE($$);
+            }
+            | E {
+                $$ = new std::string("e");
+                TRACE($$);
+            }
+            | PI {
+                $$ = new std::string("pi");
+                TRACE($$);
+            }
+
+            | expression CONCAT expression {
+                $$ = new std::string(*$1 + *$3); // string concatenation
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | expression CONCAT_SPACE expression {
+                $$ = new std::string(*$1 + " " + *$3);
+                delete $1; delete $3;
+                TRACE($$);
+            }
+
+            | expression LT expression {
+                $$ = new std::string("(" + *$1 + " < " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | expression GT expression {
+                $$ = new std::string("(" + *$1 + " > " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | expression LE expression {
+                $$ = new std::string("(" + *$1 + " <= " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | expression GE expression {
+                $$ = new std::string("(" + *$1 + " >= " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+
+            | expression EQ expression {
+                $$ = new std::string("(" + *$1 + " == " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | expression NE expression {
+                $$ = new std::string("(" + *$1 + " != " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+
+            | expression AND expression {
+                $$ = new std::string("(" + *$1 + " && " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | expression OR expression {
+                $$ = new std::string("(" + *$1 + " || " + *$3 + ")");
+                delete $1; delete $3;
+                TRACE($$);
+            }
+            | NOT expression {
+                $$ = new std::string("(!" + *$2 + ")");
+                delete $2;
+                TRACE($$);
+            }
+        ;
+
 
 %%
 

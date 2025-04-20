@@ -103,7 +103,7 @@ typedef struct YYLTYPE {
 %type <stmt> expression
 %type <stmt> elem_expr
 %type <stmt> block_expr
-%type <stmt> block_body
+%type <list> block_body
 %type <list> args
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
@@ -124,7 +124,7 @@ program:
 ;
 
 statement:
-    expression ';'                  { }
+    expression ';'                  { $$ = $1; delete $1; }
     | PRINT '(' expression ')' ';'  { std::cout << "Salida: " << *$3 << std::endl; }
     | READ ';'                      { 
                                         std::string input; 
@@ -151,12 +151,12 @@ statement:
                                         delete $3;
                                     }
     | block_expr                    { $$ = $1; }
-    | FUNC ID '(' args ')' LAMBDA expression ';'
+    | FUNC ID '(' args ')' LAMBDA statement
                                     {
                                         std::cout << "Definición función inline: " << *$2 << std::endl;
                                         delete $2;
                                         for (auto s : *$4) delete s;
-                                        delete $4; delete $7;
+                                        delete $4;
                                         $$ = nullptr;
                                     }
     | FUNC ID '(' args ')' block_expr
@@ -330,13 +330,16 @@ statement:
         ;
 
         block_expr:
-            '{' block_body '}'  { $$ = $2 ? $2 : new std::string("null"); /* empty block returns null */ }
+            '{' block_body '}'  {
+                                    $$ = new std::string("block"); // Placeholder
+                                    delete $2;
+                                }
         ;
 
         block_body:
-            /* empty */                         { $$ = nullptr; }
-            | statement                         { $$ = $1; }
-            | block_body statement              { $$ = $2; delete $1; }
+            /* empty */                     { $$ = new std::vector<std::string*>(); }
+            | statement                     { $$ = new std::vector<std::string*>(); $$->push_back($1); }
+            | block_body statement          { $1->push_back($2); $$ = $1; }
         ;
 
         args:

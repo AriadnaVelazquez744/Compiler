@@ -108,9 +108,13 @@ typedef struct YYLTYPE {
 %type <stmt> block_expr
 %type <stmt> func_call_expr
 %type <stmt> assign_expr
+%type <stmt> let_expr
+%type <stmt> body
 %type <list> block_body
 %type <list> params
 %type <list> args
+%type <list> decls
+%type <list> decl
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
 %left ADD SUB
@@ -173,6 +177,7 @@ statement:
                                         delete $4; delete $6;
                                         $$ = nullptr;
                                     }
+    | let_expr                      { $$ = $1; std::cout << "let_expr: " << *$$ << std::endl; }
 ;
 
     expression:
@@ -185,6 +190,7 @@ statement:
         | block_expr            { $$ = $1; }
         | func_call_expr        { $$ = $1; }
         | assign_expr           { $$ = $1; }
+        | let_expr              { $$ = $1; std::cout << "let_expr: " << *$$ << std::endl; }
     ;
 
         elem_expr:
@@ -369,6 +375,41 @@ statement:
         assign_expr:
             ID REASSIGN expression    { $$ = new std::string("cambio de valor de la variable " + *$1); }
         ;
+
+        let_expr:
+              decls IN body                { $$ = new std::string("let_expr"); delete $1; }
+            | decls IN '(' body ')'        { $$ = new std::string("let_expr"); delete $1; }
+            | decls IN body ';'            { $$ = new std::string("let_expr"); delete $1; }
+            | decls IN '(' body ')' ';'    { $$ = new std::string("let_expr"); delete $1; }
+        ;
+        ;
+
+        decls:
+              LET decl                  { $$ = $2; }
+            | decls ',' LET decl        { $1->insert($1->end(), $4->begin(), $4->end()); delete $4; $$ = $1; }
+        ;
+
+        decl:
+              ID '=' expression             {
+                                                std::vector<std::string*>* list = new std::vector<std::string*>();
+                                                list->push_back(new std::string(*$1 + " = " + *$3));
+                                                delete $1; delete $3;
+                                                $$ = list;
+                                            }
+            | decl ',' ID '=' expression    {
+                                                std::string* new_decl = new std::string(*$3 + " = " + *$5);
+                                                $1->insert($1->end(), new_decl);
+                                                delete $3; delete $5;
+                                                $$ = $1;
+                                            }
+        ;
+
+        body:
+              statement 
+            | expression
+            | PRINT '(' expression ')'  { std::cout << "Salida: " << *$3 << std::endl; }
+        ;
+        
 %%
 
 void yyerror(const char *msg) {

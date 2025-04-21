@@ -50,6 +50,7 @@ typedef struct YYLTYPE {
 %token '(' ')'
 %token '{' '}'
 %token LAMBDA 
+%token '=' REASSIGN
 
 // operadores aritméticos
 %token ADD
@@ -97,6 +98,8 @@ typedef struct YYLTYPE {
 
 // palabras clave
 %token FUNC
+%token LET 
+%token IN
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
@@ -104,6 +107,7 @@ typedef struct YYLTYPE {
 %type <stmt> elem_expr
 %type <stmt> block_expr
 %type <stmt> func_call_expr
+%type <stmt> assign_expr
 %type <list> block_body
 %type <list> params
 %type <list> args
@@ -180,6 +184,7 @@ statement:
         | elem_expr             { $$ = $1; }
         | block_expr            { $$ = $1; }
         | func_call_expr        { $$ = $1; }
+        | assign_expr           { $$ = $1; }
     ;
 
         elem_expr:
@@ -361,6 +366,9 @@ statement:
             | args ',' expression       { $1->push_back($3); $$ = $1; }
         ;
 
+        assign_expr:
+            ID REASSIGN expression    { $$ = new std::string("cambio de valor de la variable " + *$1); }
+        ;
 %%
 
 void yyerror(const char *msg) {

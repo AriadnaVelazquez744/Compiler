@@ -94,6 +94,11 @@ int yycolumn = 1;
 "function"              { printf("definir nueva función\n"); return FUNC; }
 "=>"                    { printf("lambda \n"); return LAMBDA; }
 
+"let"                   { printf("definir nueva variable\n"); return LET; }
+"in"                    { printf("definir scope\n"); return IN; }
+"="                     { printf("asignar valor\n"); return '='; }
+":="                    { printf("reasignar valor\n"); return REASSIGN; }
+
 
 [a-zA-Z_][a-zA-Z0-9_]*  {
                             yylval.str = new std::string(yytext);

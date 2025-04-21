@@ -102,7 +102,10 @@ extern int yydebug;
     E = 294,                       /* E  */
     FUNC = 295,                    /* FUNC  */
     LET = 296,                     /* LET  */
-    IN = 297                       /* IN  */
+    IN = 297,                      /* IN  */
+    IF = 298,                      /* IF  */
+    ELIF = 299,                    /* ELIF  */
+    ELSE = 300                     /* ELSE  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -119,7 +122,7 @@ union YYSTYPE
     std::string* stmt;
     std::vector<std::string*>* list;
 
-#line 123 "build/parser.tab.hpp"
+#line 126 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

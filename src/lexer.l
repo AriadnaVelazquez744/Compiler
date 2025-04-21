@@ -99,6 +99,10 @@ int yycolumn = 1;
 "="                     { printf("asignar valor\n"); return '='; }
 ":="                    { printf("reasignar valor\n"); return REASSIGN; }
 
+"if"                    { printf("if\n"); return IF; }
+"else"                  { printf("else\n"); return ELSE; }
+"elif"                  { printf("elif\n"); return ELIF; }
+
 
 [a-zA-Z_][a-zA-Z0-9_]*  {
                             yylval.str = new std::string(yytext);

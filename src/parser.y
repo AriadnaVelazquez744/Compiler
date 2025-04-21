@@ -100,6 +100,9 @@ typedef struct YYLTYPE {
 %token FUNC
 %token LET 
 %token IN
+%token IF 
+%token ELIF 
+%token ELSE
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
@@ -109,6 +112,8 @@ typedef struct YYLTYPE {
 %type <stmt> func_call_expr
 %type <stmt> assign_expr
 %type <stmt> let_expr
+%type <stmt> if_expr
+%type <stmt> if_head
 %type <stmt> body
 %type <list> block_body
 %type <list> params
@@ -191,6 +196,7 @@ statement:
         | func_call_expr        { $$ = $1; }
         | assign_expr           { $$ = $1; }
         | let_expr              { $$ = $1; std::cout << "let_expr: " << *$$ << std::endl; }
+        | if_expr               { $$ = $1; }
     ;
 
         elem_expr:
@@ -407,9 +413,20 @@ statement:
         body:
               statement 
             | expression
-            | PRINT '(' expression ')'  { std::cout << "Salida: " << *$3 << std::endl; }
+            | PRINT '(' expression ')'      { std::cout << "Salida: " << *$3 << std::endl; }
         ;
-        
+
+        if_expr:
+            if_head                     { $$ = $1; }
+            | if_head ELSE body         { $$ = new std::string("if-else"); delete $1; }
+        ;
+
+        if_head:
+            IF '(' expression ')' body                      { $$ = new std::string("if"); }
+            | if_head ELIF '(' expression ')' body          { $$ = new std::string("if-elif"); delete $1; }
+        ;
+
+
 %%
 
 void yyerror(const char *msg) {

@@ -103,6 +103,9 @@ typedef struct YYLTYPE {
 %token IF 
 %token ELIF 
 %token ELSE
+%token FOR 
+%token WHILE 
+%token RANGE
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement
@@ -114,6 +117,8 @@ typedef struct YYLTYPE {
 %type <stmt> let_expr
 %type <stmt> if_expr
 %type <stmt> if_head
+%type <stmt> while_expr 
+%type <stmt> for_expr
 %type <stmt> body
 %type <list> block_body
 %type <list> params
@@ -166,7 +171,7 @@ statement:
                                         delete $3;
                                     }
     | block_expr                    { $$ = $1; }
-    | FUNC ID '(' params ')' LAMBDA statement
+    | FUNC ID '(' params ')' LAMBDA body
                                     {
                                         std::cout << "Definición función inline: " << *$2 << std::endl;
                                         delete $2;
@@ -183,6 +188,8 @@ statement:
                                         $$ = nullptr;
                                     }
     | let_expr                      { $$ = $1; std::cout << "let_expr: " << *$$ << std::endl; }
+    | while_expr                    { $$ = $1; std::cout << "while_expr: " << *$$ << std::endl; }
+    | for_expr                      { $$ = $1; std::cout << "for_expr: " << *$$ << std::endl; }
 ;
 
     expression:
@@ -196,7 +203,9 @@ statement:
         | func_call_expr        { $$ = $1; }
         | assign_expr           { $$ = $1; }
         | let_expr              { $$ = $1; std::cout << "let_expr: " << *$$ << std::endl; }
-        | if_expr               { $$ = $1; }
+        | if_expr               { $$ = $1; std::cout << "if_expr: " << *$$ << std::endl; }
+        | while_expr            { $$ = $1; std::cout << "while_expr: " << *$$ << std::endl; }
+        | for_expr              { $$ = $1; std::cout << "for_expr: " << *$$ << std::endl; }
     ;
 
         elem_expr:
@@ -426,6 +435,13 @@ statement:
             | if_head ELIF '(' expression ')' body          { $$ = new std::string("if-elif"); delete $1; }
         ;
 
+        while_expr:
+            WHILE '(' expression ')' body                   { $$ = new std::string("while"); }
+        ;
+
+        for_expr:
+            FOR '(' ID IN RANGE '(' expression ',' expression ')' ')' body      { $$ = new std::string("for"); }
+        ;
 
 %%
 

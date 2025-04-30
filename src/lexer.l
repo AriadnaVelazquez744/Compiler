@@ -103,6 +103,9 @@ int yycolumn = 1;
 "else"                  { printf("else\n"); return ELSE; }
 "elif"                  { printf("elif\n"); return ELIF; }
 
+"for"                   { printf("for\n"); return FOR; }
+"while"                 { printf("while\n"); return WHILE; }
+"range"                 { printf("range\n"); return RANGE; }
 
 [a-zA-Z_][a-zA-Z0-9_]*  {
                             yylval.str = new std::string(yytext);

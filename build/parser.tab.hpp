@@ -108,7 +108,10 @@ extern int yydebug;
     ELSE = 300,                    /* ELSE  */
     FOR = 301,                     /* FOR  */
     WHILE = 302,                   /* WHILE  */
-    RANGE = 303                    /* RANGE  */
+    RANGE = 303,                   /* RANGE  */
+    TYPE = 304,                    /* TYPE  */
+    NEW = 305,                     /* NEW  */
+    SELF = 306                     /* SELF  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -125,7 +128,7 @@ union YYSTYPE
     std::string* stmt;
     std::vector<std::string*>* list;
 
-#line 129 "build/parser.tab.hpp"
+#line 132 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

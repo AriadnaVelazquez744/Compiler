@@ -107,6 +107,11 @@ int yycolumn = 1;
 "while"                 { printf("while\n"); return WHILE; }
 "range"                 { printf("range\n"); return RANGE; }
 
+"type"                  { printf("type\n"); return TYPE; }
+"new"                   { printf("new\n"); return NEW; }
+"self"                  { printf("self\n"); return SELF; }
+
+
 [a-zA-Z_][a-zA-Z0-9_]*  {
                             yylval.str = new std::string(yytext);
                             printf("ID: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
@@ -122,6 +127,7 @@ int yycolumn = 1;
                             printf("';' symbol  → Línea %d, Columna %d\n", yylineno, yylloc.first_column);
                             return ';'; 
                         }
+"."                     { printf(" . \n"); return '.'; }            
 
 
 [ \t]+                  { /* Whitespace handled by YY_USER_ACTION */ }  // Ignorar espacios

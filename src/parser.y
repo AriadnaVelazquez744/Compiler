@@ -46,7 +46,7 @@ typedef struct YYLTYPE {
 %token NULL_VAL
 %token <str> ID
 
-%token ',' ';'
+%token ',' ';' '.'
 %token '(' ')'
 %token '{' '}'
 %token LAMBDA 
@@ -106,6 +106,9 @@ typedef struct YYLTYPE {
 %token FOR 
 %token WHILE 
 %token RANGE
+%token TYPE 
+%token NEW 
+%token SELF
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement

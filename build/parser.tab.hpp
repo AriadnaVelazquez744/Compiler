@@ -111,7 +111,8 @@ extern int yydebug;
     RANGE = 303,                   /* RANGE  */
     TYPE = 304,                    /* TYPE  */
     NEW = 305,                     /* NEW  */
-    SELF = 306                     /* SELF  */
+    SELF = 306,                    /* SELF  */
+    INHERITS = 307                 /* INHERITS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -128,7 +129,7 @@ union YYSTYPE
     std::string* stmt;
     std::vector<std::string*>* list;
 
-#line 132 "build/parser.tab.hpp"
+#line 133 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

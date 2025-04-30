@@ -109,6 +109,7 @@ typedef struct YYLTYPE {
 %token TYPE 
 %token NEW 
 %token SELF
+%token INHERITS
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <stmt> statement

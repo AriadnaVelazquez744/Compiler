@@ -110,6 +110,7 @@ int yycolumn = 1;
 "type"                  { printf("type\n"); return TYPE; }
 "new"                   { printf("new\n"); return NEW; }
 "self"                  { printf("self\n"); return SELF; }
+"inherits"              { printf("inherits\n"); return INHERITS; }
 
 
 [a-zA-Z_][a-zA-Z0-9_]*  {

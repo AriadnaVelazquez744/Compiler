@@ -1,5 +1,5 @@
-#include "FunctionCollector.hpp"
-#include "AST.hpp"
+#include "../include/FunctionCollector.hpp"
+#include "../include/AST.hpp"
 
 FunctionCollector::FunctionCollector(SymbolTable& symTable, std::vector<SemanticError>& err)
     : symbolTable(symTable), errors(err) {}

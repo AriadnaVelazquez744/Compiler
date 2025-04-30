@@ -1,4 +1,4 @@
-#include "SymbolTable.hpp"
+#include "../include/SymbolTable.hpp"
 
 SymbolTable::SymbolTable() {
     enterScope(); // Scope global

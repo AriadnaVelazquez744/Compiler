@@ -1,6 +1,6 @@
-#include "SemanticAnalyzer.hpp"
-#include "AST.hpp"
-#include "FunctionCollector.hpp"
+#include "../include/SemanticAnalyzer.hpp"
+#include "../include/AST.hpp"
+#include "../include/FunctionCollector.hpp"
 #include <cctype>
 #include <set> 
 

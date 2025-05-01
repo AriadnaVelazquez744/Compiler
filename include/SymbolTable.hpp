@@ -7,7 +7,7 @@
 
 
 // Tipos básicos de HULK (predefinidos)
-const std::set<std::string> BUILTIN_TYPES = {"Object", "Number", "String", "Boolean"};
+const std::set<std::string> BUILTIN_TYPES = {"Object", "Number", "String", "Boolean", "Null"};
 
 // Símbolo genérico (variables, funciones, tipos)
 struct Symbol {

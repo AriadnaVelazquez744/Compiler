@@ -145,16 +145,16 @@ class FunctionDeclarationNode : public ASTNode {
 public:
     std::string name;
     std::string returnType;
-    std::vector<Parameter> params;
+    std::vector<Parameter>* params;
     ASTNode* body;
     bool isInline;
     int _line;
     std::string _type;
 
-    FunctionDeclarationNode(std::string name, std::string returnType, 
-                            std::vector<Parameter> params, ASTNode* body, 
+    FunctionDeclarationNode(std::string name, 
+                            std::vector<Parameter>* params, ASTNode* body, 
                             bool isInline, int ln)
-        : name(name), returnType(returnType), params(params), 
+        : name(name), params(params), 
           body(body), isInline(isInline), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -173,12 +173,12 @@ struct LetDeclaration {
 
 class LetNode : public ASTNode {
 public:
-    std::vector<LetDeclaration> declarations;
+    std::vector<LetDeclaration>* declarations;
     ASTNode* body;
     int _line;
     std::string _type;
 
-    LetNode(std::vector<LetDeclaration> decls, ASTNode* body, int ln)
+    LetNode(std::vector<LetDeclaration>* decls, ASTNode* body, int ln)
         : declarations(decls), body(body), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -214,12 +214,12 @@ struct IfBranch {
 
 class IfNode : public ASTNode {
 public:
-    std::vector<IfBranch> branches; // if + elifs
+    std::vector<IfBranch>* branches; // if + elifs
     ASTNode* elseBody;
     int _line;
     std::string _type;
 
-    IfNode(std::vector<IfBranch> branches, ASTNode* elseBody, int ln)
+    IfNode(std::vector<IfBranch>* branches, ASTNode* elseBody, int ln)
         : branches(branches), elseBody(elseBody), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -252,12 +252,14 @@ class ForNode : public ASTNode {
 public:
     std::string varName;
     ASTNode* iterable;
+    ASTNode* init_range;
+    ASTNode* end_range;
     ASTNode* body;
     int _line;
     std::string _type;
 
-    ForNode(const std::string& var, ASTNode* iter, ASTNode* b, int ln)
-        : varName(var), iterable(iter), body(b), _line(ln), _type("") {}
+    ForNode(const std::string& var, ASTNode* init, ASTNode* end, ASTNode* b, int ln)
+        : varName(var), init_range(init), end_range(end), body(b), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
         visitor.visit(*this);

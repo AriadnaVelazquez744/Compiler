@@ -1,5 +1,7 @@
 %{
+
 #include <stdio.h>
+#include "../include/AST.hpp"
 
 extern int yylex();
 void yyerror(const char *msg);
@@ -13,6 +15,8 @@ typedef struct YYLTYPE {
 } YYLTYPE;
 #define YYLTYPE_IS_DECLARED 1
 
+ASTNode* root;
+
 #define PI_VAL 3.14159265358979323846
 #define TRACE(EXPR) std::cout << "elem_expr: " << *EXPR << std::endl;
 
@@ -23,6 +27,7 @@ typedef struct YYLTYPE {
     #include <iostream>
     #include <cmath>
     #include <vector>
+    #include "../include/AST.hpp"
 }
 
 // Habilitar seguimiento de ubicaciones
@@ -33,8 +38,11 @@ typedef struct YYLTYPE {
     double num;  // Tipo para números (enteros y decimales)
     std::string* str; 
     bool boolean;
-    std::string* stmt;
-    std::vector<std::string*>* list;
+    ASTNode* node;
+    std::vector<ASTNode*>* list;
+    std::vector<IfBranch>* if_branch;
+    std::vector<Parameter>* param;
+    std::vector<LetDeclaration>* let_decl;
 }
 
 // --------------------------------------/* Definición de Tokens */------------------------------------------- //
@@ -112,28 +120,27 @@ typedef struct YYLTYPE {
 %token INHERITS
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
-%type <stmt> statement
-%type <stmt> expression
-%type <stmt> elem_expr
-%type <stmt> block_expr
-%type <stmt> func_call_expr
-%type <stmt> assign_expr
-%type <stmt> let_expr
-%type <stmt> if_expr
-%type <stmt> if_head
-%type <stmt> while_expr 
-%type <stmt> for_expr
-%type <stmt> body
+%type <node> statement
+%type <node> expression
+%type <node> elem_expr
+%type <node> block_expr
+%type <node> func_call_expr
+%type <node> assign_expr
+%type <node> let_expr
+%type <node> if_expr
+%type <node> while_expr 
+%type <node> for_expr
+%type <node> body
 %type <list> block_body
-%type <list> params
 %type <list> args
-%type <list> decls
-%type <list> decl
+%type <param> params
+%type <if_branch> if_head
+%type <let_decl> decl
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
 %left ADD SUB
 %left MUL DIV MOD
-%right SIN COS MIN MAX SQRT LOG EXP RANDOM POW
+%right  POW SIN COS MIN MAX SQRT LOG EXP RANDOM
 %left LT GT LE GE EQ NE
 %left AND OR 
 %right NOT
@@ -143,13 +150,13 @@ typedef struct YYLTYPE {
 
 program:
     /* vacío */
-    | program statement
-    | program error ';' { yyerrok; }
+    | program statement             { root = $2; }
+    | program error ';'             { yyerrok; }
 ;
 
 statement:
     expression ';'                  { $$ = $1; delete $1; }
-    | PRINT '(' expression ')' ';'  { std::cout << "Salida: " << *$3 << std::endl; }
+    /* | PRINT '(' expression ')' ';'  { std::cout << "Salida: " << *$3 << std::endl; }
     | READ ';'                      { 
                                         std::string input; 
                                         //std::cin >> input;
@@ -173,87 +180,78 @@ statement:
                                                 std::cout << "Parse fallido: " << raw << std::endl;
                                         }
                                         delete $3;
-                                    }
+                                    } */
     | block_expr                    { $$ = $1; }
     | FUNC ID '(' params ')' LAMBDA body
                                     {
+                                        $$ = new FunctionDeclarationNode(*$2, $4, $7, true, yylloc.first_line);
                                         std::cout << "Definición función inline: " << *$2 << std::endl;
-                                        delete $2;
-                                        for (auto s : *$4) delete s;
-                                        delete $4;
-                                        $$ = nullptr;
+                                        delete $2; delete $4;
                                     }
     | FUNC ID '(' params ')' block_expr
                                     {
+                                        $$ = new FunctionDeclarationNode(*$2, $4, $6, false, yylloc.first_line);
                                         std::cout << "Definición función bloque: " << *$2 << std::endl;
-                                        delete $2;
-                                        for (auto s : *$4) delete s;
-                                        delete $4; delete $6;
-                                        $$ = nullptr;
+                                        delete $2; delete $4;
                                     }
-    | let_expr                      { $$ = $1; std::cout << "let_expr: " << *$$ << std::endl; }
-    | while_expr                    { $$ = $1; std::cout << "while_expr: " << *$$ << std::endl; }
-    | for_expr                      { $$ = $1; std::cout << "for_expr: " << *$$ << std::endl; }
+    | let_expr                      { $$ = $1; std::cout << "let_expr " << std::endl; }
+    | while_expr                    { $$ = $1; std::cout << "while_expr " << std::endl; }
+    | for_expr                      { $$ = $1; std::cout << "for_expr " << std::endl; }
 ;
 
     expression:
-          NUMBER                { $$ = new std::string(std::to_string($1)); }
-        | STRING                { $$ = new std::string(*$1); delete $1; }
-        | BOOL                  { $$ = new std::string($1 ? "true" : "false"); }
-        | NULL_VAL              { $$ = new std::string("null"); }
-        | ID                    { $$ = $1; }
+          NUMBER                { $$ = new LiteralNode(std::to_string($1), "Number", yylloc.first_line); }
+        | STRING                { $$ = new LiteralNode(*$1, "String", yylloc.first_line); delete $1; }
+        | BOOL                  { $$ = new LiteralNode($1 ? "true" : "false", "Boolean", yylloc.first_line); }
+        | NULL_VAL              { $$ = new LiteralNode("null", "Null", yylloc.first_line); }
+        | ID                    { $$ = new IdentifierNode(*$1, yylloc.first_line); }
         | elem_expr             { $$ = $1; }
         | block_expr            { $$ = $1; }
         | func_call_expr        { $$ = $1; }
         | assign_expr           { $$ = $1; }
-        | let_expr              { $$ = $1; std::cout << "let_expr: " << *$$ << std::endl; }
-        | if_expr               { $$ = $1; std::cout << "if_expr: " << *$$ << std::endl; }
-        | while_expr            { $$ = $1; std::cout << "while_expr: " << *$$ << std::endl; }
-        | for_expr              { $$ = $1; std::cout << "for_expr: " << *$$ << std::endl; }
+        | let_expr              { $$ = $1; std::cout << "let_expr " << std::endl; }
+        | if_expr               { $$ = $1; std::cout << "if_expr " << std::endl; }
+        | while_expr            { $$ = $1; std::cout << "while_expr " << std::endl; }
+        | for_expr              { $$ = $1; std::cout << "for_expr " << std::endl; }
     ;
 
         elem_expr:
               expression ADD expression {
-                $$ = new std::string("(" + *$1 + " + " + *$3 + ")");
+                $$ = new BinaryOpNode("+", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
             | expression SUB expression {
-                $$ = new std::string("(" + *$1 + " - " + *$3 + ")");
+                $$ = new BinaryOpNode("-", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
             | expression MUL expression {
-                $$ = new std::string("(" + *$1 + " * " + *$3 + ")");
+                $$ = new BinaryOpNode("*", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
             | expression DIV expression {
-                $$ = new std::string("(" + *$1 + " / " + *$3 + ")");
+                $$ = new BinaryOpNode("/", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
             | expression MOD expression {
-                $$ = new std::string("mod(" + *$1 + ", " + *$3 + ")");
+                
+                $$ = new BinaryOpNode("%", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
             | expression POW expression {
-                $$ = new std::string("pow(" + *$1 + ", " + *$3 + ")");
+                $$ = new BinaryOpNode("^", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
 
-            | SUB NUMBER {
+            /* | SUB NUMBER {
                 $$ = new std::string("-" + std::to_string($2));
                 TRACE($$);
-            }
+            } */
 
             | '(' expression ')' {
-                $$ = $2;    TRACE($$);
+                $$ = $2;
             }
 
-            | SIN '(' expression ')' {
+            /* | SIN '(' expression ')' {
                 $$ = new std::string("sin(" + *$3 + ")");
                 delete $3;
                 TRACE($$);
@@ -300,151 +298,161 @@ statement:
             | PI {
                 $$ = new std::string("pi");
                 TRACE($$);
-            }
+            } */
 
             | expression CONCAT expression {
-                $$ = new std::string(*$1 + *$3); // string concatenation
+                $$ = new BinaryOpNode("@", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
             | expression CONCAT_SPACE expression {
-                $$ = new std::string(*$1 + " " + *$3);
+                $$ = new BinaryOpNode("@@", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
 
             | expression LT expression {
-                $$ = new std::string("(" + *$1 + " < " + *$3 + ")");
+                
+                $$ = new BinaryOpNode("<", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
             | expression GT expression {
-                $$ = new std::string("(" + *$1 + " > " + *$3 + ")");
+                $$ = new BinaryOpNode(">", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
             | expression LE expression {
-                $$ = new std::string("(" + *$1 + " <= " + *$3 + ")");
+                $$ = new BinaryOpNode("<=", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
             | expression GE expression {
-                $$ = new std::string("(" + *$1 + " >= " + *$3 + ")");
+                $$ = new BinaryOpNode(">=", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
 
             | expression EQ expression {
-                $$ = new std::string("(" + *$1 + " == " + *$3 + ")");
+                $$ = new BinaryOpNode("==", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
             | expression NE expression {
-                $$ = new std::string("(" + *$1 + " != " + *$3 + ")");
+                $$ = new BinaryOpNode("!=", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
 
             | expression AND expression {
-                $$ = new std::string("(" + *$1 + " && " + *$3 + ")");
+                $$ = new BinaryOpNode("&", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
             | expression OR expression {
-                $$ = new std::string("(" + *$1 + " || " + *$3 + ")");
+                $$ = new BinaryOpNode("|", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
-                TRACE($$);
             }
-            | NOT expression {
+            /* | NOT expression {
                 $$ = new std::string("(!" + *$2 + ")");
                 delete $2;
                 TRACE($$);
-            }
+            } */
         ;
 
         block_expr:
             '{' block_body '}'  {
-                                    $$ = new std::string("block"); // Placeholder
+                                    $$ = new BlockNode(*$2, yylloc.first_line); // Placeholder
                                     delete $2;
                                 }
         ;
 
         block_body:
-            /* empty */                     { $$ = new std::vector<std::string*>(); }
-            | statement                     { $$ = new std::vector<std::string*>(); $$->push_back($1); }
+            /* empty */                     { $$ = new std::vector<ASTNode*>(); }
+            | statement                     { $$ = new std::vector<ASTNode*>(); $$->push_back($1); }
             | block_body statement          { $1->push_back($2); $$ = $1; }
         ;
 
         params:
-            /* empty */         { $$ = new std::vector<std::string*>(); }
-            | ID                { $$ = new std::vector<std::string*>(); $$->push_back($1); }
-            | params ',' ID     { $1->push_back($3); $$ = $1; }
+            /* empty */         { $$ = new std::vector<Parameter>(); }
+            | ID                { 
+                                    Parameter p;
+                                    p.name = *$1;
+                                    $$ = new std::vector<Parameter>(); 
+                                    $$->push_back(p); 
+                                    delete $1;
+                                }
+            | params ',' ID     { 
+                                    Parameter p;
+                                    p.name = *$3;
+                                    $1->push_back(p); 
+                                    $$ = $1; 
+                                }
         ;
 
         func_call_expr:
-            ID '(' args ')'     { $$ = new std::string("calling function " + *$1); }
+            ID '(' args ')'     { $$ = new FunctionCallNode(*$1, *$3, yylloc.first_line); delete $1; delete $3;}
         ;
 
         args: 
-            /* empty */                 { $$ = new std::vector<std::string*>(); }
-            | expression                { $$ = new std::vector<std::string*>(); $$->push_back($1); }
+            /* empty */                 { $$ = new std::vector<ASTNode*>(); }
+            | expression                { $$ = new std::vector<ASTNode*>(); $$->push_back($1); }
             | args ',' expression       { $1->push_back($3); $$ = $1; }
         ;
 
         assign_expr:
-            ID REASSIGN expression    { $$ = new std::string("cambio de valor de la variable " + *$1); }
+            ID REASSIGN expression    { $$ = new AssignmentNode(*$1, $3, yylloc.first_line); delete $1; }
         ;
 
         let_expr:
-              decls IN body                { $$ = new std::string("let_expr"); delete $1; }
-            | decls IN '(' body ')'        { $$ = new std::string("let_expr"); delete $1; }
-            | decls IN body ';'            { $$ = new std::string("let_expr"); delete $1; }
-            | decls IN '(' body ')' ';'    { $$ = new std::string("let_expr"); delete $1; }
-        ;
-        ;
-
-        decls:
-              LET decl                  { $$ = $2; }
-            | decls ',' LET decl        { $1->insert($1->end(), $4->begin(), $4->end()); delete $4; $$ = $1; }
+              LET decl IN body                { $$ = new LetNode($2, $4, yylloc.first_line); delete $2; }
+            | LET decl IN '(' body ')'        { $$ = new LetNode($2, $5, yylloc.first_line); delete $2; }
+            | LET decl IN body ';'            { $$ = new LetNode($2, $4, yylloc.first_line); delete $2; }
+            | LET decl IN '(' body ')' ';'    { $$ = new LetNode($2, $5, yylloc.first_line); delete $2; }
         ;
 
         decl:
               ID '=' expression             {
-                                                std::vector<std::string*>* list = new std::vector<std::string*>();
-                                                list->push_back(new std::string(*$1 + " = " + *$3));
-                                                delete $1; delete $3;
-                                                $$ = list;
+                                                LetDeclaration d;
+                                                d.name = *$1;
+                                                d.initializer = $3;
+                                                $$ = new std::vector<LetDeclaration>();
+                                                $$->push_back(d); delete $1;
                                             }
             | decl ',' ID '=' expression    {
-                                                std::string* new_decl = new std::string(*$3 + " = " + *$5);
-                                                $1->insert($1->end(), new_decl);
-                                                delete $3; delete $5;
-                                                $$ = $1;
+                                                LetDeclaration d;
+                                                d.name = *$3;
+                                                d.initializer = $5;
+                                                $1->push_back(d); $$ = $1;
+                                                delete $3;
                                             }
         ;
 
         body:
-              statement 
-            | expression
-            | PRINT '(' expression ')'      { std::cout << "Salida: " << *$3 << std::endl; }
+              statement                     { $$ = $1; }
+            | expression                    { $$ = $1; }
+            /* | PRINT '(' expression ')'      { std::cout << "Salida: " << *$3 << std::endl; } */
         ;
 
         if_expr:
-            if_head                     { $$ = $1; }
-            | if_head ELSE body         { $$ = new std::string("if-else"); delete $1; }
+            if_head                     { $$ = new IfNode($1, nullptr, yylloc.first_line); }
+            | if_head ELSE body         { $$ = new IfNode($1, $3, yylloc.first_line); }
         ;
 
         if_head:
-            IF '(' expression ')' body                      { $$ = new std::string("if"); }
-            | if_head ELIF '(' expression ')' body          { $$ = new std::string("if-elif"); delete $1; }
+            IF '(' expression ')' body                      { 
+                                                                IfBranch b;
+                                                                b.condition = $3;
+                                                                b.body = $5;
+                                                                $$ = new std::vector<IfBranch>(); 
+                                                                $$->push_back(b);
+                                                            }
+            | if_head ELIF '(' expression ')' body          { 
+                                                                IfBranch b;
+                                                                b.condition = $4;
+                                                                b.body = $6;
+                                                                $1->push_back(b); 
+                                                                $$ = $1;  
+                                                            }
         ;
 
         while_expr:
-            WHILE '(' expression ')' body                   { $$ = new std::string("while"); }
+            WHILE '(' expression ')' body                   { $$ = new WhileNode($3, $5, yylloc.first_line); }
         ;
 
         for_expr:
-            FOR '(' ID IN RANGE '(' expression ',' expression ')' ')' body      { $$ = new std::string("for"); }
+            FOR '(' ID IN RANGE '(' expression ',' expression ')' ')' body      { $$ = new ForNode(*$3, $7, $9, $12, yylloc.first_line); delete $3; }
         ;
 
 %%

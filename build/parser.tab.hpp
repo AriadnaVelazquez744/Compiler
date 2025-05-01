@@ -45,14 +45,15 @@
 extern int yydebug;
 #endif
 /* "%code requires" blocks.  */
-#line 21 "src/parser.y"
+#line 25 "src/parser.y"
 
     #include <string>
     #include <iostream>
     #include <cmath>
     #include <vector>
+    #include "../include/AST.hpp"
 
-#line 56 "build/parser.tab.hpp"
+#line 57 "build/parser.tab.hpp"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -121,15 +122,18 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 32 "src/parser.y"
+#line 37 "src/parser.y"
 
     double num;  // Tipo para números (enteros y decimales)
     std::string* str; 
     bool boolean;
-    std::string* stmt;
-    std::vector<std::string*>* list;
+    ASTNode* node;
+    std::vector<ASTNode*>* list;
+    std::vector<IfBranch>* if_branch;
+    std::vector<Parameter>* param;
+    std::vector<LetDeclaration>* let_decl;
 
-#line 133 "build/parser.tab.hpp"
+#line 137 "build/parser.tab.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

@@ -36,6 +36,42 @@ public:
     std::string type() const override { return _type; }
 };
 
+class UnaryOpNode : public ASTNode {
+    public:
+        std::string op;
+        ASTNode* operand;
+        int _line;
+        std::string _type;
+    
+        UnaryOpNode(const std::string& op, ASTNode* operand, int line)
+            : op(op), operand(operand), _line(line), _type("") {}
+    
+        void accept(ASTVisitor& visitor) override {
+            visitor.visit(*this);
+        }
+    
+        int line() const override { return _line; }
+        std::string type() const override { return _type; }
+    };
+
+class BuiltInFunctionNode : public ASTNode {
+public:
+    std::string name;
+    std::vector<ASTNode*> args;
+    int _line;
+    std::string _type;
+
+    BuiltInFunctionNode(const std::string& name, const std::vector<ASTNode*>& args, int line)
+        : name(name), args(args), _line(line), _type("") {}
+
+    void accept(ASTVisitor& visitor) override {
+        visitor.visit(*this);
+    }
+
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
 // ------------------------------------------------------
 
 class FunctionCallNode : public ASTNode {
@@ -144,7 +180,7 @@ struct Parameter {
 class FunctionDeclarationNode : public ASTNode {
 public:
     std::string name;
-    std::string returnType;
+    std::string returnType = ""; 
     std::vector<Parameter>* params;
     ASTNode* body;
     bool isInline;

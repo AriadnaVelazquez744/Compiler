@@ -3,11 +3,13 @@
 #include "../include/FunctionCollector.hpp"
 #include <cctype>
 #include <set> 
+#include <iostream>
 
 
 void SemanticAnalyzer::analyze(ASTNode* root) {
     // Fase 1: Recolectar funciones
     FunctionCollector collector(symbolTable, errors);
+    collector.addBuiltins();
     root->accept(collector);
 
     // Fase 2: Análisis semántico completo
@@ -18,12 +20,71 @@ void SemanticAnalyzer::visit(ASTNode& node) {}
 
 // Implementación de visitas a nodos
 
+void SemanticAnalyzer::visit(UnaryOpNode& node) {
+    node.operand->accept(*this); // Analiza operand
+    std::string operandType = node.operand->type();
+
+    if (node.op == "-") {
+        if (operandType != "Number") {
+            errors.emplace_back("El operador '-' requiere un operando de tipo Number", node.line());
+        }
+        node._type = "Number";
+    } else if (node.op == "!") {
+        if (operandType != "Boolean") {
+            errors.emplace_back("El operador '!' requiere un operando de tipo Boolean", node.line());
+        }
+        node._type = "Boolean";
+    } else {
+        errors.emplace_back("Operador unario desconocido: " + node.op, node.line());
+        node._type = "Unknown";
+    }
+}
+
+void SemanticAnalyzer::visit(BuiltInFunctionNode& node) {
+    for (ASTNode* arg : node.args) {
+        arg->accept(*this);
+    }
+
+    const std::string& fn = node.name;
+    size_t arity = node.args.size();
+
+    if ((fn == "sin" || fn == "cos" || fn == "exp" || fn == "sqrt") && arity == 1) {
+        if (node.args[0]->type() != "Number") {
+            std::cerr << "Error: el argumento de '" << fn << "' debe ser numérico.\n";
+            node._type = "Error";
+            return;
+        }
+        node._type = "Number";
+    } else if ((fn == "min" || fn == "max") && arity == 2) {
+        if (node.args[0]->type() == "Number" && node.args[1]->type() == "Number") {
+            node._type = "Number";
+        } else {
+            std::cerr << "Error: los argumentos de '" << fn << "' deben ser numéricos.\n";
+            node._type = "Error";
+        }
+    } else if (fn == "log" && arity == 2) {
+        if (node.args[0]->type() == "Number" && node.args[1]->type() == "Number") {
+            node._type = "Number";
+        } else {
+            std::cerr << "Error: los argumentos de 'log' deben ser numéricos.\n";
+            node._type = "Error";
+        }
+    } else if (fn == "rand" && arity == 0) {
+        node._type = "Number";
+    } else {
+        std::cerr << "Error: función '" << fn << "' con " << arity << " argumentos no es válida.\n";
+        node._type = "Error";
+    }
+}
+
+
+
 void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
     symbolTable.enterScope();
 
     // Verificar parámetros únicos
     std::unordered_map<std::string, bool> paramsSeen;
-    for (const auto& param : node.params) {
+    for (const auto& param : *node.params) {
         if (paramsSeen.count(param.name)) {
             errors.emplace_back("Parámetro duplicado '" + param.name + "'", node.line());
         } else {
@@ -222,7 +283,7 @@ bool SemanticAnalyzer::isValidIdentifier(const std::string& name) {
 void SemanticAnalyzer::visit(LetNode& node) {
     symbolTable.enterScope(); // Nuevo ámbito
 
-    for (auto& decl : node.declarations) {
+    for (auto& decl : *node.declarations) {
         // Verificar nombre válido
         if (!isValidIdentifier(decl.name)) {
             errors.emplace_back("Nombre inválido: '" + decl.name + "'", node.line());
@@ -292,7 +353,7 @@ void SemanticAnalyzer::visit(IfNode& node) {
     bool hasErrors = false;
 
     // 2. Verificar condiciones y recolectar tipos
-    for (auto& branch : node.branches) {
+    for (auto& branch : *node.branches) {
         // Analizar condición
         branch.condition->accept(*this);
         std::string condType = branch.condition->type();
@@ -337,34 +398,23 @@ void SemanticAnalyzer::visit(WhileNode& node) {
 }
 
 void SemanticAnalyzer::visit(ForNode& node) {
-    // Verificar iterable es válido (range o list)
-    node.iterable->accept(*this);
-    std::string iterableType = node.iterable->type();
+    node.init_range->accept(*this);
+    node.end_range->accept(*this);
 
-    // Determinar tipo del elemento (ej: number para range)
-    std::string elementType;
-    if (iterableType == "range") {
-        elementType = "number";
-    } else if (iterableType.substr(0, 5) == "list<") {
-        // Extraer tipo de la lista (ej: list<number> => number)
-        size_t start = iterableType.find('<') + 1;
-        size_t end = iterableType.find('>');
-        elementType = iterableType.substr(start, end - start);
-    } else {
-        errors.emplace_back("Tipo no iterable en for: " + iterableType, node.line());
+    if (node.init_range->type() != "Number" || node.end_range->type() != "Number") {
+        errors.emplace_back("Los límites del 'for' deben ser de tipo Number", node.line());
         return;
     }
 
-    // Nuevo ámbito para la variable del for
     symbolTable.enterScope();
-    symbolTable.addSymbol(node.varName, elementType, false); // Variable mutable
+    symbolTable.addSymbol(node.varName, "Number", false);
 
-    // Analizar cuerpo
     node.body->accept(*this);
     node._type = node.body->type();
 
     symbolTable.exitScope();
 }
+
 
 void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
     // 1. Verificar que el tipo no existe
@@ -406,7 +456,7 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
         symbolTable.addSymbol("self", node.name, true); // self es constante
 
         // Registrar parámetros del método
-        for (auto& param : method->params) {
+        for (auto& param : *method->params) {
             symbolTable.addSymbol(param.name, param.type, false);
         }
 
@@ -415,7 +465,7 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
 
         // Registrar método en el tipo
         std::vector<std::string> paramTypes;
-        for (auto& param : method->params) {
+        for (auto& param : *method->params) {
             paramTypes.push_back(param.type);
         }
         symbolTable.addTypeMethod(

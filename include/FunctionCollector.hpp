@@ -11,6 +11,8 @@ class FunctionCollector : public ASTVisitor {
     public:
         FunctionCollector(SymbolTable& symTable, std::vector<SemanticError>& err);
         virtual ~FunctionCollector() = default;
+
+        void addBuiltins();
     
         // Implementar TODOS los métodos de ASTVisitor
         void visit(ASTNode& node) override {} // <--- Añadir esta línea
@@ -28,4 +30,6 @@ class FunctionCollector : public ASTVisitor {
         void visit(ForNode& node) override {}
         void visit(TypeDeclarationNode& node) override {}
         void visit(NewNode& node) override {}
+        void visit(UnaryOpNode& node) override {}
+        void visit(BuiltInFunctionNode& node) override {}
     };

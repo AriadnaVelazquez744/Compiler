@@ -33,6 +33,8 @@ public:
     void visit(ForNode& node) override;
     void visit(TypeDeclarationNode& node) override;
     void visit(NewNode& node) override;
+    void visit(UnaryOpNode& node) override;
+    void visit(BuiltInFunctionNode& node) override;
 
     const std::vector<SemanticError>& getErrors() const { return errors; }
 };

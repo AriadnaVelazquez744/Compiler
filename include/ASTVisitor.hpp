@@ -38,4 +38,6 @@ public:
     virtual void visit(ForNode& node) = 0;
     virtual void visit(TypeDeclarationNode& node) = 0;
     virtual void visit(NewNode& node) = 0;
+    virtual void visit(UnaryOpNode& node) = 0;
+    virtual void visit(BuiltInFunctionNode& node) = 0;
 };

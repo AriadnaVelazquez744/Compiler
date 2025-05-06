@@ -8,7 +8,7 @@ class LiteralNode;
 class BlockNode;
 class VariableDeclarationNode;
 class IdentifierNode;
-class FunctionDeclarationNode; // <--- Añadir esta línea
+class FunctionDeclarationNode; 
 class LetNode;
 class AssignmentNode;
 class IfNode;
@@ -16,6 +16,8 @@ class WhileNode;
 class ForNode;
 class TypeDeclarationNode;
 class NewNode;
+class UnaryOpNode;
+class BuiltInFunctionNode;
 
 
 class ASTVisitor {

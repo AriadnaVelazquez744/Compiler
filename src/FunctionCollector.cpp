@@ -15,6 +15,7 @@ void FunctionCollector::addBuiltins() {
     symbolTable.addFunction("min", "Number", {"Number", "Number"});
     symbolTable.addFunction("max", "Number", {"Number", "Number"});
     symbolTable.addFunction("rand", "Number", {});
+    symbolTable.addFunction("print", "Null", {"Object"});
 }
 
 

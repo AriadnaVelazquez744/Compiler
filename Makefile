@@ -47,9 +47,12 @@ all:	compile
 compile:	$(BUILD_DIR)	$(EXEC)	
 	@echo	"✅ Build completo. Ejecutable en $(EXEC)"
 
-run:	compile
-	@echo	"🚀 Ejecutando script.hulk..."
-	@./$(EXEC)	
+run: compile
+	@echo "🚀 Ejecutando .hulk..."
+	@./$(EXEC)	$(word 2, $(MAKECMDGOALS))
+
+%:
+	@:
 
 clean:
 	rm	-rf	$(BUILD_DIR)	$(EXEC)

@@ -45,13 +45,13 @@
 extern int yydebug;
 #endif
 /* "%code requires" blocks.  */
-#line 35 "src/parser.y"
+#line 35 "src/parser/parser.y"
 
     #include <string>
     #include <iostream>
     #include <cmath>
     #include <vector>
-    #include "../include/AST.hpp"
+    #include "../ast/AST.hpp"
 
 #line 57 "build/parser.tab.hpp"
 
@@ -122,7 +122,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 47 "src/parser.y"
+#line 47 "src/parser/parser.y"
 
     double num;  // Tipo para números (enteros y decimales)
     std::string* str; 

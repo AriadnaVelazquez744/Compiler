@@ -67,11 +67,11 @@
 
 
 /* First part of user prologue.  */
-#line 1 "src/parser.y"
+#line 1 "src/parser/parser.y"
 
 
 #include <stdio.h>
-#include "../include/AST.hpp"
+#include "../ast/AST.hpp"
 
 extern int yylex();
 void yyerror(const char *msg);
@@ -1558,25 +1558,25 @@ yyreduce:
   switch (yyn)
     {
   case 3: /* program: program statement  */
-#line 163 "src/parser.y"
+#line 163 "src/parser/parser.y"
                                     { root = (yyvsp[0].node); }
 #line 1564 "build/parser.tab.cpp"
     break;
 
   case 4: /* program: program error ';'  */
-#line 164 "src/parser.y"
+#line 164 "src/parser/parser.y"
                                     { yyerrok; }
 #line 1570 "build/parser.tab.cpp"
     break;
 
   case 5: /* statement: expression ';'  */
-#line 168 "src/parser.y"
+#line 168 "src/parser/parser.y"
                                     { (yyval.node) = (yyvsp[-1].node); delete (yyvsp[-1].node); }
 #line 1576 "build/parser.tab.cpp"
     break;
 
   case 6: /* statement: PRINT '(' expression ')' ';'  */
-#line 169 "src/parser.y"
+#line 169 "src/parser/parser.y"
                                     { 
                                         std::vector<ASTNode*> args = vectorize((yyvsp[-2].node), nullptr, 1);
                                         (yyval.node) = new BuiltInFunctionNode("print", args, yylloc.first_line);
@@ -1585,13 +1585,13 @@ yyreduce:
     break;
 
   case 7: /* statement: block_expr  */
-#line 197 "src/parser.y"
+#line 197 "src/parser/parser.y"
                                     { (yyval.node) = (yyvsp[0].node); }
 #line 1591 "build/parser.tab.cpp"
     break;
 
   case 8: /* statement: FUNC ID '(' params ')' LAMBDA body  */
-#line 199 "src/parser.y"
+#line 199 "src/parser/parser.y"
                                     {
                                         (yyval.node) = new FunctionDeclarationNode(*(yyvsp[-5].str), (yyvsp[-3].param), (yyvsp[0].node), true, yylloc.first_line);
                                         std::cout << "Definición función inline: " << *(yyvsp[-5].str) << std::endl;
@@ -1601,7 +1601,7 @@ yyreduce:
     break;
 
   case 9: /* statement: FUNC ID '(' params ')' block_expr  */
-#line 205 "src/parser.y"
+#line 205 "src/parser/parser.y"
                                     {
                                         (yyval.node) = new FunctionDeclarationNode(*(yyvsp[-4].str), (yyvsp[-2].param), (yyvsp[0].node), false, yylloc.first_line);
                                         std::cout << "Definición función bloque: " << *(yyvsp[-4].str) << std::endl;
@@ -1611,103 +1611,103 @@ yyreduce:
     break;
 
   case 10: /* statement: let_expr  */
-#line 210 "src/parser.y"
+#line 210 "src/parser/parser.y"
                                     { (yyval.node) = (yyvsp[0].node); std::cout << "let_expr " << std::endl; }
 #line 1617 "build/parser.tab.cpp"
     break;
 
   case 11: /* statement: while_expr  */
-#line 211 "src/parser.y"
+#line 211 "src/parser/parser.y"
                                     { (yyval.node) = (yyvsp[0].node); std::cout << "while_expr " << std::endl; }
 #line 1623 "build/parser.tab.cpp"
     break;
 
   case 12: /* statement: for_expr  */
-#line 212 "src/parser.y"
+#line 212 "src/parser/parser.y"
                                     { (yyval.node) = (yyvsp[0].node); std::cout << "for_expr " << std::endl; }
 #line 1629 "build/parser.tab.cpp"
     break;
 
   case 13: /* expression: NUMBER  */
-#line 216 "src/parser.y"
+#line 216 "src/parser/parser.y"
                                 { (yyval.node) = new LiteralNode(std::to_string((yyvsp[0].num)), "Number", yylloc.first_line); }
 #line 1635 "build/parser.tab.cpp"
     break;
 
   case 14: /* expression: STRING  */
-#line 217 "src/parser.y"
+#line 217 "src/parser/parser.y"
                                 { (yyval.node) = new LiteralNode(*(yyvsp[0].str), "String", yylloc.first_line); delete (yyvsp[0].str); }
 #line 1641 "build/parser.tab.cpp"
     break;
 
   case 15: /* expression: BOOL  */
-#line 218 "src/parser.y"
+#line 218 "src/parser/parser.y"
                                 { (yyval.node) = new LiteralNode((yyvsp[0].boolean) ? "true" : "false", "Boolean", yylloc.first_line); }
 #line 1647 "build/parser.tab.cpp"
     break;
 
   case 16: /* expression: NULL_VAL  */
-#line 219 "src/parser.y"
+#line 219 "src/parser/parser.y"
                                 { (yyval.node) = new LiteralNode("null", "Null", yylloc.first_line); }
 #line 1653 "build/parser.tab.cpp"
     break;
 
   case 17: /* expression: ID  */
-#line 220 "src/parser.y"
+#line 220 "src/parser/parser.y"
                                 { (yyval.node) = new IdentifierNode(*(yyvsp[0].str), yylloc.first_line); }
 #line 1659 "build/parser.tab.cpp"
     break;
 
   case 18: /* expression: elem_expr  */
-#line 221 "src/parser.y"
+#line 221 "src/parser/parser.y"
                                 { (yyval.node) = (yyvsp[0].node); }
 #line 1665 "build/parser.tab.cpp"
     break;
 
   case 19: /* expression: block_expr  */
-#line 222 "src/parser.y"
+#line 222 "src/parser/parser.y"
                                 { (yyval.node) = (yyvsp[0].node); }
 #line 1671 "build/parser.tab.cpp"
     break;
 
   case 20: /* expression: func_call_expr  */
-#line 223 "src/parser.y"
+#line 223 "src/parser/parser.y"
                                 { (yyval.node) = (yyvsp[0].node); }
 #line 1677 "build/parser.tab.cpp"
     break;
 
   case 21: /* expression: assign_expr  */
-#line 224 "src/parser.y"
+#line 224 "src/parser/parser.y"
                                 { (yyval.node) = (yyvsp[0].node); }
 #line 1683 "build/parser.tab.cpp"
     break;
 
   case 22: /* expression: let_expr  */
-#line 225 "src/parser.y"
+#line 225 "src/parser/parser.y"
                                 { (yyval.node) = (yyvsp[0].node); std::cout << "let_expr " << std::endl; }
 #line 1689 "build/parser.tab.cpp"
     break;
 
   case 23: /* expression: if_expr  */
-#line 226 "src/parser.y"
+#line 226 "src/parser/parser.y"
                                 { (yyval.node) = (yyvsp[0].node); std::cout << "if_expr " << std::endl; }
 #line 1695 "build/parser.tab.cpp"
     break;
 
   case 24: /* expression: while_expr  */
-#line 227 "src/parser.y"
+#line 227 "src/parser/parser.y"
                                 { (yyval.node) = (yyvsp[0].node); std::cout << "while_expr " << std::endl; }
 #line 1701 "build/parser.tab.cpp"
     break;
 
   case 25: /* expression: for_expr  */
-#line 228 "src/parser.y"
+#line 228 "src/parser/parser.y"
                                 { (yyval.node) = (yyvsp[0].node); std::cout << "for_expr " << std::endl; }
 #line 1707 "build/parser.tab.cpp"
     break;
 
   case 26: /* elem_expr: expression ADD expression  */
-#line 232 "src/parser.y"
+#line 232 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("+", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1716,7 +1716,7 @@ yyreduce:
     break;
 
   case 27: /* elem_expr: expression SUB expression  */
-#line 236 "src/parser.y"
+#line 236 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("-", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1725,7 +1725,7 @@ yyreduce:
     break;
 
   case 28: /* elem_expr: expression MUL expression  */
-#line 240 "src/parser.y"
+#line 240 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("*", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1734,7 +1734,7 @@ yyreduce:
     break;
 
   case 29: /* elem_expr: expression DIV expression  */
-#line 244 "src/parser.y"
+#line 244 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("/", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1743,7 +1743,7 @@ yyreduce:
     break;
 
   case 30: /* elem_expr: expression MOD expression  */
-#line 248 "src/parser.y"
+#line 248 "src/parser/parser.y"
                                         {
                 
                 (yyval.node) = new BinaryOpNode("%", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
@@ -1753,7 +1753,7 @@ yyreduce:
     break;
 
   case 31: /* elem_expr: expression POW expression  */
-#line 253 "src/parser.y"
+#line 253 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("^", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1762,7 +1762,7 @@ yyreduce:
     break;
 
   case 32: /* elem_expr: SUB expression  */
-#line 258 "src/parser.y"
+#line 258 "src/parser/parser.y"
                              {
                 (yyval.node) = new UnaryOpNode("-", (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[0].node);
@@ -1771,7 +1771,7 @@ yyreduce:
     break;
 
   case 33: /* elem_expr: '(' expression ')'  */
-#line 263 "src/parser.y"
+#line 263 "src/parser/parser.y"
                                  {
                 (yyval.node) = (yyvsp[-1].node);
             }
@@ -1779,7 +1779,7 @@ yyreduce:
     break;
 
   case 34: /* elem_expr: SIN '(' expression ')'  */
-#line 267 "src/parser.y"
+#line 267 "src/parser/parser.y"
                                      {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-1].node), nullptr, 1);
                 (yyval.node) = new BuiltInFunctionNode("sin", args, yylloc.first_line);
@@ -1789,7 +1789,7 @@ yyreduce:
     break;
 
   case 35: /* elem_expr: COS '(' expression ')'  */
-#line 272 "src/parser.y"
+#line 272 "src/parser/parser.y"
                                      {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-1].node), nullptr, 1);
                 (yyval.node) = new BuiltInFunctionNode("cos", args, yylloc.first_line);
@@ -1799,7 +1799,7 @@ yyreduce:
     break;
 
   case 36: /* elem_expr: MIN '(' expression ',' expression ')'  */
-#line 277 "src/parser.y"
+#line 277 "src/parser/parser.y"
                                                     {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-3].node), (yyvsp[-1].node), 2);
                 (yyval.node) = new BuiltInFunctionNode("min", args, yylloc.first_line);
@@ -1809,7 +1809,7 @@ yyreduce:
     break;
 
   case 37: /* elem_expr: MAX '(' expression ',' expression ')'  */
-#line 282 "src/parser.y"
+#line 282 "src/parser/parser.y"
                                                     {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-3].node), (yyvsp[-1].node), 2);
                 (yyval.node) = new BuiltInFunctionNode("max", args, yylloc.first_line);
@@ -1819,7 +1819,7 @@ yyreduce:
     break;
 
   case 38: /* elem_expr: SQRT '(' expression ')'  */
-#line 287 "src/parser.y"
+#line 287 "src/parser/parser.y"
                                       {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-1].node), nullptr, 1);
                 (yyval.node) = new BuiltInFunctionNode("sqrt", args, yylloc.first_line);
@@ -1829,7 +1829,7 @@ yyreduce:
     break;
 
   case 39: /* elem_expr: LOG '(' expression ',' expression ')'  */
-#line 292 "src/parser.y"
+#line 292 "src/parser/parser.y"
                                                     {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-3].node), (yyvsp[-1].node), 2);
                 (yyval.node) = new BuiltInFunctionNode("log", args, yylloc.first_line);
@@ -1839,7 +1839,7 @@ yyreduce:
     break;
 
   case 40: /* elem_expr: EXP '(' expression ')'  */
-#line 297 "src/parser.y"
+#line 297 "src/parser/parser.y"
                                      {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-1].node), nullptr, 1);
                 (yyval.node) = new BuiltInFunctionNode("print", args, yylloc.first_line);
@@ -1849,7 +1849,7 @@ yyreduce:
     break;
 
   case 41: /* elem_expr: RANDOM '(' ')'  */
-#line 303 "src/parser.y"
+#line 303 "src/parser/parser.y"
                              {
                 std::vector<ASTNode*> args = vectorize(nullptr, nullptr, 0);
                 (yyval.node) = new BuiltInFunctionNode("rand", args, yylloc.first_line);
@@ -1858,19 +1858,19 @@ yyreduce:
     break;
 
   case 42: /* elem_expr: E  */
-#line 307 "src/parser.y"
+#line 307 "src/parser/parser.y"
                     { (yyval.node) = new IdentifierNode("e", yylloc.first_line); }
 #line 1864 "build/parser.tab.cpp"
     break;
 
   case 43: /* elem_expr: PI  */
-#line 308 "src/parser.y"
+#line 308 "src/parser/parser.y"
                     { (yyval.node) = new IdentifierNode("pi", yylloc.first_line); }
 #line 1870 "build/parser.tab.cpp"
     break;
 
   case 44: /* elem_expr: expression CONCAT expression  */
-#line 310 "src/parser.y"
+#line 310 "src/parser/parser.y"
                                            {
                 (yyval.node) = new BinaryOpNode("@", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1879,7 +1879,7 @@ yyreduce:
     break;
 
   case 45: /* elem_expr: expression CONCAT_SPACE expression  */
-#line 314 "src/parser.y"
+#line 314 "src/parser/parser.y"
                                                  {
                 (yyval.node) = new BinaryOpNode("@@", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1888,7 +1888,7 @@ yyreduce:
     break;
 
   case 46: /* elem_expr: expression LT expression  */
-#line 319 "src/parser.y"
+#line 319 "src/parser/parser.y"
                                        {
                 
                 (yyval.node) = new BinaryOpNode("<", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
@@ -1898,7 +1898,7 @@ yyreduce:
     break;
 
   case 47: /* elem_expr: expression GT expression  */
-#line 324 "src/parser.y"
+#line 324 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode(">", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1907,7 +1907,7 @@ yyreduce:
     break;
 
   case 48: /* elem_expr: expression LE expression  */
-#line 328 "src/parser.y"
+#line 328 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode("<=", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1916,7 +1916,7 @@ yyreduce:
     break;
 
   case 49: /* elem_expr: expression GE expression  */
-#line 332 "src/parser.y"
+#line 332 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode(">=", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1925,7 +1925,7 @@ yyreduce:
     break;
 
   case 50: /* elem_expr: expression EQ expression  */
-#line 337 "src/parser.y"
+#line 337 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode("==", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1934,7 +1934,7 @@ yyreduce:
     break;
 
   case 51: /* elem_expr: expression NE expression  */
-#line 341 "src/parser.y"
+#line 341 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode("!=", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1943,7 +1943,7 @@ yyreduce:
     break;
 
   case 52: /* elem_expr: expression AND expression  */
-#line 346 "src/parser.y"
+#line 346 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("&", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1952,7 +1952,7 @@ yyreduce:
     break;
 
   case 53: /* elem_expr: expression OR expression  */
-#line 350 "src/parser.y"
+#line 350 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode("|", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[-2].node); delete (yyvsp[0].node);
@@ -1961,7 +1961,7 @@ yyreduce:
     break;
 
   case 54: /* elem_expr: NOT expression  */
-#line 354 "src/parser.y"
+#line 354 "src/parser/parser.y"
                              {
                 (yyval.node) = new UnaryOpNode("!", (yyvsp[0].node), yylloc.first_line);
                 delete (yyvsp[0].node);
@@ -1970,7 +1970,7 @@ yyreduce:
     break;
 
   case 55: /* block_expr: '{' block_body '}'  */
-#line 361 "src/parser.y"
+#line 361 "src/parser/parser.y"
                                 {
                                     (yyval.node) = new BlockNode(*(yyvsp[-1].list), yylloc.first_line); // Placeholder
                                     delete (yyvsp[-1].list);
@@ -1979,31 +1979,31 @@ yyreduce:
     break;
 
   case 56: /* block_body: %empty  */
-#line 368 "src/parser.y"
+#line 368 "src/parser/parser.y"
                                             { (yyval.list) = new std::vector<ASTNode*>(); }
 #line 1985 "build/parser.tab.cpp"
     break;
 
   case 57: /* block_body: statement  */
-#line 369 "src/parser.y"
+#line 369 "src/parser/parser.y"
                                             { (yyval.list) = new std::vector<ASTNode*>(); (yyval.list)->push_back((yyvsp[0].node)); }
 #line 1991 "build/parser.tab.cpp"
     break;
 
   case 58: /* block_body: block_body statement  */
-#line 370 "src/parser.y"
+#line 370 "src/parser/parser.y"
                                             { (yyvsp[-1].list)->push_back((yyvsp[0].node)); (yyval.list) = (yyvsp[-1].list); }
 #line 1997 "build/parser.tab.cpp"
     break;
 
   case 59: /* params: %empty  */
-#line 374 "src/parser.y"
+#line 374 "src/parser/parser.y"
                                 { (yyval.param) = new std::vector<Parameter>(); }
 #line 2003 "build/parser.tab.cpp"
     break;
 
   case 60: /* params: ID  */
-#line 375 "src/parser.y"
+#line 375 "src/parser/parser.y"
                                 { 
                                     Parameter p;
                                     p.name = *(yyvsp[0].str);
@@ -2015,7 +2015,7 @@ yyreduce:
     break;
 
   case 61: /* params: params ',' ID  */
-#line 382 "src/parser.y"
+#line 382 "src/parser/parser.y"
                                 { 
                                     Parameter p;
                                     p.name = *(yyvsp[0].str);
@@ -2026,61 +2026,61 @@ yyreduce:
     break;
 
   case 62: /* func_call_expr: ID '(' args ')'  */
-#line 391 "src/parser.y"
+#line 391 "src/parser/parser.y"
                                 { (yyval.node) = new FunctionCallNode(*(yyvsp[-3].str), *(yyvsp[-1].list), yylloc.first_line); delete (yyvsp[-3].str); delete (yyvsp[-1].list);}
 #line 2032 "build/parser.tab.cpp"
     break;
 
   case 63: /* args: %empty  */
-#line 395 "src/parser.y"
+#line 395 "src/parser/parser.y"
                                         { (yyval.list) = new std::vector<ASTNode*>(); }
 #line 2038 "build/parser.tab.cpp"
     break;
 
   case 64: /* args: expression  */
-#line 396 "src/parser.y"
+#line 396 "src/parser/parser.y"
                                         { (yyval.list) = new std::vector<ASTNode*>(); (yyval.list)->push_back((yyvsp[0].node)); }
 #line 2044 "build/parser.tab.cpp"
     break;
 
   case 65: /* args: args ',' expression  */
-#line 397 "src/parser.y"
+#line 397 "src/parser/parser.y"
                                         { (yyvsp[-2].list)->push_back((yyvsp[0].node)); (yyval.list) = (yyvsp[-2].list); }
 #line 2050 "build/parser.tab.cpp"
     break;
 
   case 66: /* assign_expr: ID REASSIGN expression  */
-#line 401 "src/parser.y"
+#line 401 "src/parser/parser.y"
                                       { (yyval.node) = new AssignmentNode(*(yyvsp[-2].str), (yyvsp[0].node), yylloc.first_line); delete (yyvsp[-2].str); }
 #line 2056 "build/parser.tab.cpp"
     break;
 
   case 67: /* let_expr: LET decl IN body  */
-#line 405 "src/parser.y"
+#line 405 "src/parser/parser.y"
                                               { (yyval.node) = new LetNode((yyvsp[-2].let_decl), (yyvsp[0].node), yylloc.first_line); delete (yyvsp[-2].let_decl); }
 #line 2062 "build/parser.tab.cpp"
     break;
 
   case 68: /* let_expr: LET decl IN '(' body ')'  */
-#line 406 "src/parser.y"
+#line 406 "src/parser/parser.y"
                                               { (yyval.node) = new LetNode((yyvsp[-4].let_decl), (yyvsp[-1].node), yylloc.first_line); delete (yyvsp[-4].let_decl); }
 #line 2068 "build/parser.tab.cpp"
     break;
 
   case 69: /* let_expr: LET decl IN body ';'  */
-#line 407 "src/parser.y"
+#line 407 "src/parser/parser.y"
                                               { (yyval.node) = new LetNode((yyvsp[-3].let_decl), (yyvsp[-1].node), yylloc.first_line); delete (yyvsp[-3].let_decl); }
 #line 2074 "build/parser.tab.cpp"
     break;
 
   case 70: /* let_expr: LET decl IN '(' body ')' ';'  */
-#line 408 "src/parser.y"
+#line 408 "src/parser/parser.y"
                                               { (yyval.node) = new LetNode((yyvsp[-5].let_decl), (yyvsp[-2].node), yylloc.first_line); delete (yyvsp[-5].let_decl); }
 #line 2080 "build/parser.tab.cpp"
     break;
 
   case 71: /* decl: ID '=' expression  */
-#line 412 "src/parser.y"
+#line 412 "src/parser/parser.y"
                                             {
                                                 LetDeclaration d;
                                                 d.name = *(yyvsp[-2].str);
@@ -2092,7 +2092,7 @@ yyreduce:
     break;
 
   case 72: /* decl: decl ',' ID '=' expression  */
-#line 419 "src/parser.y"
+#line 419 "src/parser/parser.y"
                                             {
                                                 LetDeclaration d;
                                                 d.name = *(yyvsp[-2].str);
@@ -2104,19 +2104,19 @@ yyreduce:
     break;
 
   case 73: /* body: statement  */
-#line 429 "src/parser.y"
+#line 429 "src/parser/parser.y"
                                             { (yyval.node) = (yyvsp[0].node); }
 #line 2110 "build/parser.tab.cpp"
     break;
 
   case 74: /* body: expression  */
-#line 430 "src/parser.y"
+#line 430 "src/parser/parser.y"
                                             { (yyval.node) = (yyvsp[0].node); }
 #line 2116 "build/parser.tab.cpp"
     break;
 
   case 75: /* body: PRINT '(' expression ')'  */
-#line 431 "src/parser.y"
+#line 431 "src/parser/parser.y"
                                             { 
                                                 std::vector<ASTNode*> args = vectorize((yyvsp[-1].node), nullptr, 1);
                                                 (yyval.node) = new BuiltInFunctionNode("print", args, yylloc.first_line);
@@ -2125,19 +2125,19 @@ yyreduce:
     break;
 
   case 76: /* if_expr: if_head  */
-#line 438 "src/parser.y"
+#line 438 "src/parser/parser.y"
                                         { (yyval.node) = new IfNode((yyvsp[0].if_branch), nullptr, yylloc.first_line); }
 #line 2131 "build/parser.tab.cpp"
     break;
 
   case 77: /* if_expr: if_head ELSE body  */
-#line 439 "src/parser.y"
+#line 439 "src/parser/parser.y"
                                         { (yyval.node) = new IfNode((yyvsp[-2].if_branch), (yyvsp[0].node), yylloc.first_line); }
 #line 2137 "build/parser.tab.cpp"
     break;
 
   case 78: /* if_head: IF '(' expression ')' body  */
-#line 443 "src/parser.y"
+#line 443 "src/parser/parser.y"
                                                             { 
                                                                 IfBranch b;
                                                                 b.condition = (yyvsp[-2].node);
@@ -2149,7 +2149,7 @@ yyreduce:
     break;
 
   case 79: /* if_head: if_head ELIF '(' expression ')' body  */
-#line 450 "src/parser.y"
+#line 450 "src/parser/parser.y"
                                                             { 
                                                                 IfBranch b;
                                                                 b.condition = (yyvsp[-2].node);
@@ -2161,13 +2161,13 @@ yyreduce:
     break;
 
   case 80: /* while_expr: WHILE '(' expression ')' body  */
-#line 460 "src/parser.y"
+#line 460 "src/parser/parser.y"
                                                             { (yyval.node) = new WhileNode((yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line); }
 #line 2167 "build/parser.tab.cpp"
     break;
 
   case 81: /* for_expr: FOR '(' ID IN RANGE '(' expression ',' expression ')' ')' body  */
-#line 464 "src/parser.y"
+#line 464 "src/parser/parser.y"
                                                                                 { (yyval.node) = new ForNode(*(yyvsp[-9].str), (yyvsp[-5].node), (yyvsp[-3].node), (yyvsp[0].node), yylloc.first_line); delete (yyvsp[-9].str); }
 #line 2173 "build/parser.tab.cpp"
     break;
@@ -2371,7 +2371,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 467 "src/parser.y"
+#line 467 "src/parser/parser.y"
 
 
 void yyerror(const char *msg) {

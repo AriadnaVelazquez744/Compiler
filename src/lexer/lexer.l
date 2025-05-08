@@ -1,5 +1,5 @@
 %{
-#include "../build/parser.tab.hpp"     
+#include "../../build/parser.tab.hpp"     
 #include <string>
 
 // Variables para seguimiento de columnas

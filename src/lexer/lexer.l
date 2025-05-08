@@ -20,7 +20,11 @@ int yycolumn = 1;
 
 %%
 
-[0-9]+(\.[0-9]+)?     { 
+[_]+[a-zA-Z0-9_]+       { fprintf(stderr, "Error léxico. Variable inválida: '%s' en %d:%d\n", yytext, yylineno, yylloc.first_column); }
+[0-9]+[a-zA-Z_]+        { fprintf(stderr, "Error léxico. Variable inválida: '%s' en %d:%d\n", yytext, yylineno, yylloc.first_column); }
+
+
+[0-9]+(\.[0-9]+)?       { 
                             yylval.num = atof(yytext); 
                             printf("Token: %s → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
                             return NUMBER; 

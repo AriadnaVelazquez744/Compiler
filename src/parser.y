@@ -290,15 +290,9 @@ statement:
             | RANDOM '(' ')' {
                 $$ = new std::string("random()");
                 TRACE($$);
-            }
-            | E {
-                $$ = new std::string("e");
-                TRACE($$);
-            }
-            | PI {
-                $$ = new std::string("pi");
-                TRACE($$);
             } */
+            | E     { $$ = new IdentifierNode("e", yylloc.first_line); }
+            | PI    { $$ = new IdentifierNode("pi", yylloc.first_line); }
 
             | expression CONCAT expression {
                 $$ = new BinaryOpNode("@", $1, $3, yylloc.first_line);

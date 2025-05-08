@@ -264,46 +264,46 @@ statement:
                 $$ = $2;
             }
 
-            /* | SIN '(' expression ')' {
-                $$ = new std::string("sin(" + *$3 + ")");
+            | SIN '(' expression ')' {
+                std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
+                $$ = new BuiltInFunctionNode("sin", args, yylloc.first_line);
                 delete $3;
-                TRACE($$);
             }
             | COS '(' expression ')' {
-                $$ = new std::string("cos(" + *$3 + ")");
+                std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
+                $$ = new BuiltInFunctionNode("cos", args, yylloc.first_line);
                 delete $3;
-                TRACE($$);
             }
             | MIN '(' expression ',' expression ')' {
-                $$ = new std::string("min(" + *$3 + ", " + *$5 + ")");
+                std::vector<ASTNode*> args = vectorize($3, $5, 2);
+                $$ = new BuiltInFunctionNode("min", args, yylloc.first_line);
                 delete $3; delete $5;
-                TRACE($$);
             }
             | MAX '(' expression ',' expression ')' {
-                $$ = new std::string("max(" + *$3 + ", " + *$5 + ")");
+                std::vector<ASTNode*> args = vectorize($3, $5, 2);
+                $$ = new BuiltInFunctionNode("max", args, yylloc.first_line);
                 delete $3; delete $5;
-                TRACE($$);
             }
             | SQRT '(' expression ')' {
-                $$ = new std::string("sqrt(" + *$3 + ")");
+                std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
+                $$ = new BuiltInFunctionNode("sqrt", args, yylloc.first_line);
                 delete $3;
-                TRACE($$);
             }
             | LOG '(' expression ',' expression ')' {
-                $$ = new std::string("log(" + *$3 + ", " + *$5 + ")");
+                std::vector<ASTNode*> args = vectorize($3, $5, 2);
+                $$ = new BuiltInFunctionNode("log", args, yylloc.first_line);
                 delete $3; delete $5;
-                TRACE($$);
             }
             | EXP '(' expression ')' {
-                $$ = new std::string("exp(" + *$3 + ")");
+                std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
+                $$ = new BuiltInFunctionNode("print", args, yylloc.first_line);
                 delete $3;
-                TRACE($$);
             }
 
             | RANDOM '(' ')' {
-                $$ = new std::string("random()");
-                TRACE($$);
-            } */
+                std::vector<ASTNode*> args = vectorize(nullptr, nullptr, 0);
+                $$ = new BuiltInFunctionNode("rand", args, yylloc.first_line);
+            }
             | E     { $$ = new IdentifierNode("e", yylloc.first_line); }
             | PI    { $$ = new IdentifierNode("pi", yylloc.first_line); }
 

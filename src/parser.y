@@ -242,10 +242,10 @@ statement:
                 delete $1; delete $3;
             }
 
-            /* | SUB NUMBER {
-                $$ = new std::string("-" + std::to_string($2));
-                TRACE($$);
-            } */
+            | SUB expression {
+                $$ = new UnaryOpNode("-", $2, yylloc.first_line);
+                delete $2;
+            }
 
             | '(' expression ')' {
                 $$ = $2;
@@ -344,11 +344,10 @@ statement:
                 $$ = new BinaryOpNode("|", $1, $3, yylloc.first_line);
                 delete $1; delete $3;
             }
-            /* | NOT expression {
-                $$ = new std::string("(!" + *$2 + ")");
+            | NOT expression {
+                $$ = new UnaryOpNode("!", $2, yylloc.first_line);
                 delete $2;
-                TRACE($$);
-            } */
+            }
         ;
 
         block_expr:

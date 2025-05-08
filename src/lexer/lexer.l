@@ -25,7 +25,7 @@ int yycolumn = 1;
                             printf("Token: %s → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);
                             return NUMBER; 
                         }
-\"([^\"]*)\"            {
+\"(?:\\.|[^"])*\"       {
                             std::string raw = yytext;
                             yylval.str = new std::string(raw.substr(1, raw.size() - 2));
                             printf("String: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);

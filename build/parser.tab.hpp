@@ -45,7 +45,7 @@
 extern int yydebug;
 #endif
 /* "%code requires" blocks.  */
-#line 25 "src/parser.y"
+#line 35 "src/parser.y"
 
     #include <string>
     #include <iostream>
@@ -122,7 +122,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 37 "src/parser.y"
+#line 47 "src/parser.y"
 
     double num;  // Tipo para números (enteros y decimales)
     std::string* str; 

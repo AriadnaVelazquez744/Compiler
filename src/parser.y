@@ -20,6 +20,16 @@ ASTNode* root;
 #define PI_VAL 3.14159265358979323846
 #define TRACE(EXPR) std::cout << "elem_expr: " << *EXPR << std::endl;
 
+std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
+    
+    std::vector<ASTNode*> args = std::vector<ASTNode*>();
+    
+    if ((n == 1) || (n == 2)) { args.push_back(arg1); }
+    if (n == 2) { args.push_back(arg2); }
+
+    return args;
+}
+
 %}
 
 %code requires {
@@ -156,8 +166,11 @@ program:
 
 statement:
     expression ';'                  { $$ = $1; delete $1; }
-    /* | PRINT '(' expression ')' ';'  { std::cout << "Salida: " << *$3 << std::endl; }
-    | READ ';'                      { 
+    | PRINT '(' expression ')' ';'  { 
+                                        std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
+                                        $$ = new BuiltInFunctionNode("print", args, yylloc.first_line);
+                                    }
+    /* | READ ';'                      { 
                                         std::string input; 
                                         //std::cin >> input;
                                         std::getline(std::cin, input); 
@@ -415,7 +428,10 @@ statement:
         body:
               statement                     { $$ = $1; }
             | expression                    { $$ = $1; }
-            /* | PRINT '(' expression ')'      { std::cout << "Salida: " << *$3 << std::endl; } */
+            | PRINT '(' expression ')'      { 
+                                                std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
+                                                $$ = new BuiltInFunctionNode("print", args, yylloc.first_line);
+                                            }
         ;
 
         if_expr:

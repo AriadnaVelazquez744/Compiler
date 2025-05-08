@@ -57,7 +57,7 @@ int yycolumn = 1;
 [/]                     { printf(" / \n"); return DIV; }
 [%]                     { printf(" mod \n"); return MOD; }
 [\^]                    { printf(" ^ \n"); return POW; }
-
+[*][*]                  { printf(" ** \n"); return POW; }
 
 [<]                     { printf(" < \n"); return LT; }
 [>]                     { printf(" > \n"); return GT; }

@@ -1,6 +1,6 @@
 #include <iostream>
-#include "../include/AST.hpp"
-#include "../include/SemanticAnalyzer.hpp"
+#include "../src/ast/AST.hpp"
+#include "../src/semantic/SemanticAnalyzer.hpp"
 
 void testFunctionSemantics() {
     // Test 1: Parámetros duplicados

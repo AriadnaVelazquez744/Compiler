@@ -8,12 +8,29 @@
 
 void SemanticAnalyzer::analyze(ASTNode* root) {
     // Fase 1: Recolectar funciones
+    std::cout << "Entra en analyze." << std::endl;
     FunctionCollector collector(symbolTable, errors);
+    std::cout << "Pasa functioncollector." << std::endl;
+
     collector.addBuiltins();
-    root->accept(collector);
+    std::cout << "collector working." << std::endl;
+
+    try {
+        root->accept(collector);
+        std::cout << "Aceptar primero." << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Excepción durante la recolección de funciones: " << e.what() << std::endl;
+        return;
+    }
 
     // Fase 2: Análisis semántico completo
-    root->accept(*this);
+    try {
+        root->accept(*this);
+        std::cout << "Aceptar segundo." << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Excepción durante el análisis semántico: " << e.what() << std::endl;
+        return;
+    }
 }
 
 void SemanticAnalyzer::visit(ASTNode& node) {}

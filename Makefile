@@ -1,11 +1,16 @@
 # === VARIABLES GLOBALES ===
 
 # Herramientas
+CXX     := g++
 BISON   := bison
 FLEX    := flex
-CXX     := g++
+LLVM	:= llvm-config
+
 CXXFLAGS := -std=c++17 -Wall -Wextra -g	-Isrc	-Isrc/ast	-Wno-free-nonheap-object
 LDFLAGS += -lfl -lstdc++
+
+LLVM_CXXFLAGS := $(shell $(LLVM) --cxxflags)
+LLVM_LDFLAGS := $(shell $(LLVM) --ldflags --system-libs --libs core orcjit native)
 
 # Directorios
 BUILD_DIR := build
@@ -32,13 +37,10 @@ YACC_OBJ = $(BUILD_DIR)/parser/parser.tab.o
 CPP_SRC := $(shell find $(SRC_DIR) -name "*.cpp" ! -name "main.cpp")
 CPP_OBJ := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(CPP_SRC))
 
-# Fuentes del proyecto
-#SOURCES := $(SRC_DIR)/main.cpp
-#OBJECTS := $(SOURCES:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
-
 OBJS := $(MAIN_OBJ) $(CPP_OBJ) $(YACC_OBJ) $(LEX_OBJ)
-EXEC := hulk-compiler
 
+EXEC := hulk-compiler
+LLVM_IR := $(BUILD_DIR)/output.ll
 
 # === TARGETS ===
 
@@ -87,10 +89,10 @@ $(YACC_OBJ): $(PARSER_SRC)
 # Compilar main.cpp y otros .cpp
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
-	$(CXX)	$(CXXFLAGS)	-c	$<	-o	$@
+	$(CXX)	$(CXXFLAGS)	$(LLVM_CXXFLAGS)	-c	$<	-o	$@
 
 $(EXEC): $(OBJS) 
-	$(CXX) $(CXXFLAGS) -o $(EXEC) $(OBJS)
+	$(CXX)	$(CXXFLAGS)	$(LLVM_CXXFLAGS)	-o	$(EXEC) $(OBJS)
 	@echo	"✅ Compilación completa. Ejecutable en $(EXEC)"
 
 # === META ===

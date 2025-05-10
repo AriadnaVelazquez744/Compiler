@@ -1571,7 +1571,7 @@ yyreduce:
 
   case 5: /* statement: expression ';'  */
 #line 168 "src/parser/parser.y"
-                                    { (yyval.node) = (yyvsp[-1].node); delete (yyvsp[-1].node); }
+                                    { (yyval.node) = (yyvsp[-1].node); }
 #line 1576 "build/parser.tab.cpp"
     break;
 
@@ -1595,7 +1595,7 @@ yyreduce:
                                     {
                                         (yyval.node) = new FunctionDeclarationNode(*(yyvsp[-5].str), (yyvsp[-3].param), (yyvsp[0].node), true, yylloc.first_line);
                                         std::cout << "Definición función inline: " << *(yyvsp[-5].str) << std::endl;
-                                        delete (yyvsp[-5].str); delete (yyvsp[-3].param);
+                                        
                                     }
 #line 1601 "build/parser.tab.cpp"
     break;
@@ -1605,7 +1605,7 @@ yyreduce:
                                     {
                                         (yyval.node) = new FunctionDeclarationNode(*(yyvsp[-4].str), (yyvsp[-2].param), (yyvsp[0].node), false, yylloc.first_line);
                                         std::cout << "Definición función bloque: " << *(yyvsp[-4].str) << std::endl;
-                                        delete (yyvsp[-4].str); delete (yyvsp[-2].param);
+                                        
                                     }
 #line 1611 "build/parser.tab.cpp"
     break;
@@ -1636,7 +1636,7 @@ yyreduce:
 
   case 14: /* expression: STRING  */
 #line 217 "src/parser/parser.y"
-                                { (yyval.node) = new LiteralNode(*(yyvsp[0].str), "String", yylloc.first_line); delete (yyvsp[0].str); }
+                                { (yyval.node) = new LiteralNode(*(yyvsp[0].str), "String", yylloc.first_line);  }
 #line 1641 "build/parser.tab.cpp"
     break;
 
@@ -1710,7 +1710,7 @@ yyreduce:
 #line 232 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("+", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+                
             }
 #line 1716 "build/parser.tab.cpp"
     break;
@@ -1719,7 +1719,7 @@ yyreduce:
 #line 236 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("-", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+                
             }
 #line 1725 "build/parser.tab.cpp"
     break;
@@ -1728,7 +1728,7 @@ yyreduce:
 #line 240 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("*", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+                
             }
 #line 1734 "build/parser.tab.cpp"
     break;
@@ -1737,7 +1737,7 @@ yyreduce:
 #line 244 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("/", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+                
             }
 #line 1743 "build/parser.tab.cpp"
     break;
@@ -1747,7 +1747,7 @@ yyreduce:
                                         {
                 
                 (yyval.node) = new BinaryOpNode("%", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+                
             }
 #line 1753 "build/parser.tab.cpp"
     break;
@@ -1756,7 +1756,7 @@ yyreduce:
 #line 253 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("^", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+                
             }
 #line 1762 "build/parser.tab.cpp"
     break;
@@ -1765,7 +1765,7 @@ yyreduce:
 #line 258 "src/parser/parser.y"
                              {
                 (yyval.node) = new UnaryOpNode("-", (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[0].node);
+                
             }
 #line 1771 "build/parser.tab.cpp"
     break;
@@ -1783,7 +1783,7 @@ yyreduce:
                                      {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-1].node), nullptr, 1);
                 (yyval.node) = new BuiltInFunctionNode("sin", args, yylloc.first_line);
-                delete (yyvsp[-1].node);
+               
             }
 #line 1789 "build/parser.tab.cpp"
     break;
@@ -1793,7 +1793,7 @@ yyreduce:
                                      {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-1].node), nullptr, 1);
                 (yyval.node) = new BuiltInFunctionNode("cos", args, yylloc.first_line);
-                delete (yyvsp[-1].node);
+                
             }
 #line 1799 "build/parser.tab.cpp"
     break;
@@ -1803,7 +1803,7 @@ yyreduce:
                                                     {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-3].node), (yyvsp[-1].node), 2);
                 (yyval.node) = new BuiltInFunctionNode("min", args, yylloc.first_line);
-                delete (yyvsp[-3].node); delete (yyvsp[-1].node);
+                
             }
 #line 1809 "build/parser.tab.cpp"
     break;
@@ -1813,7 +1813,7 @@ yyreduce:
                                                     {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-3].node), (yyvsp[-1].node), 2);
                 (yyval.node) = new BuiltInFunctionNode("max", args, yylloc.first_line);
-                delete (yyvsp[-3].node); delete (yyvsp[-1].node);
+                
             }
 #line 1819 "build/parser.tab.cpp"
     break;
@@ -1823,7 +1823,7 @@ yyreduce:
                                       {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-1].node), nullptr, 1);
                 (yyval.node) = new BuiltInFunctionNode("sqrt", args, yylloc.first_line);
-                delete (yyvsp[-1].node);
+                
             }
 #line 1829 "build/parser.tab.cpp"
     break;
@@ -1833,7 +1833,7 @@ yyreduce:
                                                     {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-3].node), (yyvsp[-1].node), 2);
                 (yyval.node) = new BuiltInFunctionNode("log", args, yylloc.first_line);
-                delete (yyvsp[-3].node); delete (yyvsp[-1].node);
+                
             }
 #line 1839 "build/parser.tab.cpp"
     break;
@@ -1843,7 +1843,7 @@ yyreduce:
                                      {
                 std::vector<ASTNode*> args = vectorize((yyvsp[-1].node), nullptr, 1);
                 (yyval.node) = new BuiltInFunctionNode("print", args, yylloc.first_line);
-                delete (yyvsp[-1].node);
+                
             }
 #line 1849 "build/parser.tab.cpp"
     break;
@@ -1873,7 +1873,7 @@ yyreduce:
 #line 310 "src/parser/parser.y"
                                            {
                 (yyval.node) = new BinaryOpNode("@", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+               
             }
 #line 1879 "build/parser.tab.cpp"
     break;
@@ -1882,7 +1882,7 @@ yyreduce:
 #line 314 "src/parser/parser.y"
                                                  {
                 (yyval.node) = new BinaryOpNode("@@", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+               
             }
 #line 1888 "build/parser.tab.cpp"
     break;
@@ -1892,7 +1892,7 @@ yyreduce:
                                        {
                 
                 (yyval.node) = new BinaryOpNode("<", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+                
             }
 #line 1898 "build/parser.tab.cpp"
     break;
@@ -1901,7 +1901,7 @@ yyreduce:
 #line 324 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode(">", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+                
             }
 #line 1907 "build/parser.tab.cpp"
     break;
@@ -1910,7 +1910,7 @@ yyreduce:
 #line 328 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode("<=", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+               
             }
 #line 1916 "build/parser.tab.cpp"
     break;
@@ -1919,7 +1919,7 @@ yyreduce:
 #line 332 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode(">=", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+                
             }
 #line 1925 "build/parser.tab.cpp"
     break;
@@ -1928,7 +1928,7 @@ yyreduce:
 #line 337 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode("==", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+               
             }
 #line 1934 "build/parser.tab.cpp"
     break;
@@ -1937,7 +1937,7 @@ yyreduce:
 #line 341 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode("!=", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+               
             }
 #line 1943 "build/parser.tab.cpp"
     break;
@@ -1946,7 +1946,7 @@ yyreduce:
 #line 346 "src/parser/parser.y"
                                         {
                 (yyval.node) = new BinaryOpNode("&", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+                
             }
 #line 1952 "build/parser.tab.cpp"
     break;
@@ -1955,7 +1955,7 @@ yyreduce:
 #line 350 "src/parser/parser.y"
                                        {
                 (yyval.node) = new BinaryOpNode("|", (yyvsp[-2].node), (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[-2].node); delete (yyvsp[0].node);
+                
             }
 #line 1961 "build/parser.tab.cpp"
     break;
@@ -1964,7 +1964,7 @@ yyreduce:
 #line 354 "src/parser/parser.y"
                              {
                 (yyval.node) = new UnaryOpNode("!", (yyvsp[0].node), yylloc.first_line);
-                delete (yyvsp[0].node);
+               
             }
 #line 1970 "build/parser.tab.cpp"
     break;
@@ -1973,7 +1973,7 @@ yyreduce:
 #line 361 "src/parser/parser.y"
                                 {
                                     (yyval.node) = new BlockNode(*(yyvsp[-1].list), yylloc.first_line); // Placeholder
-                                    delete (yyvsp[-1].list);
+                                   
                                 }
 #line 1979 "build/parser.tab.cpp"
     break;
@@ -2009,7 +2009,7 @@ yyreduce:
                                     p.name = *(yyvsp[0].str);
                                     (yyval.param) = new std::vector<Parameter>(); 
                                     (yyval.param)->push_back(p); 
-                                    delete (yyvsp[0].str);
+                                   
                                 }
 #line 2015 "build/parser.tab.cpp"
     break;
@@ -2027,7 +2027,7 @@ yyreduce:
 
   case 62: /* func_call_expr: ID '(' args ')'  */
 #line 391 "src/parser/parser.y"
-                                { (yyval.node) = new FunctionCallNode(*(yyvsp[-3].str), *(yyvsp[-1].list), yylloc.first_line); delete (yyvsp[-3].str); delete (yyvsp[-1].list);}
+                                { (yyval.node) = new FunctionCallNode(*(yyvsp[-3].str), *(yyvsp[-1].list), yylloc.first_line); }
 #line 2032 "build/parser.tab.cpp"
     break;
 
@@ -2051,31 +2051,31 @@ yyreduce:
 
   case 66: /* assign_expr: ID REASSIGN expression  */
 #line 401 "src/parser/parser.y"
-                                      { (yyval.node) = new AssignmentNode(*(yyvsp[-2].str), (yyvsp[0].node), yylloc.first_line); delete (yyvsp[-2].str); }
+                                      { (yyval.node) = new AssignmentNode(*(yyvsp[-2].str), (yyvsp[0].node), yylloc.first_line);  }
 #line 2056 "build/parser.tab.cpp"
     break;
 
   case 67: /* let_expr: LET decl IN body  */
 #line 405 "src/parser/parser.y"
-                                              { (yyval.node) = new LetNode((yyvsp[-2].let_decl), (yyvsp[0].node), yylloc.first_line); delete (yyvsp[-2].let_decl); }
+                                              { (yyval.node) = new LetNode((yyvsp[-2].let_decl), (yyvsp[0].node), yylloc.first_line);  }
 #line 2062 "build/parser.tab.cpp"
     break;
 
   case 68: /* let_expr: LET decl IN '(' body ')'  */
 #line 406 "src/parser/parser.y"
-                                              { (yyval.node) = new LetNode((yyvsp[-4].let_decl), (yyvsp[-1].node), yylloc.first_line); delete (yyvsp[-4].let_decl); }
+                                              { (yyval.node) = new LetNode((yyvsp[-4].let_decl), (yyvsp[-1].node), yylloc.first_line);  }
 #line 2068 "build/parser.tab.cpp"
     break;
 
   case 69: /* let_expr: LET decl IN body ';'  */
 #line 407 "src/parser/parser.y"
-                                              { (yyval.node) = new LetNode((yyvsp[-3].let_decl), (yyvsp[-1].node), yylloc.first_line); delete (yyvsp[-3].let_decl); }
+                                              { (yyval.node) = new LetNode((yyvsp[-3].let_decl), (yyvsp[-1].node), yylloc.first_line);  }
 #line 2074 "build/parser.tab.cpp"
     break;
 
   case 70: /* let_expr: LET decl IN '(' body ')' ';'  */
 #line 408 "src/parser/parser.y"
-                                              { (yyval.node) = new LetNode((yyvsp[-5].let_decl), (yyvsp[-2].node), yylloc.first_line); delete (yyvsp[-5].let_decl); }
+                                              { (yyval.node) = new LetNode((yyvsp[-5].let_decl), (yyvsp[-2].node), yylloc.first_line);  }
 #line 2080 "build/parser.tab.cpp"
     break;
 
@@ -2086,7 +2086,7 @@ yyreduce:
                                                 d.name = *(yyvsp[-2].str);
                                                 d.initializer = (yyvsp[0].node);
                                                 (yyval.let_decl) = new std::vector<LetDeclaration>();
-                                                (yyval.let_decl)->push_back(d); delete (yyvsp[-2].str);
+                                                (yyval.let_decl)->push_back(d); 
                                             }
 #line 2092 "build/parser.tab.cpp"
     break;
@@ -2098,7 +2098,7 @@ yyreduce:
                                                 d.name = *(yyvsp[-2].str);
                                                 d.initializer = (yyvsp[0].node);
                                                 (yyvsp[-4].let_decl)->push_back(d); (yyval.let_decl) = (yyvsp[-4].let_decl);
-                                                delete (yyvsp[-2].str);
+                                               
                                             }
 #line 2104 "build/parser.tab.cpp"
     break;
@@ -2168,7 +2168,7 @@ yyreduce:
 
   case 81: /* for_expr: FOR '(' ID IN RANGE '(' expression ',' expression ')' ')' body  */
 #line 464 "src/parser/parser.y"
-                                                                                { (yyval.node) = new ForNode(*(yyvsp[-9].str), (yyvsp[-5].node), (yyvsp[-3].node), (yyvsp[0].node), yylloc.first_line); delete (yyvsp[-9].str); }
+                                                                                { (yyval.node) = new ForNode(*(yyvsp[-9].str), (yyvsp[-5].node), (yyvsp[-3].node), (yyvsp[0].node), yylloc.first_line); }
 #line 2173 "build/parser.tab.cpp"
     break;
 

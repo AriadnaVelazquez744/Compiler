@@ -62,6 +62,11 @@ int main(int argc, char **argv) {
 
     std::cout << "AST terminado." << std::endl;
 
+    for (auto node : root) {
+        std::cout << "Tipo de nodo raíz: " << node->type() 
+                << " | Línea: " << node->line() << "\n";
+    }
+
     // Crear el analizador semántico
     SemanticAnalyzer semanticAnalyzer;
 
@@ -72,22 +77,22 @@ int main(int argc, char **argv) {
 
     std::cout << "Análisis semántico completado exitosamente." << std::endl;
 
-    // CodeGenContext codegen;
+    CodeGenContext codegen;
         
-    // std::cout << "Instancia generador definida." << std::endl;
+    std::cout << "Instancia generador definida." << std::endl;
 
-    // try {
-    //     codegen.generateCode(root);
-    // } catch (const std::exception& e) {
-    //     std::cerr << "Error during code generation: " << e.what() << std::endl;
-    //     return 1;
-    // }
+    try {
+        codegen.generateCode(root);
+    } catch (const std::exception& e) {
+        std::cerr << "Error during code generation: " << e.what() << std::endl;
+        return 1;
+    }
 
-    // std::cout << "Generación de código completada." << std::endl;
+    std::cout << "Generación de código completada." << std::endl;
 
-    // codegen.dumpIR("output.ll");
+    codegen.dumpIR("output.ll");
 
-    // std::cout << "Volcando IR en output.ll." << std::endl;
+    std::cout << "Volcando IR en output.ll." << std::endl;
 
     // Liberar memoria del AST
     delete_ast(root);

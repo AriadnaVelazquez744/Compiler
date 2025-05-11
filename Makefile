@@ -13,7 +13,7 @@ LLVM_CXXFLAGS 	:= $(filter-out -fno-exceptions, $(shell $(LLVM) --cxxflags))
 LLVM_LDFLAGS	:= $(shell $(LLVM) --ldflags --libs all --system-libs)
 
 # Directorios
-BUILD_DIR := build
+BUILD_DIR := .build
 SRC_DIR := src
 LEXER_DIR := $(SRC_DIR)/lexer
 PARSER_DIR := $(SRC_DIR)/parser
@@ -40,51 +40,33 @@ CPP_OBJ := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(CPP_SRC))
 OBJS := $(MAIN_OBJ) $(CPP_OBJ) $(YACC_OBJ) $(LEX_OBJ)
 
 EXEC := hulk-compiler
-# LLVM_IR := output.ll
-# CODE	:= output
-
-# === TARGETS ===
-
-all:	compile
-
-compile:	$(BUILD_DIR)	$(EXEC)	
-	@echo	"✅ Build completo. Ejecutable en $(EXEC)"
-
-# execute: compile
-# 	@echo "🚀 Ejecutando .hulk..."
-# 	@./$(EXEC)	$(word 2, $(MAKECMDGOALS))
-
-# %:
-# 	@:
-
-# clean:
-# 	rm	-rf	$(BUILD_DIR)	$(EXEC)	$(LLVM_IR)	$(CODE)
-# 	@echo "🧹 Proyecto limpiado."
-
-# === VARIABLES GLOBALES ===
-# Añadir estas líneas en la sección de variables
 INPUT_FILE := $(word 2, $(MAKECMDGOALS))
 LLVM_IR := output.ll
-EXECUTABLE := output
+CODE := output
 
 # === TARGETS ===
-# Modificar el target execute
-execute: compile $(LLVM_IR) $(EXECUTABLE)
+all:	build
+
+build:	$(BUILD_DIR)	$(EXEC)	
+	@echo	"✅ Build completo. Ejecutable en $(EXEC)"
+
+run: build $(LLVM_IR) $(CODE)
 	@echo "🚀 Ejecutando programa..."
-	@./$(EXECUTABLE)
+	@./$(CODE)
 	@echo "🏁 Ejecución completada"
 
-# Añadir nuevas reglas para compilar el IR
-$(LLVM_IR): compile
+$(LLVM_IR): build
 	@./$(EXEC) $(INPUT_FILE)
+%:
+	@:
 
-$(EXECUTABLE): $(LLVM_IR)
+$(CODE): $(LLVM_IR)
 	@clang $< -o $@
-	@echo "🔨 Generado ejecutable: $(EXECUTABLE)"
+	@echo "🔨 Generado ejecutable: $(CODE)"
 
 # Modificar el clean
 clean:
-	rm -rf $(BUILD_DIR) $(EXEC) $(LLVM_IR) $(EXECUTABLE)
+	rm -rf $(BUILD_DIR) $(EXEC) $(LLVM_IR) $(CODE)
 	@echo "🧹 Proyecto limpiado."
 
 # === REGLAS DE COMPILACIÓN ===
@@ -123,4 +105,4 @@ $(EXEC): $(OBJS)
 	@echo	"✅ Compilación completa. Ejecutable en $(EXEC)"
 
 # === META ===
-.PHONY: all compile execute clean
+.PHONY: all build run clean

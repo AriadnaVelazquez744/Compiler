@@ -6,31 +6,44 @@
 #include <iostream>
 
 
-void SemanticAnalyzer::analyze(ASTNode* root) {
-    // Fase 1: Recolectar funciones
+void SemanticAnalyzer::analyze(const std::vector<ASTNode*>& nodes) {
     std::cout << "Entra en analyze." << std::endl;
+
     FunctionCollector collector(symbolTable, errors);
-    std::cout << "Pasa functioncollector." << std::endl;
-
     collector.addBuiltins();
-    std::cout << "collector working." << std::endl;
+    std::cout << "Builtins agregados." << std::endl;
 
-    try {
-        root->accept(collector);
-        std::cout << "Aceptar primero." << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "Excepción durante la recolección de funciones: " << e.what() << std::endl;
-        return;
+    for (ASTNode* node : nodes) {
+        if (!node) {
+            std::cerr << "Nodo nulo en AST." << std::endl;
+            continue;
+        }
+
+        std::cout << "Recolectando funciones para nodo tipo: " << typeid(*node).name() << std::endl;
+        node->accept(collector);
     }
 
-    // Fase 2: Análisis semántico completo
-    try {
-        root->accept(*this);
-        std::cout << "Aceptar segundo." << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "Excepción durante el análisis semántico: " << e.what() << std::endl;
-        return;
+    std::cout << "Fase de recolección completada." << std::endl;
+
+    for (ASTNode* node : nodes) {
+        try {
+            std::cout << "Análisis semántico de: " << typeid(*node).name() << std::endl;
+            node->accept(*this);
+        } catch (const std::exception& e) {
+            std::cerr << "Error durante análisis semántico: " << e.what() << std::endl;
+        }
     }
+
+    if (!errors.empty()) {
+        std::cerr << "Errores semánticos encontrados:\n";
+        for (const auto& e : errors) {
+            std::cerr << "- Línea " << e.line << ": " << e.message << "\n";
+        }
+    } else {
+        std::cout << "No se encontraron errores semánticos.\n";
+    }
+
+    std::cout << "Análisis semántico completado." << std::endl;
 }
 
 void SemanticAnalyzer::visit(ASTNode& node) {}
@@ -211,28 +224,28 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
     const std::set<std::string> comparisonOps = {"==", "!=", "<", ">", "<=", ">="};
     
     if (comparisonOps.count(node.op)) {
-        if (leftType != "number" || rightType != "number") {
+        if (leftType != "Number" || rightType != "Number") {
             errors.emplace_back("Operandos de " + node.op + " deben ser números", node.line());
             node._type = "error"; // Marcar como error si los tipos son inválidos
         } else {
-            node._type = "boolean"; // Solo asignar boolean si los operandos son válidos
+            node._type = "Boolean"; // Solo asignar boolean si los operandos son válidos
         }
     }
     // Operador de concatenación @
 
     else if (node.op == "@") {
-        if (leftType != "string" && leftType != "number") {
+        if (leftType != "String" && leftType != "Number") {
             errors.emplace_back("Operando izquierdo de @ debe ser string o number", node.line());
         }
-        if (rightType != "string" && rightType != "number") {
+        if (rightType != "String" && rightType != "Number") {
             errors.emplace_back("Operando derecho de @ debe ser string o number", node.line());
         }
-        node._type = "string";
+        node._type = "String";
     } else {
-        if (leftType != "number" || rightType != "number") {
+        if (leftType != "Number" || rightType != "Number") {
             errors.emplace_back("Operandos de " + node.op + " deben ser números", node.line());
         }
-        node._type = "number";
+        node._type = "Number";
     }
 }
 

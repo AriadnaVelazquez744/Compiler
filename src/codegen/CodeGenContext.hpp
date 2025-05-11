@@ -23,6 +23,6 @@ public:
 
     CodeGenContext();  // Constructor initializes builder and module
 
-    void generateCode(ASTNode* root);                  // Main entry: triggers IR generation
+    void generateCode(std::vector<ASTNode*>& root);                  // Main entry: triggers IR generation
     void dumpIR(const std::string& filename = "output.ll"); // Dumps IR to .ll file
 };

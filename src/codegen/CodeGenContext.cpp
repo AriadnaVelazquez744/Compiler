@@ -9,7 +9,7 @@
 CodeGenContext::CodeGenContext()
     : builder(context), module("hulk_module", context) {}  // Associate module and builder with context
 
-void CodeGenContext::generateCode(ASTNode* root) {
+void CodeGenContext::generateCode(std::vector<ASTNode*>& root) {
     // Declare printf and puts for printing
     llvm::FunctionType* printfType = llvm::FunctionType::get(
         llvm::Type::getInt32Ty(context),
@@ -35,9 +35,11 @@ void CodeGenContext::generateCode(ASTNode* root) {
     llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", mainFunc);
     builder.SetInsertPoint(entry);
 
-    // Generate code for the AST (values are pushed to the stack)
+    // Generar código para todos los nodos AST
     LLVMGenerator generator(*this);
-    root->accept(generator);
+    for (ASTNode* node : root) { // 🆕 Iterar sobre cada nodo
+        node->accept(generator);
+    }
 
     // Print all remaining values on the stack
     for (llvm::Value* val : valueStack) {

@@ -15,7 +15,7 @@ private:
     bool isValidIdentifier(const std::string& name);
 
 public:
-    void analyze(ASTNode* root);
+    void analyze(const std::vector<ASTNode*>& nodes);
 
     // Métodos visit
     void visit(FunctionDeclarationNode& node) override;

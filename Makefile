@@ -40,8 +40,8 @@ CPP_OBJ := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(CPP_SRC))
 OBJS := $(MAIN_OBJ) $(CPP_OBJ) $(YACC_OBJ) $(LEX_OBJ)
 
 EXEC := hulk-compiler
-LLVM_IR := output.ll
-CODE	:= output
+# LLVM_IR := output.ll
+# CODE	:= output
 
 # === TARGETS ===
 
@@ -50,15 +50,41 @@ all:	compile
 compile:	$(BUILD_DIR)	$(EXEC)	
 	@echo	"✅ Build completo. Ejecutable en $(EXEC)"
 
-execute: compile
-	@echo "🚀 Ejecutando .hulk..."
-	@./$(EXEC)	$(word 2, $(MAKECMDGOALS))
+# execute: compile
+# 	@echo "🚀 Ejecutando .hulk..."
+# 	@./$(EXEC)	$(word 2, $(MAKECMDGOALS))
 
-%:
-	@:
+# %:
+# 	@:
 
+# clean:
+# 	rm	-rf	$(BUILD_DIR)	$(EXEC)	$(LLVM_IR)	$(CODE)
+# 	@echo "🧹 Proyecto limpiado."
+
+# === VARIABLES GLOBALES ===
+# Añadir estas líneas en la sección de variables
+INPUT_FILE := $(word 2, $(MAKECMDGOALS))
+LLVM_IR := output.ll
+EXECUTABLE := output
+
+# === TARGETS ===
+# Modificar el target execute
+execute: compile $(LLVM_IR) $(EXECUTABLE)
+	@echo "🚀 Ejecutando programa..."
+	@./$(EXECUTABLE)
+	@echo "🏁 Ejecución completada"
+
+# Añadir nuevas reglas para compilar el IR
+$(LLVM_IR): compile
+	@./$(EXEC) $(INPUT_FILE)
+
+$(EXECUTABLE): $(LLVM_IR)
+	@clang $< -o $@
+	@echo "🔨 Generado ejecutable: $(EXECUTABLE)"
+
+# Modificar el clean
 clean:
-	rm	-rf	$(BUILD_DIR)	$(EXEC)	$(LLVM_IR)	$(CODE)
+	rm -rf $(BUILD_DIR) $(EXEC) $(LLVM_IR) $(EXECUTABLE)
 	@echo "🧹 Proyecto limpiado."
 
 # === REGLAS DE COMPILACIÓN ===

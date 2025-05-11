@@ -41,6 +41,7 @@ OBJS := $(MAIN_OBJ) $(CPP_OBJ) $(YACC_OBJ) $(LEX_OBJ)
 
 EXEC := hulk-compiler
 LLVM_IR := output.ll
+CODE	:= output
 
 # === TARGETS ===
 
@@ -49,7 +50,7 @@ all:	compile
 compile:	$(BUILD_DIR)	$(EXEC)	
 	@echo	"✅ Build completo. Ejecutable en $(EXEC)"
 
-run: compile
+execute: compile
 	@echo "🚀 Ejecutando .hulk..."
 	@./$(EXEC)	$(word 2, $(MAKECMDGOALS))
 
@@ -57,7 +58,7 @@ run: compile
 	@:
 
 clean:
-	rm	-rf	$(BUILD_DIR)	$(EXEC)	$(LLVM_IR)
+	rm	-rf	$(BUILD_DIR)	$(EXEC)	$(LLVM_IR)	$(CODE)
 	@echo "🧹 Proyecto limpiado."
 
 # === REGLAS DE COMPILACIÓN ===
@@ -96,4 +97,4 @@ $(EXEC): $(OBJS)
 	@echo	"✅ Compilación completa. Ejecutable en $(EXEC)"
 
 # === META ===
-.PHONY: all compile run clean
+.PHONY: all compile execute clean

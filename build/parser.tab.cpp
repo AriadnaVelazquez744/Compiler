@@ -85,7 +85,7 @@ typedef struct YYLTYPE {
 } YYLTYPE;
 #define YYLTYPE_IS_DECLARED 1
 
-ASTNode* root;
+std::vector<ASTNode*> root;
 
 #define PI_VAL 3.14159265358979323846
 #define TRACE(EXPR) std::cout << "elem_expr: " << *EXPR << std::endl;
@@ -1559,7 +1559,7 @@ yyreduce:
     {
   case 3: /* program: program statement  */
 #line 163 "src/parser/parser.y"
-                                    { root = (yyvsp[0].node); }
+                                    { root.push_back((yyvsp[0].node)); }
 #line 1564 "build/parser.tab.cpp"
     break;
 

@@ -9,8 +9,8 @@ LLVM	:= llvm-config
 CXXFLAGS := -std=c++17 -Wall -Wextra -g	-Isrc	-Isrc/ast	-Wno-free-nonheap-object
 LDFLAGS += -lfl -lstdc++
 
-LLVM_CXXFLAGS := $(shell $(LLVM) --cxxflags)
-LLVM_LDFLAGS := $(shell $(LLVM) --ldflags --system-libs --libs core orcjit native)
+LLVM_CXXFLAGS 	:= $(filter-out -fno-exceptions, $(shell $(LLVM) --cxxflags))
+LLVM_LDFLAGS	:= $(shell $(LLVM) --ldflags --libs all --system-libs)
 
 # Directorios
 BUILD_DIR := build
@@ -40,7 +40,7 @@ CPP_OBJ := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(CPP_SRC))
 OBJS := $(MAIN_OBJ) $(CPP_OBJ) $(YACC_OBJ) $(LEX_OBJ)
 
 EXEC := hulk-compiler
-LLVM_IR := $(BUILD_DIR)/output.ll
+LLVM_IR := output.ll
 
 # === TARGETS ===
 
@@ -57,7 +57,7 @@ run: compile
 	@:
 
 clean:
-	rm	-rf	$(BUILD_DIR)	$(EXEC)
+	rm	-rf	$(BUILD_DIR)	$(EXEC)	$(LLVM_IR)
 	@echo "🧹 Proyecto limpiado."
 
 # === REGLAS DE COMPILACIÓN ===
@@ -92,7 +92,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX)	$(CXXFLAGS)	$(LLVM_CXXFLAGS)	-c	$<	-o	$@
 
 $(EXEC): $(OBJS) 
-	$(CXX)	$(CXXFLAGS)	$(LLVM_CXXFLAGS)	-o	$(EXEC) $(OBJS)
+	$(CXX)	$(CXXFLAGS)	$(LLVM_CXXFLAGS)	-o	$(EXEC) $(OBJS)	$(LLVM_LDFLAGS)
 	@echo	"✅ Compilación completa. Ejecutable en $(EXEC)"
 
 # === META ===

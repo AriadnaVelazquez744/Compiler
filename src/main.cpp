@@ -3,6 +3,7 @@
 #include <vector>
 #include "ast/AST.hpp"
 #include "semantic/SemanticAnalyzer.hpp"
+#include "codegen/CodeGenContext.hpp"
 
 extern int yyparse();
 extern FILE *yyin;
@@ -39,8 +40,6 @@ int main(int argc, char **argv) {
     std::cout << "AST terminado." << std::endl;
 
     // Crear el analizador semántico
-    // SymbolTable symbolTable;
-    // std::vector<std::string> errors;
     SemanticAnalyzer semanticAnalyzer;
 
     std::cout << "Instancia anlizador creada." << std::endl;
@@ -48,16 +47,24 @@ int main(int argc, char **argv) {
     // Realizar el análisis semántico
     semanticAnalyzer.analyze(root);
 
-    // Manejar errores semánticos
-    // if (!errors.empty()) {
-    //     std::cerr << "Errores semánticos encontrados:" << std::endl;
-    //     for (const auto& error : errors) {
-    //         std::cerr << "  - " << error << std::endl;
-    //     }
-    //     return 1;
-    // }
-
     std::cout << "Análisis semántico completado exitosamente." << std::endl;
+
+    CodeGenContext codegen;
+        
+    std::cout << "Instancia generador definida." << std::endl;
+
+    try {
+        codegen.generateCode(root);
+    } catch (const std::exception& e) {
+        std::cerr << "Error during code generation: " << e.what() << std::endl;
+        return 1;
+    }
+
+    std::cout << "Generación de código completada." << std::endl;
+
+    codegen.dumpIR("output.ll");
+
+    std::cout << "Volcando IR en output.ll." << std::endl;
 
     // Liberar memoria del AST
     delete root;

@@ -15,7 +15,7 @@ typedef struct YYLTYPE {
 } YYLTYPE;
 #define YYLTYPE_IS_DECLARED 1
 
-ASTNode* root;
+std::vector<ASTNode*> root;
 
 #define PI_VAL 3.14159265358979323846
 #define TRACE(EXPR) std::cout << "elem_expr: " << *EXPR << std::endl;
@@ -160,7 +160,7 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 
 program:
     /* vacío */
-    | program statement             { root = $2; }
+    | program statement             { root.push_back($2); }
     | program error ';'             { yyerrok; }
 ;
 

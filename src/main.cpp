@@ -7,7 +7,30 @@
 
 extern int yyparse();
 extern FILE *yyin;
-extern ASTNode* root; // Nodo raíz del AST generado por el parser
+extern std::vector<ASTNode*> root; // Nodo raíz del AST generado por el parser
+
+bool is_valid_ast(const std::vector<ASTNode*>& nodes) {
+    // Verificar que el vector no esté vacío y que todos los nodos sean válidos
+    if (nodes.empty()) {
+        std::cerr << "AST vacío: ningún nodo generado" << std::endl;
+        return false;
+    }
+    
+    for (auto node : nodes) {
+        if (!node) {
+            std::cerr << "AST contiene nodos nulos" << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+void delete_ast(std::vector<ASTNode*>& nodes) {
+    for (auto node : nodes) {
+        delete node; // Liberar cada nodo individualmente
+    }
+    nodes.clear(); // Limpiar el vector
+}
 
 int main(int argc, char **argv) {
     const char* filename = "script.hulk";  // Default file
@@ -31,7 +54,7 @@ int main(int argc, char **argv) {
     }
     fclose(input_file);
 
-    if (!root) {
+    if (!is_valid_ast(root)) {
         std::cerr << "Error: No se generó un AST válido." << std::endl;
         return 1;
     }
@@ -49,25 +72,25 @@ int main(int argc, char **argv) {
 
     std::cout << "Análisis semántico completado exitosamente." << std::endl;
 
-    CodeGenContext codegen;
+    // CodeGenContext codegen;
         
-    std::cout << "Instancia generador definida." << std::endl;
+    // std::cout << "Instancia generador definida." << std::endl;
 
-    try {
-        codegen.generateCode(root);
-    } catch (const std::exception& e) {
-        std::cerr << "Error during code generation: " << e.what() << std::endl;
-        return 1;
-    }
+    // try {
+    //     codegen.generateCode(root);
+    // } catch (const std::exception& e) {
+    //     std::cerr << "Error during code generation: " << e.what() << std::endl;
+    //     return 1;
+    // }
 
-    std::cout << "Generación de código completada." << std::endl;
+    // std::cout << "Generación de código completada." << std::endl;
 
-    codegen.dumpIR("output.ll");
+    // codegen.dumpIR("output.ll");
 
-    std::cout << "Volcando IR en output.ll." << std::endl;
+    // std::cout << "Volcando IR en output.ll." << std::endl;
 
     // Liberar memoria del AST
-    delete root;
+    delete_ast(root);
 
     return 0;
 }

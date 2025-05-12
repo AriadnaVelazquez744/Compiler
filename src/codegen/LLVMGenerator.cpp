@@ -6,6 +6,12 @@
 #include <string>
 #include <cstring>
 
+extern "C" {
+    char* hulk_str_concat(const char* a, const char* b);
+    char* hulk_str_concat_space(const char* a, const char* b);
+    bool hulk_str_equals(const char* a, const char* b);
+}
+
 LLVMGenerator::LLVMGenerator(CodeGenContext& ctx)
     : context(ctx) {}
 
@@ -71,4 +77,133 @@ void LLVMGenerator::visit(LiteralNode& node) {
     context.valueStack.push_back(val);
 
     std::cout << "🔧 Emitted literal of type " << node._type << std::endl;
+}
+
+void LLVMGenerator::visit(BinaryOpNode& node) {
+    // 1. Generate left and right values recursively
+    node.left->accept(*this);
+    llvm::Value* left = context.valueStack.back(); context.valueStack.pop_back();
+    node.right->accept(*this);
+    llvm::Value* right = context.valueStack.back(); context.valueStack.pop_back();
+
+    llvm::Value* result = nullptr;
+    llvm::IRBuilder<>& builder = context.builder;
+
+    const std::string& op = node.op;
+
+    // 2. Handle arithmetic operations for Number
+    if (op == "+") {
+        result = builder.CreateFAdd(left, right, "addtmp");
+    } else if (op == "-") {
+        result = builder.CreateFSub(left, right, "subtmp");
+    } else if (op == "*") {
+        result = builder.CreateFMul(left, right, "multmp");
+    } else if (op == "/") {
+        result = builder.CreateFDiv(left, right, "divtmp");
+    } else if (op == "%") {
+        result = builder.CreateFRem(left, right, "modtmp");
+    } else if (op == "^") {
+        // LLVM has no native power op; use `llvm.pow`
+        llvm::Function* powFn = context.module.getFunction("llvm.pow.f64");
+        if (!powFn) {
+            llvm::FunctionType* powType = llvm::FunctionType::get(
+                llvm::Type::getDoubleTy(context.context),
+                {llvm::Type::getDoubleTy(context.context), llvm::Type::getDoubleTy(context.context)},
+                false
+            );
+            powFn = llvm::Function::Create(powType, llvm::Function::ExternalLinkage, "llvm.pow.f64", context.module);
+        }
+        result = builder.CreateCall(powFn, {left, right}, "powtmp");
+    }
+
+    // 3. Comparison operators → return Boolean (i1)
+    else if (op == "<") {
+        result = builder.CreateFCmpULT(left, right, "lttmp");
+    } else if (op == "<=") {
+        result = builder.CreateFCmpULE(left, right, "letmp");
+    } else if (op == ">") {
+        result = builder.CreateFCmpUGT(left, right, "gttmp");
+    } else if (op == ">=") {
+        result = builder.CreateFCmpUGE(left, right, "getmp");
+    
+    
+    // } else if (op == "==") {
+    //     result = builder.CreateFCmpUEQ(left, right, "eqtmp");
+    // } else if (op == "!=") {
+    //     result = builder.CreateFCmpUNE(left, right, "netmp");
+    } else if (op == "==" || op == "!=") {
+        const std::string& nodeType = node.left->type();  // or node._type if already set
+
+        if (nodeType == "Number") {
+            result = (op == "==")
+                ? builder.CreateFCmpUEQ(left, right, "eqtmp")
+                : builder.CreateFCmpUNE(left, right, "netmp");
+        }
+        else if (nodeType == "Boolean") {
+            result = (op == "==")
+                ? builder.CreateICmpEQ(left, right, "beqtmp")
+                : builder.CreateICmpNE(left, right, "bnetmp");
+        }
+        else if (nodeType == "String") {
+            // Call external C function: bool hulk_str_equals(const char*, const char*)
+            llvm::Function* eqFn = context.module.getFunction("hulk_str_equals");
+            if (!eqFn) {
+                llvm::FunctionType* eqType = llvm::FunctionType::get(
+                    llvm::Type::getInt1Ty(context.context), // return type: i1
+                    {
+                        llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0), // const char*
+                        llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0)  // const char*
+                    },
+                    false
+                );
+                eqFn = llvm::Function::Create(
+                    eqType, llvm::Function::ExternalLinkage,
+                    "hulk_str_equals", context.module
+                );
+            }
+
+            llvm::Value* eqCall = builder.CreateCall(eqFn, {left, right}, "strequal");
+
+            result = (op == "!=")
+                ? builder.CreateNot(eqCall, "strnotequal")
+                : eqCall;
+        }
+        else {
+            throw std::runtime_error("❌ Unsupported type for '==' or '!=': " + nodeType);
+        }
+    }
+
+
+    else if (op == "&") {
+        result = builder.CreateAnd(left, right, "andtmp");
+    } else if (op == "|") {
+        result = builder.CreateOr(left, right, "ortmp");
+    }
+
+    else if (op == "@" || op == "@@") {
+        const char* funcName = (op == "@") ? "hulk_str_concat" : "hulk_str_concat_space";
+
+        // Declare function if not already in module
+        llvm::Function* concatFn = context.module.getFunction(funcName);
+        if (!concatFn) {
+            llvm::FunctionType* concatType = llvm::FunctionType::get(
+                llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0),
+                {llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0), llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0)},
+                false
+            );
+            concatFn = llvm::Function::Create(concatType, llvm::Function::ExternalLinkage, funcName, context.module);
+        }
+
+        // Emit call
+        result = context.builder.CreateCall(concatFn, {left, right}, "concat");
+    }
+
+
+    else {
+        throw std::runtime_error("❌ Unsupported binary operator: " + op);
+    }
+
+    // 6. Push the result onto the stack
+    context.valueStack.push_back(result);
+    std::cout << "🔧 Binary op '" << op << "' emitted.\n";
 }

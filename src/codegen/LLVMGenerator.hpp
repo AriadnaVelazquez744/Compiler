@@ -15,6 +15,7 @@ public:
 
     // Implemented nodes
     void visit(class LiteralNode& node) override;
+    void visit(class BinaryOpNode& node) override;
 
     // Stubs for other nodes
     void visit(ASTNode&) override {}
@@ -31,6 +32,5 @@ public:
     void visit(TypeDeclarationNode&) override {}
     void visit(NewNode&) override {}
     void visit(UnaryOpNode&) override {}
-    void visit(BinaryOpNode&) override {}
     void visit(BuiltInFunctionNode&) override {}
 };

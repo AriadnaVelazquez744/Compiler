@@ -224,14 +224,32 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
     const std::set<std::string> comparisonOps = {"==", "!=", "<", ">", "<=", ">="};
     
     if (comparisonOps.count(node.op)) {
-        if (leftType != "Number" || rightType != "Number") {
+        if (node.op == "==" || node.op == "!=") {
+            if (leftType != rightType)
+            {
+                errors.emplace_back("Operandos de " + node.op + " deben ser iguales", node.line());
+                node._type = "error"; // Marcar como error si los tipos son inválidos
+            }
+            else {
+            node._type = "Boolean"; // Solo asignar boolean si los operandos son válidos
+            }
+            } 
+        else if (leftType != "Number" || rightType != "Number") {
             errors.emplace_back("Operandos de " + node.op + " deben ser números", node.line());
             node._type = "error"; // Marcar como error si los tipos son inválidos
         } else {
             node._type = "Boolean"; // Solo asignar boolean si los operandos son válidos
         }
     }
-    // Operador de concatenación @
+    else if (node.op == "&" || node.op == "|")
+    {
+       if (leftType != "Boolean" || rightType != "Boolean") {
+            errors.emplace_back("Operandos de " + node.op + " deben ser booleanos", node.line());
+            node._type = "error"; // Marcar como error si los tipos son inválidos
+        } else {
+            node._type = "Boolean"; // Solo asignar boolean si los operandos son válidos
+        }
+    }    // Operador de concatenación @
 
     else if (node.op == "@") {
         if (leftType != "String" && leftType != "Number") {

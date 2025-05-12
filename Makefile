@@ -45,8 +45,8 @@ OBJS := $(MAIN_OBJ) $(CPP_OBJ) $(YACC_OBJ) $(LEX_OBJ) $(RUNTIME_OBJ)
 
 EXEC := hulk-compiler
 INPUT_FILE := $(word 2, $(MAKECMDGOALS))
-LLVM_IR := output.ll
-CODE := output
+LLVM_IR := hulk-low-code.ll
+CODE := hulk
 
 # === TARGETS ===
 all:	build
@@ -54,7 +54,16 @@ all:	build
 build:	$(BUILD_DIR)	$(EXEC)	
 	@echo	"✅ Build completo. Ejecutable en $(EXEC)"
 
-run: build $(LLVM_IR) $(CODE)
+run: build
+	@./$(EXEC) $(INPUT_FILE)
+%:
+	@:
+
+compile: build 
+	@./$(EXEC)
+	@echo "Código generado"
+
+execute: build $(LLVM_IR) $(CODE)
 	@echo "🚀 Ejecutando programa..."
 	@./$(CODE)
 	@echo "🏁 Ejecución completada"
@@ -68,7 +77,6 @@ $(CODE): $(LLVM_IR)	$(RUNTIME_OBJ)
 	@clang	$<	$(RUNTIME_OBJ)	-lm	-o	$@
 	@echo "🔨 Generado ejecutable: $(CODE)"
 
-# Modificar el clean
 clean:
 	rm -rf $(BUILD_DIR) $(EXEC) $(LLVM_IR) $(CODE)
 	@echo "🧹 Proyecto limpiado."
@@ -110,7 +118,6 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 
 $(EXEC): $(OBJS) 
 	$(CXX)	$(CXXFLAGS)	$(LLVM_CXXFLAGS)	-o	$(EXEC) $(OBJS)	$(LLVM_LDFLAGS)
-	@echo	"✅ Compilación completa. Ejecutable en $(EXEC)"
 
 # === META ===
-.PHONY: all build run clean
+.PHONY: all build run compile execute clean

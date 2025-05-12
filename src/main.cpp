@@ -90,9 +90,9 @@ int main(int argc, char **argv) {
 
     std::cout << "Generación de código completada." << std::endl;
 
-    codegen.dumpIR("output.ll");
+    codegen.dumpIR("hulk-low-code.ll");
 
-    std::cout << "Volcando IR en output.ll." << std::endl;
+    std::cout << "Volcando IR en hulk-low-code.ll." << std::endl;
 
     // Liberar memoria del AST
     delete_ast(root);

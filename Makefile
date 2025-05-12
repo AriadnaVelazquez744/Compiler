@@ -59,6 +59,9 @@ run: build $(LLVM_IR) $(CODE)
 compile: run 
 	
 execute:
+	@if [ ! -f "$(CODE)" ]; then \
+		$(MAKE) compile; \
+	fi
 	@echo "🚀 Ejecutando programa..."
 	@./$(CODE)
 	@echo "🏁 Ejecución completada"

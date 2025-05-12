@@ -37,7 +37,11 @@ YACC_OBJ = $(BUILD_DIR)/parser/parser.tab.o
 CPP_SRC := $(shell find $(SRC_DIR) -name "*.cpp" ! -name "main.cpp")
 CPP_OBJ := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(CPP_SRC))
 
-OBJS := $(MAIN_OBJ) $(CPP_OBJ) $(YACC_OBJ) $(LEX_OBJ)
+# Funciones auxiliares en C
+RUNTIME_SRC := $(SRC_DIR)/runtime/hulk_runtime.c
+RUNTIME_OBJ := $(BUILD_DIR)/runtime/hulk_runtime.o
+
+OBJS := $(MAIN_OBJ) $(CPP_OBJ) $(YACC_OBJ) $(LEX_OBJ) $(RUNTIME_OBJ)
 
 EXEC := hulk-compiler
 INPUT_FILE := $(word 2, $(MAKECMDGOALS))
@@ -60,8 +64,8 @@ $(LLVM_IR): build
 %:
 	@:
 
-$(CODE): $(LLVM_IR)
-	@clang $< -o $@
+$(CODE): $(LLVM_IR)	$(RUNTIME_OBJ)
+	@clang	$<	$(RUNTIME_OBJ)	-lm	-o	$@
 	@echo "🔨 Generado ejecutable: $(CODE)"
 
 # Modificar el clean
@@ -94,6 +98,10 @@ $(LEX_OBJ): $(LEXER_SRC)
 
 $(YACC_OBJ): $(PARSER_SRC)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(RUNTIME_OBJ): $(RUNTIME_SRC)
+	@mkdir -p $(dir $@)
+	gcc -Wall -O2 -c $< -o $@
 
 # Compilar main.cpp y otros .cpp
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp

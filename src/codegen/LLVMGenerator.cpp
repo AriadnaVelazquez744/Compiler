@@ -207,3 +207,31 @@ void LLVMGenerator::visit(BinaryOpNode& node) {
     context.valueStack.push_back(result);
     std::cout << "🔧 Binary op '" << op << "' emitted.\n";
 }
+
+void LLVMGenerator::visit(UnaryOpNode& node) {
+    // 1. Visit operand first
+    node.operand->accept(*this);
+    llvm::Value* operand = context.valueStack.back();
+    context.valueStack.pop_back();
+
+    llvm::Value* result = nullptr;
+    llvm::IRBuilder<>& builder = context.builder;
+
+    const std::string& op = node.op;
+
+    if (op == "-") {
+        // Numeric negation: emit 0.0 - operand
+        llvm::Value* zero = llvm::ConstantFP::get(context.context, llvm::APFloat(0.0));
+        result = builder.CreateFSub(zero, operand, "negtmp");
+    }
+    else if (op == "!") {
+        // Logical NOT: i1 → i1
+        result = builder.CreateNot(operand, "nottmp");
+    }
+    else {
+        throw std::runtime_error("❌ Unsupported unary operator: " + op);
+    }
+
+    context.valueStack.push_back(result);
+    std::cout << "🔧 Unary op '" << op << "' emitted.\n";
+}

@@ -465,98 +465,145 @@ void SemanticAnalyzer::visit(ForNode& node) {
 
 
 void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
-    // 1. Verificar que el tipo no existe
+    // 1. Verificar si ya existe
     if (symbolTable.lookupType(node.name)) {
         errors.emplace_back("Tipo '" + node.name + "' ya declarado", node.line());
         return;
     }
 
-    // 2. Verificar herencia de tipos básicos
+    // 2. Verificar que no herede de tipos prohibidos
     const std::set<std::string> builtinTypes = {"Number", "String", "Boolean"};
-    if (builtinTypes.count(node.parentType)) {
-        errors.emplace_back("No se puede heredar de tipos básicos", node.line());
+    if (node.baseType.has_value() && builtinTypes.count(*node.baseType)) {
+        errors.emplace_back("No se puede heredar de tipo básico '" + *node.baseType + "'", node.line());
         return;
     }
 
-    // 3. Registrar tipo en la tabla de símbolos
-    if (!symbolTable.addType(node.name, node.parentType.empty() ? "Object" : node.parentType, node.typeParams)) {
-        errors.emplace_back("Tipo '" + node.name + "' ya declarado", node.line());
+    // 3. Registrar tipo
+    std::string parent = node.baseType.has_value() ? *node.baseType : "Object";
+    std::vector<std::string> paramNames;
+    for (const auto& param : *node.constructorParams) {
+        paramNames.push_back(param.name);
+    }
+
+    if (!symbolTable.addType(node.name, parent, paramNames)) {
+        errors.emplace_back("Tipo '" + node.name + "' ya fue registrado", node.line());
         return;
     }
 
-    TypeSymbol* typeSym = symbolTable.lookupType(node.name);
-    if (!typeSym) return;
-
-    // 4. Analizar atributos (sin acceso a self)
-    for (size_t i = 0; i < node.attributeInits.size(); ++i) {
-        node.attributeInits[i]->accept(*this);
-        // Registrar atributo como Symbol
-        symbolTable.addTypeAttribute(
-            node.name, 
-            "attr" + std::to_string(i), 
-            node.attributeInits[i]->type()
-        );
-    }
-
-    // 5. Analizar métodos (con acceso a self)
-    for (auto method : node.methods) {
+    // 4. Validar y evaluar baseArgs en el contexto de los parámetros del tipo actual
+    if (node.baseType.has_value()) {
         symbolTable.enterScope();
-        symbolTable.addSymbol("self", node.name, true); // self es constante
+        for (const auto& param : *node.constructorParams) {
+            symbolTable.addSymbol(param.name, "Unknown", false);
+        }
+        for (ASTNode* arg : node.baseArgs) {
+            arg->accept(*this);
+        }
+        symbolTable.exitScope();
+    }
 
-        // Registrar parámetros del método
-        for (auto& param : *method->params) {
+    // 5. Evaluar inicialización de atributos sin acceso a self
+    symbolTable.enterScope();
+    for (const auto& param : *node.constructorParams) {
+        symbolTable.addSymbol(param.name, "Unknown", false);  // Se puede mejorar con inferencia
+    }
+
+    for (const auto& attr : *node.attributes) {
+        attr.initializer->accept(*this);
+        symbolTable.addTypeAttribute(node.name, attr.name, attr.initializer->type());
+    }
+    symbolTable.exitScope();
+
+    // 6. Evaluar métodos con acceso a self
+    TypeSymbol* typeSym = symbolTable.lookupType(node.name);
+    for (const auto& method : *node.methods) {
+        symbolTable.enterScope();
+        symbolTable.addSymbol("self", node.name, true);
+        for (const auto& param : *method.params) {
             symbolTable.addSymbol(param.name, param.type, false);
         }
 
-        method->body->accept(*this);
-        symbolTable.exitScope();
+        method.body->accept(*this);
 
-        // Registrar método en el tipo
+        // Registrar método
         std::vector<std::string> paramTypes;
-        for (auto& param : *method->params) {
+        for (const auto& param : *method.params) {
             paramTypes.push_back(param.type);
         }
-        symbolTable.addTypeMethod(
-            node.name,
-            method->name,
-            method->returnType,
-            paramTypes
-        );
+        symbolTable.addTypeMethod(node.name, method.name, method.returnType, paramTypes);
 
-        // Verificar firma con el padre
-        TypeSymbol* parent = symbolTable.lookupType(typeSym->parentType);
-        if (parent) {
-            auto it = parent->methods.find(method->name);
-            if (it != parent->methods.end()) {
-                Symbol& parentMethod = it->second;
-                if (parentMethod.params != paramTypes || parentMethod.type != method->returnType) {
-                    errors.emplace_back("Firma de método no coincide con el padre", method->line());
+        // Verificar herencia de firma si aplica
+        if (!typeSym->parentType.empty()) {
+            TypeSymbol* parentSym = symbolTable.lookupType(typeSym->parentType);
+            if (parentSym) {
+                auto it = parentSym->methods.find(method.name);
+                if (it != parentSym->methods.end()) {
+                    const Symbol& inherited = it->second;
+                    if (inherited.params != paramTypes || inherited.type != method.returnType) {
+                        errors.emplace_back("Firma de método '" + method.name +
+                            "' no coincide con la del padre", node.line());
+                    }
                 }
             }
         }
+
+        symbolTable.exitScope();
     }
 }
 
-void SemanticAnalyzer::visit(NewNode& node) {
+void SemanticAnalyzer::visit(NewInstanceNode& node) {
     TypeSymbol* typeSym = symbolTable.lookupType(node.typeName);
     if (!typeSym) {
         errors.emplace_back("Tipo '" + node.typeName + "' no definido", node.line());
+        node._type = "Error";
         return;
     }
 
-    // Verificar argumentos del constructor
     if (node.args.size() != typeSym->typeParams.size()) {
-        errors.emplace_back("Número incorrecto de argumentos para el tipo", node.line());
+        errors.emplace_back("Cantidad incorrecta de argumentos para el constructor de '" + node.typeName + "'", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    for (ASTNode* arg : node.args) {
+        arg->accept(*this);
+        // Aquí podrías validar tipos si se almacenan los tipos de parámetros
+    }
+
+    node._type = node.typeName;
+}
+
+void SemanticAnalyzer::visit(MethodCallNode& node) {
+    node.object->accept(*this);
+    std::string objectType = node.object->type();
+
+    TypeSymbol* typeSym = symbolTable.lookupType(objectType);
+    if (!typeSym) {
+        errors.emplace_back("Tipo '" + objectType + "' no definido para llamada a método", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    auto it = typeSym->methods.find(node.methodName);
+    if (it == typeSym->methods.end()) {
+        errors.emplace_back("Método '" + node.methodName + "' no existe en tipo '" + objectType + "'", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    Symbol& method = it->second;
+    if (node.args.size() != method.params.size()) {
+        errors.emplace_back("Cantidad incorrecta de argumentos en llamada a método '" + node.methodName + "'", node.line());
+        node._type = "Error";
         return;
     }
 
     for (size_t i = 0; i < node.args.size(); ++i) {
         node.args[i]->accept(*this);
-        std::string argType = node.args[i]->type();
-        if (argType != "Number") { // Ejemplo: validar tipo según parámetro genérico
-            errors.emplace_back("Tipo incorrecto para argumento del constructor", node.line());
+        if (node.args[i]->type() != method.params[i]) {
+            errors.emplace_back("Tipo de argumento " + std::to_string(i + 1) + " incorrecto en llamada a método '" + node.methodName + "'", node.line());
         }
     }
 
-    node._type = node.typeName;
+    node._type = method.type;
 }

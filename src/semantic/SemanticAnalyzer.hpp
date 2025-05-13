@@ -32,9 +32,12 @@ public:
     void visit(WhileNode& node) override;
     void visit(ForNode& node) override;
     void visit(TypeDeclarationNode& node) override;
-    void visit(NewNode& node) override;
+    void visit(NewInstanceNode& node) override;
     void visit(UnaryOpNode& node) override;
     void visit(BuiltInFunctionNode& node) override;
+    // void visit(AttributeDeclaration& node) override;
+    // void visit(MethodDeclaration& node) override;
+    void visit(MethodCallNode& node) override;
 
     const std::vector<SemanticError>& getErrors() const { return errors; }
 };

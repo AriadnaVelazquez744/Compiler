@@ -15,9 +15,12 @@ class IfNode;
 class WhileNode;
 class ForNode;
 class TypeDeclarationNode;
-class NewNode;
+class NewInstanceNode;
 class UnaryOpNode;
 class BuiltInFunctionNode;
+class AttributeDeclaration;
+class MethodDeclaration;
+class MethodCallNode;
 
 
 class ASTVisitor {
@@ -39,7 +42,10 @@ public:
     virtual void visit(WhileNode& node) = 0;
     virtual void visit(ForNode& node) = 0;
     virtual void visit(TypeDeclarationNode& node) = 0;
-    virtual void visit(NewNode& node) = 0;
+    virtual void visit(NewInstanceNode& node) = 0;
+    // virtual void visit(AttributeDeclaration& node) = 0;
+    // virtual void visit(MethodDeclaration& node) = 0;
+    virtual void visit(MethodCallNode& node) = 0;
     virtual void visit(UnaryOpNode& node) = 0;
     virtual void visit(BuiltInFunctionNode& node) = 0;
 };

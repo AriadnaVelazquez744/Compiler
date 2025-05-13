@@ -1,6 +1,7 @@
 #pragma once
 #include "ASTVisitor.hpp"
 #include <vector>
+#include <optional>
 #include <string>
 #include <memory>
 
@@ -306,51 +307,80 @@ public:
 };
 
 class TypeDeclarationNode : public ASTNode {
-    public:
-        std::string name;
-        std::vector<std::string> typeParams;
-        std::vector<ASTNode*> attributeInits; // Inicializadores de atributos
-        std::vector<FunctionDeclarationNode*> methods;
-        std::string parentType; // Tipo padre (si hay herencia)
-        std::vector<ASTNode*> parentArgs; // Argumentos para el padre (si aplica)
-        int _line;
-        std::string _type;
-    
-        TypeDeclarationNode(
-            std::string name, 
-            std::vector<std::string> params, 
-            std::vector<ASTNode*> attrs,
-            std::vector<FunctionDeclarationNode*> methods,
-            std::string parent,
-            std::vector<ASTNode*> parentArgs,
-            int ln
-        ) : name(name), typeParams(params), attributeInits(attrs), 
-            methods(methods), parentType(parent), parentArgs(parentArgs), 
-            _line(ln), _type("Object") {}
-    
-        void accept(ASTVisitor& visitor) override {
-            visitor.visit(*this);
-        }
-    
-        int line() const override { return _line; }
-        std::string type() const override { return _type; }
-    };
-    
-    class NewNode : public ASTNode {
-    public:
-        std::string typeName;
-        std::vector<ASTNode*> args;
-        int _line;
-        std::string _type;
-    
-        NewNode(std::string type, std::vector<ASTNode*> args, int ln)
-            : typeName(type), args(args), _line(ln), _type(type) {}
-    
-        void accept(ASTVisitor& visitor) override {
-            visitor.visit(*this);
-        }
-    
-        int line() const override { return _line; }
-        std::string type() const override { return _type; }
-    };
+public:
+    std::string name;
+    std::vector<Parameter>* constructorParams;
+    std::vector<AttributeDeclaration>* attributes;
+    std::vector<MethodDeclaration>* methods;
+    std::optional<std::string> baseType;            // Si hay herencia
+    std::vector<ASTNode*> baseArgs;                 // Argumentos para el padre
+    int _line;
+
+    TypeDeclarationNode(std::string name,
+                        std::vector<Parameter>* params,
+                        std::vector<AttributeDeclaration>* attrs,
+                        std::vector<MethodDeclaration>* methods,
+                        std::optional<std::string> baseType,
+                        std::vector<ASTNode*> baseArgs,
+                        int line)
+        : name(std::move(name)), constructorParams(params),
+          attributes(attrs), methods(methods),
+          baseType(std::move(baseType)), baseArgs(std::move(baseArgs)),
+          _line(line) {}
+
+    void accept(ASTVisitor& v) override { v.visit(*this); }
+    int line() const override { return _line; }
+    std::string type() const override { return "Type"; }
+};
+
+class NewInstanceNode : public ASTNode {
+public:
+    std::string typeName;
+    std::vector<ASTNode*> args;
+    int _line;
+    std::string _type;
+
+    NewInstanceNode(std::string typeName, std::vector<ASTNode*> args, int line)
+        : typeName(std::move(typeName)), args(std::move(args)), _line(line), _type("") {}
+
+    void accept(ASTVisitor& v) override { v.visit(*this); }
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
+struct AttributeDeclaration {
+    std::string name;
+    ASTNode* initializer;
+
+    AttributeDeclaration(std::string name, ASTNode* init)
+        : name(std::move(name)), initializer(init) {}
+};
+
+struct MethodDeclaration {
+    std::string name;
+    std::vector<Parameter>* params;
+    ASTNode* body;
+    std::string returnType;  
+
+    MethodDeclaration(std::string name, std::vector<Parameter>* params, ASTNode* body, std::string ret = "")
+        : name(std::move(name)), params(params), body(body), returnType(std::move(ret)) {}
+};
+
+class MethodCallNode : public ASTNode {
+public:
+    ASTNode* object;
+    std::string methodName;
+    std::vector<ASTNode*> args;
+    int _line;
+    std::string _type;
+
+    MethodCallNode(ASTNode* obj, std::string methodName, std::vector<ASTNode*> args, int line)
+        : object(obj), methodName(std::move(methodName)), args(std::move(args)), _line(line), _type("") {}
+
+    void accept(ASTVisitor& v) override { v.visit(*this); }
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
+
     

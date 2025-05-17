@@ -17,7 +17,7 @@ public:
     void visit(class LiteralNode& node) override;
     void visit(class BinaryOpNode& node) override;
     void visit(class UnaryOpNode& node) override;
-    void visit(BuiltInFunctionNode&) override {}
+    void visit(class BuiltInFunctionNode& node) override;
 
     // Stubs for other nodes
     void visit(ASTNode&) override {}

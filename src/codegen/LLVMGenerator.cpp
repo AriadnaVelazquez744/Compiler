@@ -323,3 +323,31 @@ void LLVMGenerator::visit(BuiltInFunctionNode& node) {
 
     std::cout << "🔧 Built-in function '" << name << "' emitted.\n";
 }
+
+void LLVMGenerator::visit(BlockNode& node) {
+    if (node.expressions.empty()) {
+        throw std::runtime_error("❌ A block must contain at least one expression (line " + std::to_string(node.line()) + ")");
+    }
+
+    llvm::Value* result = nullptr;
+
+    for (size_t i = 0; i < node.expressions.size(); ++i) {
+        ASTNode* expr = node.expressions[i];
+        expr->accept(*this);
+
+        if (i == node.expressions.size() - 1) {
+            // Last expression: must return a value
+            if (context.valueStack.empty()) {
+                throw std::runtime_error("❌ Last expression in block has no return value (line " + std::to_string(expr->line()) + ")");
+            }
+            result = context.valueStack.back();
+        } else {
+            // Non-last expressions: ignore any value they return
+            if (!context.valueStack.empty()) {
+                context.valueStack.pop_back();
+            }
+        }
+    }
+
+    std::cout << "🔧 BlockNode emitted with " << node.expressions.size() << " expressions\n";
+}

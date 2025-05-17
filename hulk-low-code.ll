@@ -6,9 +6,6 @@ source_filename = "hulk_module"
 @2 = private unnamed_addr constant [4 x i8] c"%g\0A\00", align 1
 @3 = private unnamed_addr constant [4 x i8] c"%g\0A\00", align 1
 @4 = private unnamed_addr constant [4 x i8] c"%g\0A\00", align 1
-@5 = private unnamed_addr constant [4 x i8] c"%g\0A\00", align 1
-@6 = private unnamed_addr constant [4 x i8] c"%g\0A\00", align 1
-@7 = private unnamed_addr constant [4 x i8] c"%g\0A\00", align 1
 
 declare i32 @printf(ptr, ...)
 
@@ -25,12 +22,8 @@ entry:
   %logcall = call double @hulk_log_base_checked(double 8.000000e+00, double 2.000000e+00)
   %4 = call i32 (ptr, ...) @printf(ptr @1, double %mincall)
   %5 = call i32 (ptr, ...) @printf(ptr @2, double %maxcall)
-  %6 = call i32 (ptr, ...) @printf(ptr @3, double %0)
-  %7 = call i32 (ptr, ...) @printf(ptr @4, double %1)
-  %8 = call i32 (ptr, ...) @printf(ptr @5, double %2)
-  %9 = call i32 @puts(ptr @0)
-  %10 = call i32 (ptr, ...) @printf(ptr @6, double %3)
-  %11 = call i32 (ptr, ...) @printf(ptr @7, double %logcall)
+  %6 = call i32 (ptr, ...) @printf(ptr @3, double %3)
+  %7 = call i32 (ptr, ...) @printf(ptr @4, double %logcall)
   ret i32 0
 }
 

@@ -21,15 +21,16 @@ entry:
   %0 = call double @llvm.sin.f64(double 0.000000e+00)
   %1 = call double @llvm.cos.f64(double 0.000000e+00)
   %2 = call double @llvm.sqrt.f64(double 1.600000e+01)
-  %logcall = call double @hulk_log_base(double 0.000000e+00, double 0.000000e+00)
-  %3 = call i32 (ptr, ...) @printf(ptr @1, double %mincall)
-  %4 = call i32 (ptr, ...) @printf(ptr @2, double %maxcall)
-  %5 = call i32 (ptr, ...) @printf(ptr @3, double %0)
-  %6 = call i32 (ptr, ...) @printf(ptr @4, double %1)
-  %7 = call i32 (ptr, ...) @printf(ptr @5, double %2)
-  %8 = call i32 @puts(ptr @0)
-  %9 = call i32 (ptr, ...) @printf(ptr @6, double 1.000000e+00)
-  %10 = call i32 (ptr, ...) @printf(ptr @7, double %logcall)
+  %3 = call double @llvm.exp.f64(double 1.000000e+00)
+  %logcall = call double @hulk_log_base_checked(double 8.000000e+00, double 2.000000e+00)
+  %4 = call i32 (ptr, ...) @printf(ptr @1, double %mincall)
+  %5 = call i32 (ptr, ...) @printf(ptr @2, double %maxcall)
+  %6 = call i32 (ptr, ...) @printf(ptr @3, double %0)
+  %7 = call i32 (ptr, ...) @printf(ptr @4, double %1)
+  %8 = call i32 (ptr, ...) @printf(ptr @5, double %2)
+  %9 = call i32 @puts(ptr @0)
+  %10 = call i32 (ptr, ...) @printf(ptr @6, double %3)
+  %11 = call i32 (ptr, ...) @printf(ptr @7, double %logcall)
   ret i32 0
 }
 
@@ -46,6 +47,9 @@ declare double @llvm.cos.f64(double) #0
 ; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
 declare double @llvm.sqrt.f64(double) #0
 
-declare double @hulk_log_base(double, double)
+; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
+declare double @llvm.exp.f64(double) #0
+
+declare double @hulk_log_base_checked(double, double)
 
 attributes #0 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }

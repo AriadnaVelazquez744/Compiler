@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <math.h>
+#include <stdio.h> 
 
 // a + b → "ab"
 char* hulk_str_concat(const char* a, const char* b) {
@@ -28,10 +29,18 @@ bool hulk_str_equals(const char* a, const char* b) {
     return strcmp(a, b) == 0;
 }
 
-double hulk_log_base(double x, double base) {
-    return log(x) / log(base);
-}
-
 double hulk_rand() {
     return rand() / (double)RAND_MAX;
+}
+
+double hulk_exp(double n) {
+    return exp(n);  
+}
+
+double hulk_log_base_checked(double x, double base) {
+    if (x <= 0 || base <= 1) {
+        fprintf(stderr, "Math Error: log(x, base) requires x > 0 and base > 1\n");
+        exit(1);
+    }
+    return log(x) / log(base);
 }

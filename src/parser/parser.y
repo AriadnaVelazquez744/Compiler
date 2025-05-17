@@ -296,7 +296,7 @@ statement:
             }
             | EXP '(' expression ')' {
                 std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
-                $$ = new BuiltInFunctionNode("print", args, yylloc.first_line);
+                $$ = new BuiltInFunctionNode("exp", args, yylloc.first_line);
                 
             }
 

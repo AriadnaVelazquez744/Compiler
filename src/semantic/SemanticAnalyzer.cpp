@@ -43,6 +43,12 @@ void SemanticAnalyzer::analyze(const std::vector<ASTNode*>& nodes) {
         std::cout << "No se encontraron errores semánticos.\n";
     }
 
+    if (!errors.empty()) {
+    std::cerr << "Errores semánticos presentes. Abortando ejecución.\n";
+    exit(1);
+    }
+
+
     std::cout << "Análisis semántico completado." << std::endl;
 }
 
@@ -251,7 +257,7 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
         }
     }    // Operador de concatenación @
 
-    else if (node.op == "@") {
+    else if (node.op == "@" || node.op == "@@") {
         if (leftType != "String" && leftType != "Number") {
             errors.emplace_back("Operando izquierdo de @ debe ser string o number", node.line());
         }

@@ -11,7 +11,6 @@ extern "C" {
     char* hulk_str_concat(const char* a, const char* b);
     char* hulk_str_concat_space(const char* a, const char* b);
     bool hulk_str_equals(const char* a, const char* b);
-    double hulk_exp(double n);
     double hulk_log_base_checked(double x, double base);
     double hulk_rand();
 }
@@ -23,7 +22,7 @@ std::string processRawString(const std::string& raw) {
     std::string processed;
     bool escape = false;
     size_t start = (raw.front() == '"') ? 1 : 0;
-    size_t end = (raw.back() == '"') ? raw.size() -1 : raw.size(); // Adjusted
+    size_t end = (raw.back() == '"') ? raw.size() -1 : raw.size();
 
     for (size_t i = start; i <= end; ++i) { // Include last character
         char c = raw[i];
@@ -130,13 +129,8 @@ void LLVMGenerator::visit(BinaryOpNode& node) {
     } else if (op == ">=") {
         result = builder.CreateFCmpUGE(left, right, "getmp");
     
-    
-    // } else if (op == "==") {
-    //     result = builder.CreateFCmpUEQ(left, right, "eqtmp");
-    // } else if (op == "!=") {
-    //     result = builder.CreateFCmpUNE(left, right, "netmp");
     } else if (op == "==" || op == "!=") {
-        const std::string& nodeType = node.left->type();  // or node._type if already set
+        const std::string& nodeType = node.left->type();
 
         if (nodeType == "Number") {
             result = (op == "==")

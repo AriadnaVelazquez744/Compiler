@@ -33,10 +33,6 @@ double hulk_rand() {
     return rand() / (double)RAND_MAX;
 }
 
-double hulk_exp(double n) {
-    return exp(n);  
-}
-
 double hulk_log_base_checked(double x, double base) {
     if (x <= 0 || base <= 1) {
         fprintf(stderr, "Math Error: log(x, base) requires x > 0 and base > 1\n");

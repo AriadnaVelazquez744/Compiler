@@ -63,16 +63,18 @@ void SemanticAnalyzer::visit(UnaryOpNode& node) {
     if (node.op == "-") {
         if (operandType != "Number") {
             errors.emplace_back("El operador '-' requiere un operando de tipo Number", node.line());
+            node._type = "Error";
         }
         node._type = "Number";
     } else if (node.op == "!") {
         if (operandType != "Boolean") {
             errors.emplace_back("El operador '!' requiere un operando de tipo Boolean", node.line());
+            node._type = "Error";
         }
         node._type = "Boolean";
     } else {
         errors.emplace_back("Operador unario desconocido: " + node.op, node.line());
-        node._type = "Unknown";
+        node._type = "Error";;
     }
 }
 
@@ -84,31 +86,62 @@ void SemanticAnalyzer::visit(BuiltInFunctionNode& node) {
     const std::string& fn = node.name;
     size_t arity = node.args.size();
 
-    if ((fn == "sin" || fn == "cos" || fn == "exp" || fn == "sqrt") && arity == 1) {
-        if (node.args[0]->type() != "Number") {
-            std::cerr << "Error: el argumento de '" << fn << "' debe ser numérico.\n";
+    for (ASTNode* arg : node.args) {
+        arg->accept(*this);
+    }
+
+    if (fn == "print") {
+        if (arity != 1) {
+            errors.emplace_back("La función 'print' requiere exactamente 1 argumento", node.line());
             node._type = "Error";
             return;
         }
-        node._type = "Number";
-    } else if ((fn == "min" || fn == "max") && arity == 2) {
-        if (node.args[0]->type() == "Number" && node.args[1]->type() == "Number") {
-            node._type = "Number";
-        } else {
-            std::cerr << "Error: los argumentos de '" << fn << "' deben ser numéricos.\n";
+        node._type = node.args[0]->type(); // El tipo es el del argumento impreso
+    }
+    else if (fn == "sin" || fn == "cos" || fn == "exp" || fn == "sqrt") {
+        if (node.args.size() != 1) {
+            errors.emplace_back("Función " + fn + " requiere 1 argumento", node.line());
             node._type = "Error";
-        }
-    } else if (fn == "log" && arity == 2) {
-        if (node.args[0]->type() == "Number" && node.args[1]->type() == "Number") {
-            node._type = "Number";
-        } else {
-            std::cerr << "Error: los argumentos de 'log' deben ser numéricos.\n";
+        } else if (node.args[0]->type() != "Number") {
+            errors.emplace_back("El argumento de '" + fn + "' debe ser un número", node.line());
             node._type = "Error";
+        } else {
+            node._type = "Number";
         }
-    } else if (fn == "rand" && arity == 0) {
-        node._type = "Number";
-    } else {
-        std::cerr << "Error: función '" << fn << "' con " << arity << " argumentos no es válida.\n";
+
+    } 
+    else if (fn == "log") {
+        if (arity != 2) {
+            errors.emplace_back("La función 'log' requiere 2 argumentos", node.line());
+            node._type = "Error";
+        } else if (node.args[0]->type() != "Number" || node.args[1]->type() != "Number") {
+            errors.emplace_back("Los argumentos de 'log' deben ser numéricos", node.line());
+            node._type = "Error";
+        } else {
+            node._type = "Number";
+        }
+    }
+    else if (fn == "rand") {
+        if (arity != 0) {
+            errors.emplace_back("La función 'rand' no acepta argumentos", node.line());
+            node._type = "Error";
+        } else {
+            node._type = "Number";
+        }
+    }
+    else if (fn == "min" || fn == "max") {
+        if (arity != 2) {
+            errors.emplace_back("La función '" + fn + "' requiere 2 argumentos", node.line());
+            node._type = "Error";
+        } else if (node.args[0]->type() != "Number" || node.args[1]->type() != "Number") {
+            errors.emplace_back("Los argumentos de '" + fn + "' deben ser numéricos", node.line());
+            node._type = "Error";
+        } else {
+            node._type = "Number";
+        }
+    }
+    else {
+        errors.emplace_back("Función builtin '" + fn + "' no reconocida", node.line());
         node._type = "Error";
     }
 }
@@ -123,6 +156,7 @@ void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
     for (const auto& param : *node.params) {
         if (paramsSeen.count(param.name)) {
             errors.emplace_back("Parámetro duplicado '" + param.name + "'", node.line());
+            node._type = "Error";
         } else {
             paramsSeen[param.name] = true;
             symbolTable.addSymbol(param.name, param.type, false);
@@ -136,6 +170,7 @@ void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
     // Verificar tipo de retorno
     if (!node.returnType.empty() && node.returnType != bodyType) {
         errors.emplace_back("Tipo de retorno incorrecto en función '" + node.name + "'", node.line());
+        node._type = "Error";
     }
 
     symbolTable.exitScope();
@@ -148,11 +183,13 @@ void SemanticAnalyzer::visit(FunctionCallNode& node) {
         Symbol* selfSym = symbolTable.lookup("self");
         if (!selfSym) {
             errors.emplace_back("'base' solo puede usarse en métodos", node.line());
+            node._type = "Error";
             return;
         }
         TypeSymbol* typeSym = symbolTable.lookupType(selfSym->type);
         if (!typeSym || typeSym->parentType == "Object") {
             errors.emplace_back("'base' no disponible en este contexto", node.line());
+            node._type = "Error";
         }
     }
 
@@ -163,46 +200,48 @@ void SemanticAnalyzer::visit(FunctionCallNode& node) {
         }
         node._type = "void";
     } 
-    else if (node.funcName == "sin" || node.funcName == "cos" || node.funcName == "exp") {
-        if (node.args.size() != 1) {
-            errors.emplace_back("Función " + node.funcName + " requiere 1 argumento", node.line());
-        } else {
-            node.args[0]->accept(*this);
-            if (node.args[0]->type() != "number") {
-                errors.emplace_back("Argumento de " + node.funcName + " debe ser número", node.line());
-            }
-        }
-        node._type = "number";
-    } 
-    else if (node.funcName == "log") {
-        if (node.args.size() != 2) {
-            errors.emplace_back("Función log requiere 2 argumentos", node.line());
-        } else {
-            node.args[0]->accept(*this);
-            node.args[1]->accept(*this);
-            if (node.args[0]->type() != "number" || node.args[1]->type() != "number") {
-                errors.emplace_back("Argumentos de log deben ser números", node.line());
-            }
-        }
-        node._type = "number";
-    } 
-    else if (node.funcName == "rand") {
-        if (!node.args.empty()) {
-            errors.emplace_back("Función rand no requiere argumentos", node.line());
-        }
-        node._type = "number";
-    } 
+    // else if (node.funcName == "sin" || node.funcName == "cos" || node.funcName == "exp") {
+    //     if (node.args.size() != 1) {
+    //         errors.emplace_back("Función " + node.funcName + " requiere 1 argumento", node.line());
+    //     } else {
+    //         node.args[0]->accept(*this);
+    //         if (node.args[0]->type() != "number") {
+    //             errors.emplace_back("Argumento de " + node.funcName + " debe ser número", node.line());
+    //         }
+    //     }
+    //     node._type = "number";
+    // } 
+    // else if (node.funcName == "log") {
+    //     if (node.args.size() != 2) {
+    //         errors.emplace_back("Función log requiere 2 argumentos", node.line());
+    //     } else {
+    //         node.args[0]->accept(*this);
+    //         node.args[1]->accept(*this);
+    //         if (node.args[0]->type() != "number" || node.args[1]->type() != "number") {
+    //             errors.emplace_back("Argumentos de log deben ser números", node.line());
+    //         }
+    //     }
+    //     node._type = "number";
+    // } 
+    // else if (node.funcName == "rand") {
+    //     if (!node.args.empty()) {
+    //         errors.emplace_back("Función rand no requiere argumentos", node.line());
+    //     }
+    //     node._type = "number";
+    // } 
     // Verificar funciones definidas por el usuario
     else {
         Symbol* funcSymbol = symbolTable.lookup(node.funcName);
         if (!funcSymbol || funcSymbol->kind != "function") {
             errors.emplace_back("Función '" + node.funcName + "' no definida", node.line());
+            node._type = "Error";
             return;
         }
 
         // Verificar número de argumentos
         if (node.args.size() != funcSymbol->params.size()) {
             errors.emplace_back("Número incorrecto de argumentos para '" + node.funcName + "'", node.line());
+            node._type = "Error";
             return;
         }
 
@@ -212,6 +251,7 @@ void SemanticAnalyzer::visit(FunctionCallNode& node) {
             std::string argType = node.args[i]->type();
             if (argType != funcSymbol->params[i]) {
                 errors.emplace_back("Tipo incorrecto para argumento " + std::to_string(i+1) + " en '" + node.funcName + "'", node.line());
+                node._type = "Error";
             }
         }
 
@@ -234,7 +274,7 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
             if (leftType != rightType)
             {
                 errors.emplace_back("Operandos de " + node.op + " deben ser iguales", node.line());
-                node._type = "error"; // Marcar como error si los tipos son inválidos
+                node._type = "Error"; // Marcar como error si los tipos son inválidos
             }
             else {
             node._type = "Boolean"; // Solo asignar boolean si los operandos son válidos
@@ -251,7 +291,7 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
     {
        if (leftType != "Boolean" || rightType != "Boolean") {
             errors.emplace_back("Operandos de " + node.op + " deben ser booleanos", node.line());
-            node._type = "error"; // Marcar como error si los tipos son inválidos
+            node._type = "Error"; // Marcar como error si los tipos son inválidos
         } else {
             node._type = "Boolean"; // Solo asignar boolean si los operandos son válidos
         }
@@ -260,14 +300,17 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
     else if (node.op == "@" || node.op == "@@") {
         if (leftType != "String" && leftType != "Number") {
             errors.emplace_back("Operando izquierdo de @ debe ser string o number", node.line());
+            node._type = "Error";
         }
         if (rightType != "String" && rightType != "Number") {
             errors.emplace_back("Operando derecho de @ debe ser string o number", node.line());
+            node._type = "Error";
         }
         node._type = "String";
     } else {
         if (leftType != "Number" || rightType != "Number") {
             errors.emplace_back("Operandos de " + node.op + " deben ser números", node.line());
+            node._type = "Error";
         }
         node._type = "Number";
     }
@@ -297,6 +340,7 @@ void SemanticAnalyzer::visit(BlockNode& node) {
 void SemanticAnalyzer::visit(VariableDeclarationNode& node) {
     if (symbolTable.existsInCurrentScope(node.name)) {
         errors.emplace_back("Variable '" + node.name + "' ya declarada", node.line());
+        node._type = "Error";
         return;
     }
 
@@ -305,6 +349,7 @@ void SemanticAnalyzer::visit(VariableDeclarationNode& node) {
         std::string initType = node.initializer->type();
         if (!node.declaredType.empty() && node.declaredType != initType) {
             errors.emplace_back("Tipo declarado no coincide con el inicializador", node.line());
+            node._type = "Error";
         }
         node._type = !node.declaredType.empty() ? node.declaredType : initType;
     } else {
@@ -320,6 +365,7 @@ void SemanticAnalyzer::visit(IdentifierNode& node) {
     Symbol* symbol = symbolTable.lookup(node.name);
     if (!symbol) {
         errors.emplace_back("Variable '" + node.name + "' no declarada", node.line());
+        node._type = "Error";
         return;
     }
     node._type = symbol->type;
@@ -341,11 +387,13 @@ void SemanticAnalyzer::visit(LetNode& node) {
         // Verificar nombre válido
         if (!isValidIdentifier(decl.name)) {
             errors.emplace_back("Nombre inválido: '" + decl.name + "'", node.line());
+            node._type = "Error";
         }
 
         // Verificar duplicados en el mismo let
         if (symbolTable.existsInCurrentScope(decl.name)) {
             errors.emplace_back("Variable '" + decl.name + "' ya declarada en este ámbito", node.line());
+            node._type = "Error";
             continue;
         }
 
@@ -356,6 +404,7 @@ void SemanticAnalyzer::visit(LetNode& node) {
         // Validar tipo declarado vs inferido
         if (!decl.declaredType.empty() && decl.declaredType != initType) {
             errors.emplace_back("Tipo declarado '" + decl.declaredType + "' no coincide con inicializador '" + initType + "'", node.line());
+            node._type = "Error";
         }
 
         // Registrar en tabla de símbolos (no constante)
@@ -374,16 +423,19 @@ void SemanticAnalyzer::visit(AssignmentNode& node) {
     
     if (node.name == "self") {
         errors.emplace_back("No se puede reasignar 'self'", node.line());
+        node._type = "Error";
         return;
     }
 
     if (!symbol) {
         errors.emplace_back("Variable '" + node.name + "' no declarada", node.line());
+        node._type = "Error";
         return;
     }
 
     if (symbol->is_const) {
         errors.emplace_back("No se puede reasignar la constante '" + node.name + "'", node.line());
+        node._type = "Error";
     }
 
     node.rhs->accept(*this);
@@ -391,6 +443,7 @@ void SemanticAnalyzer::visit(AssignmentNode& node) {
 
     if (rhsType != symbol->type) {
         errors.emplace_back("Tipo incorrecto en asignación: esperado '" + symbol->type + "', obtenido '" + rhsType + "'", node.line());
+        node._type = "Error";
     }
 
     node._type = symbol->type; // Tipo de la expresión es el de la variable
@@ -400,6 +453,7 @@ void SemanticAnalyzer::visit(IfNode& node) {
     // 1. Verificar que existe else
     if (!node.elseBody) {
         errors.emplace_back("La expresión if debe tener cláusula else", node.line());
+        node._type = "Error";
         return;
     }
 
@@ -413,6 +467,7 @@ void SemanticAnalyzer::visit(IfNode& node) {
         std::string condType = branch.condition->type();
         if (condType != "boolean") {
             errors.emplace_back("Condición debe ser booleana", branch.condition->line());
+            // node._type = "Error";
             hasErrors = true;
         }
 
@@ -431,6 +486,7 @@ void SemanticAnalyzer::visit(IfNode& node) {
         for (size_t i = 1; i < branchTypes.size(); ++i) {
             if (branchTypes[i] != commonType) {
                 errors.emplace_back("Tipos incompatibles en ramas del if", node.line());
+                // node._type = "Error";
                 break;
             }
         }
@@ -444,6 +500,7 @@ void SemanticAnalyzer::visit(WhileNode& node) {
     std::string condType = node.condition->type();
     if (condType != "boolean") {
         errors.emplace_back("Condición del while debe ser booleana", node.line());
+        node._type = "Error";
     }
 
     // Analizar cuerpo
@@ -457,6 +514,7 @@ void SemanticAnalyzer::visit(ForNode& node) {
 
     if (node.init_range->type() != "Number" || node.end_range->type() != "Number") {
         errors.emplace_back("Los límites del 'for' deben ser de tipo Number", node.line());
+        node._type = "Error";
         return;
     }
 

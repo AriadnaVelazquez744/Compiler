@@ -3,8 +3,8 @@
 SymbolTable::SymbolTable() {
     enterScope(); // Scope global
     // Registrar constantes matemáticas
-    addSymbol("PI", "number", true);
-    addSymbol("E", "number", true);
+    addSymbol("PI", "Number", true);
+    addSymbol("E", "Number", true);
     addType("Object", "");
     addType("Number", "Object");
     addType("String", "Object");

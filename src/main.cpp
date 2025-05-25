@@ -1,101 +1,129 @@
-#include <cstdio>
 #include <iostream>
-#include <vector>
-#include "ast/AST.hpp"
-#include "semantic/SemanticAnalyzer.hpp"
-#include "codegen/CodeGenContext.hpp"
+#include <fstream>
+#include <sstream>
+#include "lexer/Lexer.hpp"
+#include "lexer/Token.hpp"
+#include "lexer/LexerError.hpp"
 
-extern int yyparse();
-extern FILE *yyin;
-extern std::vector<ASTNode*> root; // Nodo raíz del AST generado por el parser
-
-bool is_valid_ast(const std::vector<ASTNode*>& nodes) {
-    // Verificar que el vector no esté vacío y que todos los nodos sean válidos
-    if (nodes.empty()) {
-        std::cerr << "AST vacío: ningún nodo generado" << std::endl;
-        return false;
+// Utility to convert TokenType enum to string (for printing)
+std::string tokenTypeToString(TokenType type) {
+    switch (type) {
+        case TokenType::NUMBER: return "NUMBER";
+        case TokenType::STRING: return "STRING";
+        case TokenType::BOOL: return "BOOL";
+        case TokenType::NULL_VAL: return "NULL_VAL";
+        case TokenType::ID: return "ID";
+        case TokenType::ADD: return "ADD";
+        case TokenType::SUB: return "SUB";
+        case TokenType::MUL: return "MUL";
+        case TokenType::DIV: return "DIV";
+        case TokenType::MOD: return "MOD";
+        case TokenType::POW: return "POW";
+        case TokenType::LT: return "LT";
+        case TokenType::GT: return "GT";
+        case TokenType::LE: return "LE";
+        case TokenType::GE: return "GE";
+        case TokenType::EQ: return "EQ";
+        case TokenType::NE: return "NE";
+        case TokenType::AND: return "AND";
+        case TokenType::OR: return "OR";
+        case TokenType::NOT: return "NOT";
+        case TokenType::CONCAT: return "CONCAT";
+        case TokenType::CONCAT_SPACE: return "CONCAT_SPACE";
+        case TokenType::SIN: return "SIN";
+        case TokenType::COS: return "COS";
+        case TokenType::MAX: return "MAX";
+        case TokenType::MIN: return "MIN";
+        case TokenType::SQRT: return "SQRT";
+        case TokenType::EXP: return "EXP";
+        case TokenType::LOG: return "LOG";
+        case TokenType::RANDOM: return "RANDOM";
+        case TokenType::PRINT: return "PRINT";
+        case TokenType::READ: return "READ";
+        case TokenType::PARSE: return "PARSE";
+        case TokenType::PI: return "PI";
+        case TokenType::E: return "E";
+        case TokenType::FUNC: return "FUNC";
+        case TokenType::LET: return "LET";
+        case TokenType::IN: return "IN";
+        case TokenType::IF: return "IF";
+        case TokenType::ELSE: return "ELSE";
+        case TokenType::ELIF: return "ELIF";
+        case TokenType::FOR: return "FOR";
+        case TokenType::WHILE: return "WHILE";
+        case TokenType::RANGE: return "RANGE";
+        case TokenType::TYPE: return "TYPE";
+        case TokenType::NEW: return "NEW";
+        case TokenType::SELF: return "SELF";
+        case TokenType::INHERITS: return "INHERITS";
+        case TokenType::COMMA: return "COMMA";
+        case TokenType::SEMICOLON: return "SEMICOLON";
+        case TokenType::DOT: return "DOT";
+        case TokenType::LPAREN: return "LPAREN";
+        case TokenType::RPAREN: return "RPAREN";
+        case TokenType::LBRACE: return "LBRACE";
+        case TokenType::RBRACE: return "RBRACE";
+        case TokenType::ASSIGN: return "ASSIGN";
+        case TokenType::REASSIGN: return "REASSIGN";
+        case TokenType::END_OF_FILE: return "EOF";
+        case TokenType::UNKNOWN: return "UNKNOWN";
+        default: return "UNDEFINED";
     }
-    
-    for (auto node : nodes) {
-        if (!node) {
-            std::cerr << "AST contiene nodos nulos" << std::endl;
-            return false;
-        }
-    }
-    return true;
 }
 
-void delete_ast(std::vector<ASTNode*>& nodes) {
-    for (auto node : nodes) {
-        delete node; // Liberar cada nodo individualmente
+std::string readFile(const std::string& path) {
+    std::ifstream file(path);
+    if (!file) {
+        throw std::runtime_error("No se pudo abrir el archivo: " + path);
     }
-    nodes.clear(); // Limpiar el vector
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
 }
 
-int main(int argc, char **argv) {
-    const char* filename = "script.hulk";  // Default file
-    
+int main(int argc, char** argv) {
+    std::string filename = "script.hulk";
+
     if (argc >= 2) {
-        filename = argv[1];  // Use provided filename
+        filename = argv[1];
     }
 
-    FILE *input_file = fopen(filename, "r");
-    if (!input_file) {
-        perror("Error opening file");
-        return 1;
-    }
-
-    yyin = input_file;
-    //yyparse();
-    if (yyparse() != 0) { // Realizar el análisis sintáctico
-        std::cerr << "Error: Falló el análisis sintáctico." << std::endl;
-        fclose(input_file);
-        return 1;
-    }
-    fclose(input_file);
-
-    if (!is_valid_ast(root)) {
-        std::cerr << "Error: No se generó un AST válido." << std::endl;
-        return 1;
-    }
-
-
-    std::cout << "AST terminado." << std::endl;
-
-    for (auto node : root) {
-        std::cout << "Tipo de nodo raíz: " << node->type() 
-                << " | Línea: " << node->line() << "\n";
-    }
-
-    // Crear el analizador semántico
-    SemanticAnalyzer semanticAnalyzer;
-
-    std::cout << "Instancia anlizador creada." << std::endl;
-
-    // Realizar el análisis semántico
-    semanticAnalyzer.analyze(root);
-
-    std::cout << "Análisis semántico completado exitosamente." << std::endl;
-
-    CodeGenContext codegen;
-        
-    std::cout << "Instancia generador definida." << std::endl;
-
+    std::string sourceCode;
     try {
-        codegen.generateCode(root);
+        sourceCode = readFile(filename);
     } catch (const std::exception& e) {
-        std::cerr << "Error during code generation: " << e.what() << std::endl;
+        std::cerr << "Error: " << e.what() << "\n";
         return 1;
     }
 
-    std::cout << "Generación de código completada." << std::endl;
+    Lexer lexer(sourceCode);
 
-    codegen.dumpIR("hulk-low-code.ll");
+    std::cout << "== Tokens leídos del archivo '" << filename << "':\n\n";
 
-    std::cout << "Volcando IR en hulk-low-code.ll." << std::endl;
+    while (true) {
+        auto token = lexer.nextToken();
 
-    // Liberar memoria del AST
-    delete_ast(root);
+        if (token->type == TokenType::END_OF_FILE) break;
 
+        std::cout << "[Línea " << token->location.line
+                  << ", Columna " << token->location.column << "] "
+                  << tokenTypeToString(token->type)
+                  << " → \"" << token->lexeme << "\"\n";
+    }
+
+    const auto& errors = lexer.getErrors();
+    if (!errors.empty()) {
+        std::cerr << "\n== Errores léxicos encontrados:\n";
+        for (const auto& err : errors) {
+            std::cerr << "[Línea " << err.location.line
+                      << ", Columna " << err.location.column << "] "
+                      << "Error: " << err.message
+                      << " → \"" << err.offendingLexeme << "\"\n";
+        }
+        return 1;
+    }
+
+    std::cout << "\n== Análisis léxico completado sin errores.\n";
     return 0;
 }

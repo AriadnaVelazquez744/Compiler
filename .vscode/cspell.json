@@ -15,6 +15,7 @@
         "noyywrap",
         "nullptr",
         "Parseado",
+        "RPAREN",
         "stod",
         "typedef",
         "yycolumn",

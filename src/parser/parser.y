@@ -64,11 +64,11 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %token NULL_VAL
 %token <str> ID
 
-%token ',' ';' '.'
-%token '(' ')'
-%token '{' '}'
+%token COMMA SEMICOLON DOT
+%token LPAREN RPAREN
+%token LBRACE RBRACE
 %token LAMBDA 
-%token '=' REASSIGN
+%token ASSIGN REASSIGN
 
 // operadores aritméticos
 %token ADD
@@ -161,23 +161,23 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 program:
     /* vacío */
     | program statement             { root.push_back($2); }
-    | program error ';'             { yyerrok; }
+    | program error SEMICOLON             { yyerrok; }
 ;
 
 statement:
-    expression ';'                  { $$ = $1; }
-    | PRINT '(' expression ')' ';'  { 
+    expression SEMICOLON                  { $$ = $1; }
+    | PRINT LPAREN expression RPAREN SEMICOLON  { 
                                         std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
                                         $$ = new BuiltInFunctionNode("print", args, yylloc.first_line);
                                     }
-    /* | READ ';'                      { 
+    /* | READ SEMICOLON                      { 
                                         std::string input; 
                                         //std::cin >> input;
                                         std::getline(std::cin, input); 
                                         //$$ = new std::string(input); 
                                         std::cout << "Entrada: " << input << std::endl;
                                     }
-    | PARSE '(' expression ')' ';'  {
+    | PARSE LPAREN expression RPAREN SEMICOLON  {
                                         const std::string& raw = *$3;
                                         // Try parse as number
                                         try {
@@ -195,13 +195,13 @@ statement:
                                         
                                     } */
     | block_expr                    { $$ = $1; }
-    | FUNC ID '(' params ')' LAMBDA body
+    | FUNC ID LPAREN params RPAREN LAMBDA body
                                     {
                                         $$ = new FunctionDeclarationNode(*$2, $4, $7, true, yylloc.first_line);
                                         std::cout << "Definición función inline: " << *$2 << std::endl;
                                         
                                     }
-    | FUNC ID '(' params ')' block_expr
+    | FUNC ID LPAREN params RPAREN block_expr
                                     {
                                         $$ = new FunctionDeclarationNode(*$2, $4, $6, false, yylloc.first_line);
                                         std::cout << "Definición función bloque: " << *$2 << std::endl;
@@ -260,47 +260,47 @@ statement:
                 
             }
 
-            | '(' expression ')' {
+            | LPAREN expression RPAREN {
                 $$ = $2;
             }
 
-            | SIN '(' expression ')' {
+            | SIN LPAREN expression RPAREN {
                 std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
                 $$ = new BuiltInFunctionNode("sin", args, yylloc.first_line);
                
             }
-            | COS '(' expression ')' {
+            | COS LPAREN expression RPAREN {
                 std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
                 $$ = new BuiltInFunctionNode("cos", args, yylloc.first_line);
                 
             }
-            | MIN '(' expression ',' expression ')' {
+            | MIN LPAREN expression COMMA expression RPAREN {
                 std::vector<ASTNode*> args = vectorize($3, $5, 2);
                 $$ = new BuiltInFunctionNode("min", args, yylloc.first_line);
                 
             }
-            | MAX '(' expression ',' expression ')' {
+            | MAX LPAREN expression COMMA expression RPAREN {
                 std::vector<ASTNode*> args = vectorize($3, $5, 2);
                 $$ = new BuiltInFunctionNode("max", args, yylloc.first_line);
                 
             }
-            | SQRT '(' expression ')' {
+            | SQRT LPAREN expression RPAREN {
                 std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
                 $$ = new BuiltInFunctionNode("sqrt", args, yylloc.first_line);
                 
             }
-            | LOG '(' expression ',' expression ')' {
+            | LOG LPAREN expression COMMA expression RPAREN {
                 std::vector<ASTNode*> args = vectorize($3, $5, 2);
                 $$ = new BuiltInFunctionNode("log", args, yylloc.first_line);
                 
             }
-            | EXP '(' expression ')' {
+            | EXP LPAREN expression RPAREN {
                 std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
                 $$ = new BuiltInFunctionNode("exp", args, yylloc.first_line);
                 
             }
 
-            | RANDOM '(' ')' {
+            | RANDOM LPAREN RPAREN {
                 std::vector<ASTNode*> args = vectorize(nullptr, nullptr, 0);
                 $$ = new BuiltInFunctionNode("rand", args, yylloc.first_line);
             }
@@ -358,7 +358,7 @@ statement:
         ;
 
         block_expr:
-            '{' block_body '}'  {
+            LBRACE block_body RBRACE  {
                                     $$ = new BlockNode(*$2, yylloc.first_line); // Placeholder
                                    
                                 }
@@ -379,7 +379,7 @@ statement:
                                     $$->push_back(p); 
                                    
                                 }
-            | params ',' ID     { 
+            | params COMMA ID     { 
                                     Parameter p;
                                     p.name = *$3;
                                     $1->push_back(p); 
@@ -388,13 +388,13 @@ statement:
         ;
 
         func_call_expr:
-            ID '(' args ')'     { $$ = new FunctionCallNode(*$1, *$3, yylloc.first_line); }
+            ID LPAREN args RPAREN     { $$ = new FunctionCallNode(*$1, *$3, yylloc.first_line); }
         ;
 
         args: 
             /* empty */                 { $$ = new std::vector<ASTNode*>(); }
             | expression                { $$ = new std::vector<ASTNode*>(); $$->push_back($1); }
-            | args ',' expression       { $1->push_back($3); $$ = $1; }
+            | args COMMA expression       { $1->push_back($3); $$ = $1; }
         ;
 
         assign_expr:
@@ -403,20 +403,20 @@ statement:
 
         let_expr:
               LET decl IN body                { $$ = new LetNode($2, $4, yylloc.first_line);  }
-            | LET decl IN '(' body ')'        { $$ = new LetNode($2, $5, yylloc.first_line);  }
-            | LET decl IN body ';'            { $$ = new LetNode($2, $4, yylloc.first_line);  }
-            | LET decl IN '(' body ')' ';'    { $$ = new LetNode($2, $5, yylloc.first_line);  }
+            | LET decl IN LPAREN body RPAREN        { $$ = new LetNode($2, $5, yylloc.first_line);  }
+            | LET decl IN body SEMICOLON            { $$ = new LetNode($2, $4, yylloc.first_line);  }
+            | LET decl IN LPAREN body RPAREN SEMICOLON    { $$ = new LetNode($2, $5, yylloc.first_line);  }
         ;
 
         decl:
-              ID '=' expression             {
+              ID ASSIGN expression             {
                                                 LetDeclaration d;
                                                 d.name = *$1;
                                                 d.initializer = $3;
                                                 $$ = new std::vector<LetDeclaration>();
                                                 $$->push_back(d); 
                                             }
-            | decl ',' ID '=' expression    {
+            | decl COMMA ID ASSIGN expression    {
                                                 LetDeclaration d;
                                                 d.name = *$3;
                                                 d.initializer = $5;
@@ -428,7 +428,7 @@ statement:
         body:
               statement                     { $$ = $1; }
             | expression                    { $$ = $1; }
-            | PRINT '(' expression ')'      { 
+            | PRINT LPAREN expression RPAREN      { 
                                                 std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
                                                 $$ = new BuiltInFunctionNode("print", args, yylloc.first_line);
                                             }
@@ -440,14 +440,14 @@ statement:
         ;
 
         if_head:
-            IF '(' expression ')' body                      { 
+            IF LPAREN expression RPAREN body                      { 
                                                                 IfBranch b;
                                                                 b.condition = $3;
                                                                 b.body = $5;
                                                                 $$ = new std::vector<IfBranch>(); 
                                                                 $$->push_back(b);
                                                             }
-            | if_head ELIF '(' expression ')' body          { 
+            | if_head ELIF LPAREN expression RPAREN body          { 
                                                                 IfBranch b;
                                                                 b.condition = $4;
                                                                 b.body = $6;
@@ -457,11 +457,11 @@ statement:
         ;
 
         while_expr:
-            WHILE '(' expression ')' body                   { $$ = new WhileNode($3, $5, yylloc.first_line); }
+            WHILE LPAREN expression RPAREN body                   { $$ = new WhileNode($3, $5, yylloc.first_line); }
         ;
 
         for_expr:
-            FOR '(' ID IN RANGE '(' expression ',' expression ')' ')' body      { $$ = new ForNode(*$3, $7, $9, $12, yylloc.first_line); }
+            FOR LPAREN ID IN RANGE LPAREN expression COMMA expression RPAREN RPAREN body      { $$ = new ForNode(*$3, $7, $9, $12, yylloc.first_line); }
         ;
 
 %%

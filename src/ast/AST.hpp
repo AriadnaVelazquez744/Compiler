@@ -21,12 +21,12 @@ public:
 class BinaryOpNode : public ASTNode {
 public:
     std::string op;
-    ASTNode* left;
-    ASTNode* right;
+    std::shared_ptr<ASTNode> left;
+    std::shared_ptr<ASTNode> right;
     int _line;
     std::string _type;
 
-    BinaryOpNode(std::string op, ASTNode* l, ASTNode* r, int ln)
+    BinaryOpNode(std::string op, std::shared_ptr<ASTNode> l, std::shared_ptr<ASTNode> r, int ln)
         : op(op), left(l), right(r), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -40,11 +40,11 @@ public:
 class UnaryOpNode : public ASTNode {
     public:
         std::string op;
-        ASTNode* operand;
+        std::shared_ptr<ASTNode> operand;
         int _line;
         std::string _type;
     
-        UnaryOpNode(const std::string& op, ASTNode* operand, int line)
+        UnaryOpNode(const std::string& op, std::shared_ptr<ASTNode> operand, int line)
             : op(op), operand(operand), _line(line), _type("") {}
     
         void accept(ASTVisitor& visitor) override {
@@ -58,11 +58,11 @@ class UnaryOpNode : public ASTNode {
 class BuiltInFunctionNode : public ASTNode {
 public:
     std::string name;
-    std::vector<ASTNode*> args;
+    std::vector<std::shared_ptr<ASTNode>> args;
     int _line;
     std::string _type;
 
-    BuiltInFunctionNode(const std::string& name, const std::vector<ASTNode*>& args, int line)
+    BuiltInFunctionNode(const std::string& name, const std::vector<std::shared_ptr<ASTNode>>& args, int line)
         : name(name), args(args), _line(line), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -78,11 +78,11 @@ public:
 class FunctionCallNode : public ASTNode {
 public:
     std::string funcName;
-    std::vector<ASTNode*> args;
+    std::vector<std::shared_ptr<ASTNode>> args;
     int _line;
     std::string _type;
 
-    FunctionCallNode(std::string name, std::vector<ASTNode*> args, int ln)
+    FunctionCallNode(std::string name, std::vector<std::shared_ptr<ASTNode>> args, int ln)
         : funcName(name), args(args), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -116,11 +116,11 @@ public:
 
 class BlockNode : public ASTNode {
 public:
-    std::vector<ASTNode*> expressions;
+    std::vector<std::shared_ptr<ASTNode>> expressions;
     int _line;
     std::string _type;
 
-    BlockNode(std::vector<ASTNode*> exprs, int ln)
+    BlockNode(std::vector<std::shared_ptr<ASTNode>> exprs, int ln)
         : expressions(exprs), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -137,12 +137,12 @@ class VariableDeclarationNode : public ASTNode {
 public:
     std::string name;
     std::string declaredType;
-    ASTNode* initializer;
+    std::shared_ptr<ASTNode> initializer;
     bool isMutable;
     int _line;
     std::string _type;
 
-    VariableDeclarationNode(std::string name, std::string type, ASTNode* init, bool isMut, int ln)
+    VariableDeclarationNode(std::string name, std::string type, std::shared_ptr<ASTNode> init, bool isMut, int ln)
         : name(name), declaredType(type), initializer(init), isMutable(isMut), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -182,14 +182,14 @@ class FunctionDeclarationNode : public ASTNode {
 public:
     std::string name;
     std::string returnType = ""; 
-    std::vector<Parameter>* params;
-    ASTNode* body;
+    std::shared_ptr<std::vector<Parameter>> params;
+    std::shared_ptr<ASTNode> body;
     bool isInline;
     int _line;
     std::string _type;
 
     FunctionDeclarationNode(std::string name, 
-                            std::vector<Parameter>* params, ASTNode* body, 
+                            std::shared_ptr<std::vector<Parameter>> params, std::shared_ptr<ASTNode> body, 
                             bool isInline, int ln)
         : name(name), params(params), 
           body(body), isInline(isInline), _line(ln), _type("") {}
@@ -205,17 +205,17 @@ public:
 struct LetDeclaration {
     std::string name;
     std::string declaredType; // Puede estar vacío
-    ASTNode* initializer;
+    std::shared_ptr<ASTNode> initializer;
 };
 
 class LetNode : public ASTNode {
 public:
-    std::vector<LetDeclaration>* declarations;
-    ASTNode* body;
+    std::shared_ptr<std::vector<LetDeclaration>> declarations;
+    std::shared_ptr<ASTNode> body;
     int _line;
     std::string _type;
 
-    LetNode(std::vector<LetDeclaration>* decls, ASTNode* body, int ln)
+    LetNode(std::shared_ptr<std::vector<LetDeclaration>> decls, std::shared_ptr<ASTNode> body, int ln)
         : declarations(decls), body(body), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -229,11 +229,11 @@ public:
 class AssignmentNode : public ASTNode {
 public:
     std::string name;
-    ASTNode* rhs;
+    std::shared_ptr<ASTNode> rhs;
     int _line;
     std::string _type;
 
-    AssignmentNode(std::string name, ASTNode* rhs, int ln)
+    AssignmentNode(std::string name, std::shared_ptr<ASTNode> rhs, int ln)
         : name(name), rhs(rhs), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -245,18 +245,18 @@ public:
 };
 
 struct IfBranch {
-    ASTNode* condition;
-    ASTNode* body;
+    std::shared_ptr<ASTNode> condition;
+    std::shared_ptr<ASTNode> body;
 };
 
 class IfNode : public ASTNode {
 public:
-    std::vector<IfBranch>* branches; // if + elifs
-    ASTNode* elseBody;
+    std::shared_ptr<std::vector<IfBranch>> branches; // if + elifs
+    std::shared_ptr<ASTNode> elseBody;
     int _line;
     std::string _type;
 
-    IfNode(std::vector<IfBranch>* branches, ASTNode* elseBody, int ln)
+    IfNode(std::shared_ptr<std::vector<IfBranch>> branches, std::shared_ptr<ASTNode> elseBody, int ln)
         : branches(branches), elseBody(elseBody), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -269,12 +269,12 @@ public:
 
 class WhileNode : public ASTNode {
     public:
-        ASTNode* condition;
-        ASTNode* body;
+        std::shared_ptr<ASTNode> condition;
+        std::shared_ptr<ASTNode> body;
         int _line;
         std::string _type;
     
-        WhileNode(ASTNode* cond, ASTNode* b, int ln)
+        WhileNode(std::shared_ptr<ASTNode> cond, std::shared_ptr<ASTNode> b, int ln)
             : condition(cond), body(b), _line(ln), _type("") {}
     
         void accept(ASTVisitor& visitor) override {
@@ -288,14 +288,14 @@ class WhileNode : public ASTNode {
 class ForNode : public ASTNode {
 public:
     std::string varName;
-    ASTNode* iterable;
-    ASTNode* init_range;
-    ASTNode* end_range;
-    ASTNode* body;
+    std::shared_ptr<ASTNode> iterable;
+    std::shared_ptr<ASTNode> init_range;
+    std::shared_ptr<ASTNode> end_range;
+    std::shared_ptr<ASTNode> body;
     int _line;
     std::string _type;
 
-    ForNode(const std::string& var, ASTNode* init, ASTNode* end, ASTNode* b, int ln)
+    ForNode(const std::string& var, std::shared_ptr<ASTNode> init, std::shared_ptr<ASTNode> end, std::shared_ptr<ASTNode> b, int ln)
         : varName(var), init_range(init), end_range(end), body(b), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -309,19 +309,19 @@ public:
 class TypeDeclarationNode : public ASTNode {
 public:
     std::string name;
-    std::vector<Parameter>* constructorParams;
-    std::vector<AttributeDeclaration>* attributes;
-    std::vector<MethodDeclaration>* methods;
+    std::shared_ptr<std::vector<Parameter>> constructorParams;
+    std::shared_ptr<std::vector<AttributeDeclaration>> attributes;
+    std::shared_ptr<std::vector<MethodDeclaration>> methods;
     std::optional<std::string> baseType;            // Si hay herencia
-    std::vector<ASTNode*> baseArgs;                 // Argumentos para el padre
+    std::vector<std::shared_ptr<ASTNode>> baseArgs;                 // Argumentos para el padre
     int _line;
 
     TypeDeclarationNode(std::string name,
-                        std::vector<Parameter>* params,
-                        std::vector<AttributeDeclaration>* attrs,
-                        std::vector<MethodDeclaration>* methods,
+                        std::shared_ptr<std::vector<Parameter>> params,
+                        std::shared_ptr<std::vector<AttributeDeclaration>> attrs,
+                        std::shared_ptr<std::vector<MethodDeclaration>> methods,
                         std::optional<std::string> baseType,
-                        std::vector<ASTNode*> baseArgs,
+                        std::vector<std::shared_ptr<ASTNode>> baseArgs,
                         int line)
         : name(std::move(name)), constructorParams(params),
           attributes(attrs), methods(methods),
@@ -336,11 +336,11 @@ public:
 class NewInstanceNode : public ASTNode {
 public:
     std::string typeName;
-    std::vector<ASTNode*> args;
+    std::vector<std::shared_ptr<ASTNode>> args;
     int _line;
     std::string _type;
 
-    NewInstanceNode(std::string typeName, std::vector<ASTNode*> args, int line)
+    NewInstanceNode(std::string typeName, std::vector<std::shared_ptr<ASTNode>> args, int line)
         : typeName(std::move(typeName)), args(std::move(args)), _line(line), _type("") {}
 
     void accept(ASTVisitor& v) override { v.visit(*this); }
@@ -350,31 +350,31 @@ public:
 
 struct AttributeDeclaration {
     std::string name;
-    ASTNode* initializer;
+    std::shared_ptr<ASTNode> initializer;
 
-    AttributeDeclaration(std::string name, ASTNode* init)
+    AttributeDeclaration(std::string name, std::shared_ptr<ASTNode> init)
         : name(std::move(name)), initializer(init) {}
 };
 
 struct MethodDeclaration {
     std::string name;
-    std::vector<Parameter>* params;
-    ASTNode* body;
+    std::shared_ptr<std::vector<Parameter>> params;
+    std::shared_ptr<ASTNode> body;
     std::string returnType;  
 
-    MethodDeclaration(std::string name, std::vector<Parameter>* params, ASTNode* body, std::string ret = "")
+    MethodDeclaration(std::string name, std::shared_ptr<std::vector<Parameter>> params, std::shared_ptr<ASTNode> body, std::string ret = "")
         : name(std::move(name)), params(params), body(body), returnType(std::move(ret)) {}
 };
 
 class MethodCallNode : public ASTNode {
 public:
-    ASTNode* object;
+    std::shared_ptr<ASTNode> object;
     std::string methodName;
-    std::vector<ASTNode*> args;
+    std::vector<std::shared_ptr<ASTNode>> args;
     int _line;
     std::string _type;
 
-    MethodCallNode(ASTNode* obj, std::string methodName, std::vector<ASTNode*> args, int line)
+    MethodCallNode(std::shared_ptr<ASTNode> obj, std::string methodName, std::vector<std::shared_ptr<ASTNode>> args, int line)
         : object(obj), methodName(std::move(methodName)), args(std::move(args)), _line(line), _type("") {}
 
     void accept(ASTVisitor& v) override { v.visit(*this); }
@@ -382,5 +382,3 @@ public:
     std::string type() const override { return _type; }
 };
 
-
-    

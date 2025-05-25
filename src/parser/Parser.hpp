@@ -27,6 +27,7 @@ private:
     std::shared_ptr<ASTNode> parseStatement();
     std::shared_ptr<ASTNode> parseExpression();
     std::shared_ptr<ASTNode> parseElemExpr(std::shared_ptr<ASTNode> left = nullptr, int minPrec = 0);
+    std::shared_ptr<ASTNode> parseBuiltinFunction(const std::string& name, int expectedArgs);
     std::shared_ptr<ASTNode> parseIfExpr();
     std::shared_ptr<ASTNode> parseWhileExpr();
     std::shared_ptr<ASTNode> parseForExpr();

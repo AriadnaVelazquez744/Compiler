@@ -1,6 +1,7 @@
 #include "Parser.hpp"
 #include <iostream>
 #include <stdexcept>
+#include <unordered_map>
 
 Parser::Parser(std::shared_ptr<Lexer> lexer)
     : lexer(std::move(lexer)) {
@@ -138,7 +139,7 @@ std::shared_ptr<ASTNode> Parser::parseExpression() {
             return std::make_shared<FunctionCallNode>(idName, args, loc.line);
         }
 
-        // Lookahead: assignment := 
+        // Lookahead: reassignment := 
         if (currentToken->type == TokenType::REASSIGN) {
             advance();
             auto rhs = parseExpression();
@@ -182,3 +183,155 @@ std::vector<std::shared_ptr<ASTNode>> Parser::parseBlockBody() {
     return body;
 }
 
+int getPrecedence(TokenType type) {
+    switch (type) {
+        case TokenType::NOT: return 90; // unary
+        case TokenType::POW:
+        case TokenType::SIN:
+        case TokenType::COS:
+        case TokenType::EXP:
+        case TokenType::SQRT:
+        case TokenType::LOG:
+        case TokenType::MIN:
+        case TokenType::MAX:
+        case TokenType::RANDOM: return 80;
+
+        case TokenType::MUL:
+        case TokenType::DIV:
+        case TokenType::MOD: return 70;
+
+        case TokenType::ADD:
+        case TokenType::SUB: return 60;
+
+        case TokenType::CONCAT:
+        case TokenType::CONCAT_SPACE: return 55;
+
+        case TokenType::LT:
+        case TokenType::GT:
+        case TokenType::LE:
+        case TokenType::GE:
+        case TokenType::EQ:
+        case TokenType::NE: return 50;
+
+        case TokenType::AND:
+        case TokenType::OR: return 40;
+
+        default: return -1;
+    }
+}
+
+std::shared_ptr<ASTNode> Parser::parseElemExpr(std::shared_ptr<ASTNode> left, int minPrec) {
+    // ---- Initial expression
+    if (!left) {
+        TokenType type = currentToken->type;
+        SourceLocation loc = currentToken->location;
+
+        // Unary operators
+        if (match(TokenType::SUB)) {
+            auto operand = parseExpression();  // allows complex sub-expr like `-if (x) ...`
+            if (!operand) {
+                errors.emplace_back("Se esperaba una expresión después del operador '-'", currentToken->location, "expresión");
+                return nullptr;
+            }
+            return std::make_shared<UnaryOpNode>("-", operand, loc.line);
+        }
+
+        if (match(TokenType::NOT)) {
+            auto operand = parseExpression();
+            if (!operand) {
+                errors.emplace_back("Se esperaba una expresión después del operador '!'", currentToken->location, "expresión");
+                return nullptr;
+            }
+            return std::make_shared<UnaryOpNode>("!", operand, loc.line);
+        }
+
+        // Grouped expression
+        if (match(TokenType::LPAREN)) {
+            auto expr = parseExpression();
+            if (!match(TokenType::RPAREN)) {
+                errors.emplace_back("Falta ')' para cerrar la expresión entre paréntesis", currentToken->location, ")");
+            }
+            return expr;
+        }
+
+        // Constants
+        if (match(TokenType::PI)) return std::make_shared<IdentifierNode>("pi", loc.line);
+        if (match(TokenType::E))  return std::make_shared<IdentifierNode>("e", loc.line);
+
+        // Built-in functions
+        const std::unordered_map<TokenType, std::pair<std::string, int>> builtins = {
+            {TokenType::SIN, {"sin", 1}}, {TokenType::COS, {"cos", 1}},
+            {TokenType::SQRT, {"sqrt", 1}}, {TokenType::EXP, {"exp", 1}},
+            {TokenType::LOG, {"log", 2}}, {TokenType::MIN, {"min", 2}},
+            {TokenType::MAX, {"max", 2}}, {TokenType::RANDOM, {"rand", 0}}
+        };
+
+        auto it = builtins.find(type);
+        if (it != builtins.end()) {
+            std::string name = it->second.first;
+            int arity = it->second.second;
+            advance();
+            return parseBuiltinFunction(name, arity);
+        }
+
+        // Default fallback to full expression
+        left = parseExpression();
+
+        if (!left) {
+            errors.emplace_back("Se esperaba una expresión válida", currentToken->location, "expresión");
+            return nullptr;
+        }
+    }
+
+    // ---- Binary operators
+    while (true) {
+        TokenType opType = currentToken->type;
+        int prec = getPrecedence(opType);
+
+        if (prec < minPrec) break;
+
+        std::string opLexeme = currentToken->lexeme;
+        advance();
+
+        auto right = parseExpression();
+        if (!right) {
+            errors.emplace_back("Se esperaba una expresión después del operador '" + opLexeme + "'", currentToken->location, "expresión");
+            return nullptr;
+        }
+
+        left = std::make_shared<BinaryOpNode>(opLexeme, left, right, currentToken->location.line);
+    }
+
+    return left;
+}
+
+std::shared_ptr<ASTNode> Parser::parseBuiltinFunction(const std::string& name, int expectedArgs) {
+    expect(TokenType::LPAREN, "(");
+    std::vector<std::shared_ptr<ASTNode>> args;
+
+    if (expectedArgs == 0) {
+        if (currentToken->type != TokenType::RPAREN) {
+            errors.emplace_back("La función '" + name + "' no acepta argumentos", currentToken->location, ")");
+        }
+    } else {
+        args.push_back(parseExpression());
+
+        for (int i = 1; i < expectedArgs; ++i) {
+            if (match(TokenType::COMMA)) {
+                args.push_back(parseExpression());
+            } else {
+                errors.emplace_back("Se esperaba ',' entre argumentos en función '" + name + "'", currentToken->location, ",");
+                break;
+            }
+        }
+
+        // Catch extra arguments
+        if (match(TokenType::COMMA)) {
+            errors.emplace_back("Demasiados argumentos en función '" + name + "'", currentToken->location, ")");
+        }
+    }
+
+    expect(TokenType::RPAREN, ")");
+
+    return std::make_shared<BuiltInFunctionNode>(name, args, currentToken->location.line);
+}

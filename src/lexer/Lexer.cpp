@@ -133,8 +133,8 @@ std::shared_ptr<Token> Lexer::matchOperator() {
     // Multi-char operators
     if (next2 == "**") return match("**", TokenType::POW);
     if (next2 == "@@") return match("@@", TokenType::CONCAT_SPACE);
-    if (next2 == "=>") return match("=>", TokenType::REASSIGN);
-    if (next2 == ":=") return match(":=", TokenType::ASSIGN);
+    if (next2 == "=>") return match("=>", TokenType::LAMBDA);
+    if (next2 == ":=") return match(":=", TokenType::REASSIGN);
     if (next2 == "==") return match("==", TokenType::EQ);
     if (next2 == "!=") return match("!=", TokenType::NE);
     if (next2 == "<=") return match("<=", TokenType::LE);

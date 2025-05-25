@@ -35,7 +35,7 @@ enum class TokenType {
     COMMA, SEMICOLON, DOT,
     LPAREN, RPAREN,
     LBRACE, RBRACE,
-    ASSIGN, REASSIGN,
+    ASSIGN, REASSIGN, LAMBDA
     
     // Special
     END_OF_FILE,

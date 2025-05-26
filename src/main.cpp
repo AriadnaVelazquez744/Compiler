@@ -1,11 +1,20 @@
+//main.cpp
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
+
 #include "lexer/Lexer.hpp"
 #include "lexer/Token.hpp"
 #include "lexer/LexerError.hpp"
+#include "parser/Parser.hpp"
+#include "parser/ParserError.hpp"
+#include "ast/AST.hpp"
 
-// Utility to convert TokenType enum to string (for printing)
+#include "ast/ASTVisitor.hpp"
+#include "ast/ASTPrinter.hpp"  // include the printer
+
+// Utility to convert TokenType enum to string
 std::string tokenTypeToString(TokenType type) {
     switch (type) {
         case TokenType::NUMBER: return "NUMBER";
@@ -103,7 +112,6 @@ int main(int argc, char** argv) {
 
     while (true) {
         auto token = lexer.nextToken();
-
         if (token->type == TokenType::END_OF_FILE) break;
 
         std::cout << "[Línea " << token->location.line
@@ -112,10 +120,10 @@ int main(int argc, char** argv) {
                   << " → \"" << token->lexeme << "\"\n";
     }
 
-    const auto& errors = lexer.getErrors();
-    if (!errors.empty()) {
+    const auto& lexErrors = lexer.getErrors();
+    if (!lexErrors.empty()) {
         std::cerr << "\n== Errores léxicos encontrados:\n";
-        for (const auto& err : errors) {
+        for (const auto& err : lexErrors) {
             std::cerr << "[Línea " << err.location.line
                       << ", Columna " << err.location.column << "] "
                       << "Error: " << err.message
@@ -125,5 +133,37 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "\n== Análisis léxico completado sin errores.\n";
+
+    // ==== PARSER STAGE ====
+    std::cout << "\n== Iniciando análisis sintáctico...\n";
+
+    Parser parser(std::make_shared<Lexer>(sourceCode));
+    auto ast = parser.parseProgram();
+    const auto& parseErrors = parser.getErrors();
+
+    if (!parseErrors.empty()) {
+        std::cerr << "\n== Errores sintácticos encontrados:\n";
+        for (const auto& err : parseErrors) {
+            std::cerr << "[Línea " << err.location.line
+                      << ", Columna " << err.location.column << "] "
+                      << "Error: " << err.message
+                      << (err.expected.empty() ? "" : " (esperado: '" + err.expected + "')")
+                      << "\n";
+        }
+        return 1;
+    }
+
+    std::cout << "== Análisis sintáctico completado sin errores.\n";
+    std::cout << "== AST generado con " << ast.size() << " nodo(s) raíz.\n";
+
+    ASTPrinter printer;
+
+    for (const auto& node : ast) {
+        std::cout << "Nodo raíz:\n";
+        node->accept(printer);
+        std::cout << "\n";
+    }
+
+
     return 0;
 }

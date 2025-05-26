@@ -37,8 +37,30 @@ void Parser::expect(TokenType type, const std::string& expectedMessage) {
     }
 }
 
+std::vector<std::shared_ptr<ASTNode>> Parser::parseProgram() {
+    std::vector<std::shared_ptr<ASTNode>> program;
+
+    while (currentToken->type != TokenType::END_OF_FILE) {
+        std::cout << ">> Parsing new statement " << ")\n";
+        auto stmt = parseStatement();
+
+        if (!stmt) {
+            std::cerr << "!! Failed to parse a statement.\n";
+            advance(); // try recovery
+            continue;
+        }
+
+        program.push_back(stmt);
+    }
+
+    return program;
+}
+
 
 std::shared_ptr<ASTNode> Parser::parseStatement() {
+
+    std::cout << "....parseStatement() sees token " << "\n";
+
     // Handle "print(...);" form
     if (match(TokenType::PRINT)) {
         expect(TokenType::LPAREN, "(");
@@ -57,40 +79,40 @@ std::shared_ptr<ASTNode> Parser::parseStatement() {
         return parseBlockExpr();
     }
 
-    // Function declaration: FUNC ID (...) => body or block
-    if (match(TokenType::FUNC)) {
-        if (currentToken->type == TokenType::ID) {
-            std::string funcName = currentToken->lexeme;
-            advance();
+    // // Function declaration: FUNC ID (...) => body or block
+    // if (match(TokenType::FUNC)) {
+    //     if (currentToken->type == TokenType::ID) {
+    //         std::string funcName = currentToken->lexeme;
+    //         advance();
 
-            expect(TokenType::LPAREN, "(");
-            auto params = parseParams();
-            expect(TokenType::RPAREN, ")");
+    //         expect(TokenType::LPAREN, "(");
+    //         auto params = parseParams();
+    //         expect(TokenType::RPAREN, ")");
 
-            // Inline function: uses LAMBDA
-            if (match(TokenType::LAMBDA)) { // LAMBDA is => in your grammar
-                auto body = parseBody();
-                return std::make_shared<FunctionDeclarationNode>(funcName, std::make_shared<std::vector<Parameter>>(params), body, true, currentToken->location.line);
-            }
-            // Block function
-            else {
-                auto body = parseBlockExpr();
-                return std::make_shared<FunctionDeclarationNode>(funcName, std::make_shared<std::vector<Parameter>>(params), body, false, currentToken->location.line);
-            }
-        } else {
-            errors.emplace_back(
-                "Se esperaba un nombre de función después de 'function'",
-                currentToken->location,
-                "ID"
-            );
-            return nullptr;
-        }
-    }
+    //         // Inline function: uses LAMBDA
+    //         if (match(TokenType::LAMBDA)) { // LAMBDA is => in your grammar
+    //             auto body = parseBody();
+    //             return std::make_shared<FunctionDeclarationNode>(funcName, std::make_shared<std::vector<Parameter>>(params), body, true, currentToken->location.line);
+    //         }
+    //         // Block function
+    //         else {
+    //             auto body = parseBlockExpr();
+    //             return std::make_shared<FunctionDeclarationNode>(funcName, std::make_shared<std::vector<Parameter>>(params), body, false, currentToken->location.line);
+    //         }
+    //     } else {
+    //         errors.emplace_back(
+    //             "Se esperaba un nombre de función después de 'function'",
+    //             currentToken->location,
+    //             "ID"
+    //         );
+    //         return nullptr;
+    //     }
+    // }
 
-    // Let, while, for
-    if (currentToken->type == TokenType::LET) return parseLetExpr();
-    if (currentToken->type == TokenType::WHILE) return parseWhileExpr();
-    if (currentToken->type == TokenType::FOR) return parseForExpr();
+    // // Let, while, for
+    // if (currentToken->type == TokenType::LET) return parseLetExpr();
+    // if (currentToken->type == TokenType::WHILE) return parseWhileExpr();
+    // if (currentToken->type == TokenType::FOR) return parseForExpr();
 
     // General expression
     auto expr = parseExpression();
@@ -102,65 +124,83 @@ std::shared_ptr<ASTNode> Parser::parseExpression() {
     TokenType type = currentToken->type;
     SourceLocation loc = currentToken->location;
 
+    std::shared_ptr<ASTNode> base = nullptr;
+
+    // wrong first token
+    if (currentToken->type == TokenType::ADD ||
+        currentToken->type == TokenType::MUL ||
+        currentToken->type == TokenType::DIV ||
+        currentToken->type == TokenType::MOD) {
+        errors.emplace_back("Expresión inválida: operador sin operando inicial", currentToken->location, "expresión");
+        advance();
+        return nullptr;
+    }
+
     // --- Handle simple literals and identifiers
     if (type == TokenType::NUMBER) {
         std::string value = currentToken->lexeme;
         advance();
-        return std::make_shared<LiteralNode>(value, "Number", loc.line);
+        base = std::make_shared<LiteralNode>(value, "Number", loc.line);
     }
 
-    if (type == TokenType::STRING) {
+    else if (type == TokenType::STRING) {
         std::string value = currentToken->lexeme;
         advance();
-        return std::make_shared<LiteralNode>(value, "String", loc.line);
+        base =  std::make_shared<LiteralNode>(value, "String", loc.line);
     }
 
-    if (type == TokenType::BOOL) {
+    else if (type == TokenType::BOOL) {
         std::string value = (currentToken->lexeme == "True") ? "true" : "false";
         advance();
-        return std::make_shared<LiteralNode>(value, "Boolean", loc.line);
+        base =  std::make_shared<LiteralNode>(value, "Boolean", loc.line);
     }
 
-    if (type == TokenType::NULL_VAL) {
+    else if (type == TokenType::NULL_VAL) {
         advance();
-        return std::make_shared<LiteralNode>("null", "Null", loc.line);
+        base = std::make_shared<LiteralNode>("null", "Null", loc.line);
     }
 
-    if (type == TokenType::ID) {
+    else if (type == TokenType::ID) {
         // Could be an identifier, function call, or assignment
         std::string idName = currentToken->lexeme;
         advance();
 
-        // Lookahead: function call
-        if (currentToken->type == TokenType::LPAREN) {
-            advance();  // consume '('
-            auto args = parseArgs();
-            expect(TokenType::RPAREN, ")");
-            return std::make_shared<FunctionCallNode>(idName, args, loc.line);
-        }
+        // // Lookahead: function call
+        // if (currentToken->type == TokenType::LPAREN) {
+        //     advance();  // consume '('
+        //     auto args = parseArgs();
+        //     expect(TokenType::RPAREN, ")");
+        //     base =  std::make_shared<FunctionCallNode>(idName, args, loc.line);
+        // }
 
         // Lookahead: reassignment := 
         if (currentToken->type == TokenType::REASSIGN) {
             advance();
             auto rhs = parseExpression();
-            return std::make_shared<AssignmentNode>(idName, rhs, loc.line);
+            base =  std::make_shared<AssignmentNode>(idName, rhs, loc.line);
         }
 
         // Just an identifier
-        return std::make_shared<IdentifierNode>(idName, loc.line);
+        base = std::make_shared<IdentifierNode>(idName, loc.line);
     }
 
     // --- Parse control structures
-    if (type == TokenType::IF) return parseIfExpr();
-    if (type == TokenType::WHILE) return parseWhileExpr();
-    if (type == TokenType::FOR) return parseForExpr();
-    if (type == TokenType::LET) return parseLetExpr();
+    // else if (type == TokenType::IF) base = parseIfExpr();
+    // else if (type == TokenType::WHILE) base = parseWhileExpr();
+    // else if (type == TokenType::FOR) base = parseForExpr();
+    // else if (type == TokenType::LET) base = parseLetExpr();
 
     // --- Parse grouped block
-    if (type == TokenType::LBRACE) return parseBlockExpr();
+    else if (type == TokenType::LBRACE) {
+        base = parseBlockExpr();
+    }
 
-    // --- Fallback to element expression (recursive precedence parser)
-    return parseElemExpr();
+    else {
+        //Fallback to element expression (recursive precedence parser)
+        return parseElemExpr();
+    }
+ 
+    return parseElemExpr(base);
 }
 
 std::shared_ptr<ASTNode> Parser::parseBlockExpr() {

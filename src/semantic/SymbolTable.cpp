@@ -1,3 +1,4 @@
+//SymbolTable.cpp
 #include "SymbolTable.hpp"
 
 SymbolTable::SymbolTable() {
@@ -44,11 +45,17 @@ bool SymbolTable::existsInCurrentScope(const std::string& name) {
 }
 
 
-bool SymbolTable::addFunction(const std::string& name, const std::string& returnType, const std::vector<std::string>& params) {
+bool SymbolTable::addFunction(
+    const std::string& name,
+    const std::string& returnType,
+    const std::vector<std::string>& params,
+    ASTNode* body
+) {
     if (scopes.empty()) return false;
     auto& current = scopes.back();
     if (current.find(name) != current.end()) return false;
-    current[name] = Symbol{"function", returnType, false, params};
+
+    current[name] = Symbol{"function", returnType, false, params, body}; // incluye cuerpo
     return true;
 }
 
@@ -93,4 +100,17 @@ bool SymbolTable::addTypeMethod(
     if (type->methods.find(methodName) != type->methods.end()) return false;
     type->methods[methodName] = Symbol{"method", returnType, false, params};
     return true;
+}
+
+std::vector<Symbol> SymbolTable::getUserDefinedFunctions() const {
+    std::vector<Symbol> functions;
+    if (scopes.empty()) return functions;
+
+    const auto& global = scopes.front();
+    for (const auto& [name, sym] : global) {
+        if (sym.body != nullptr) {
+            functions.push_back(sym);
+        }
+    }
+    return functions;
 }

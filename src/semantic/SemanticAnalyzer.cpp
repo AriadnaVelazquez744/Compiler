@@ -5,6 +5,9 @@
 #include <set> 
 #include <iostream>
 
+SymbolTable& SemanticAnalyzer::getSymbolTable() {
+    return symbolTable;
+}
 
 void SemanticAnalyzer::analyze(const std::vector<ASTNode*>& nodes) {
     std::cout << "Entra en analyze." << std::endl;

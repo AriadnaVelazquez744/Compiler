@@ -1,9 +1,11 @@
+//SymbolTable.hpp
 #pragma once
 #include <vector>
 #include <unordered_map>
 #include <string>
 #include <stdexcept>
 #include <set> 
+#include "../ast/AST.hpp"
 
 
 // Tipos básicos de HULK (predefinidos)
@@ -15,6 +17,17 @@ struct Symbol {
     std::string type;       // Tipo del símbolo (para variables) o tipo de retorno (funciones)
     bool is_const;          // ¿Es constante? (solo aplica a variables)
     std::vector<std::string> params; // Parámetros (funciones) o tipoParams (tipos)
+    ASTNode* body = nullptr;
+
+    // Constructor completo
+    Symbol(std::string kind, std::string type, bool is_const, std::vector<std::string> params, ASTNode* body = nullptr)
+        : kind(std::move(kind)), type(std::move(type)), is_const(is_const), params(std::move(params)), body(body) {}
+
+    // Constructor mínimo útil
+    Symbol(std::string type, bool is_const, std::vector<std::string> params = {}, ASTNode* body = nullptr)
+        : kind("variable"), type(std::move(type)), is_const(is_const), params(std::move(params)), body(body) {}
+
+    Symbol() = default;
 };
 
 // Símbolo específico para tipos (hereda de Symbol)
@@ -43,7 +56,12 @@ public:
     bool addSymbol(const std::string& name, const std::string& type, bool is_const, const std::vector<std::string>& params = {});
     Symbol* lookup(const std::string& name);
     bool existsInCurrentScope(const std::string& name);
-    bool addFunction(const std::string& name, const std::string& returnType, const std::vector<std::string>& params);
+    bool addFunction(
+    const std::string& name,
+    const std::string& returnType,
+    const std::vector<std::string>& params,
+    ASTNode* body = nullptr // <-- nuevo
+);
 
     // Métodos para tipos
     bool addType(
@@ -61,4 +79,6 @@ public:
         const std::string& returnType,
         const std::vector<std::string>& params
     );
+
+    std::vector<Symbol> getUserDefinedFunctions() const;
 };

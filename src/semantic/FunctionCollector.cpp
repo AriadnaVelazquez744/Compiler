@@ -1,3 +1,4 @@
+//FunctionCollector.cpp
 #include "FunctionCollector.hpp"
 #include "../ast/AST.hpp"
 
@@ -27,6 +28,8 @@ void FunctionCollector::visit(FunctionDeclarationNode& node) {
         for (const auto& param : *node.params) {
             paramTypes.push_back(param.type);
         }
-        symbolTable.addFunction(node.name, node.returnType, paramTypes);
+
+        // 💡 Pasar también el cuerpo
+        symbolTable.addFunction(node.name, node.returnType, paramTypes, node.body);
     }
 }

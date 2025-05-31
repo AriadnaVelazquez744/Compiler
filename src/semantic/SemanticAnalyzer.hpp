@@ -40,4 +40,6 @@ public:
     void visit(MethodCallNode& node) override;
 
     const std::vector<SemanticError>& getErrors() const { return errors; }
+
+    SymbolTable& getSymbolTable();
 };

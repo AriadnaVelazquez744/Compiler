@@ -7,6 +7,7 @@
         "atof",
         "codegen",
         "cout",
+        "EBNF",
         "elif",
         "endl",
         "getline",

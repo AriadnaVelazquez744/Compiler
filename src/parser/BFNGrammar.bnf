@@ -1,22 +1,11 @@
-start : a
-seq : a b
-alt_gen_0 : a
-alt_gen_0 : b
-alt : alt_gen_0
-star_gen_1 : ε
-star_gen_1 : a star_gen_1
-zero_or_more : star_gen_1
-plus_gen_2 : a plus_gen_2
-plus_gen_2 : a
-one_or_more : plus_gen_2
-opt_gen_3 : ε
-opt_gen_3 : a
-optional : opt_gen_3
-seq_gen_5 : a b
-alt_gen_4 : seq_gen_5
-alt_gen_4 : c
-plus_gen_6 : alt_gen_4 plus_gen_6
-plus_gen_6 : alt_gen_4
-opt_gen_7 : ε
-opt_gen_7 : d
-combo : plus_gen_6 opt_gen_7
+program : expr SEMICOLON
+alt_gen_0 : NUMBER
+alt_gen_0 : ID
+alt_gen_0 : STRING
+alt_gen_0 : BOOLEAN
+alt_gen_0 : NULL_VAL
+expr : alt_gen_0
+alt_gen_1 : ADD
+alt_gen_1 : SUB
+alt_gen_1 : MULT
+expr : expr alt_gen_1 expr

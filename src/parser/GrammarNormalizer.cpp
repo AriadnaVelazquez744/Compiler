@@ -46,14 +46,20 @@ std::shared_ptr<EBNFNode> GrammarNormalizer::parseRHS(const std::string& rhsExpr
 }
 
 std::shared_ptr<EBNFNode> GrammarNormalizer::parseEBNFExpr() {
-    auto left = parseSequence();
+    std::vector<std::shared_ptr<EBNFNode>> alts;
+    alts.push_back(parseSequence());
+
     while (match("|")) {
-        auto alt = std::make_shared<EBNFNode>(EBNFNodeType::ALTERNATION);
-        alt->children.push_back(left);
-        alt->children.push_back(parseSequence());
-        left = alt;
+        alts.push_back(parseSequence());
     }
-    return left;
+
+    if (alts.size() == 1) {
+        return alts[0];
+    }
+
+    auto altNode = std::make_shared<EBNFNode>(EBNFNodeType::ALTERNATION);
+    altNode->children = std::move(alts);
+    return altNode;
 }
 
 std::shared_ptr<EBNFNode> GrammarNormalizer::parseSequence() {

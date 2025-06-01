@@ -4,8 +4,9 @@ alt_gen_0 : ID
 alt_gen_0 : STRING
 alt_gen_0 : BOOLEAN
 alt_gen_0 : NULL_VAL
+alt_gen_0 : elem_expr
 expr : alt_gen_0
 alt_gen_1 : ADD
 alt_gen_1 : SUB
 alt_gen_1 : MULT
-expr : expr alt_gen_1 expr
+elem_expr : expr alt_gen_1 expr

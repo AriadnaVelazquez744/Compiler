@@ -12,12 +12,12 @@ public:
     void computeFollowSets();
     void printFirstSets() const;
     void printFollowSets() const;
+    std::set<std::string> computeFirstForSequence(const std::vector<std::string>& seq) const;
     const std::string& getStartSymbol() const { return startSymbol; }
     const std::map<std::string, std::vector<std::vector<std::string>>>& getProductions() const { return productions; }
     bool isNonTerminal(const std::string& sym) const { return nonTerminals.count(sym); }
 
 private:
-    std::set<std::string> computeFirstForSequence(const std::vector<std::string>& seq);
 
     std::map<std::string, std::vector<std::vector<std::string>>> productions;
     std::set<std::string> nonTerminals;

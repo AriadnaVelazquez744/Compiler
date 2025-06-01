@@ -56,7 +56,7 @@ void GrammarAugment::readGrammar(const std::string& filename) {
     }
 }
 
-std::set<std::string> GrammarAugment::computeFirstForSequence(const std::vector<std::string>& seq) {
+std::set<std::string> GrammarAugment::computeFirstForSequence(const std::vector<std::string>& seq) const {
     if (seq.empty()) return {"ε"};
 
     std::set<std::string> result;
@@ -68,7 +68,7 @@ std::set<std::string> GrammarAugment::computeFirstForSequence(const std::vector<
             allDeriveEpsilon = false;
             break;
         } else if (nonTerminals.find(symbol) != nonTerminals.end()) {
-            const auto& first = firstSet[symbol];
+            const auto& first = firstSet.at(symbol);
             bool hasEpsilon = false;
             for (const std::string& s : first) {
                 if (s == "ε") hasEpsilon = true;

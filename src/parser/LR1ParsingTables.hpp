@@ -1,4 +1,4 @@
-//LR1ParsingTables.hpp
+// LR1ParsingTables.hpp
 #pragma once
 
 #include "GrammarAugment.hpp"
@@ -6,12 +6,19 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <set>
 
 enum class ActionType {
     Shift,
     Reduce,
     Accept,
     Error
+};
+
+enum class Associativity {
+    Left,
+    Right,
+    NonAssoc
 };
 
 struct Action {
@@ -27,6 +34,15 @@ public:
     void generateParsingTables();
     void printActionTable() const;
     void printGotoTable() const;
+    void printExpectedTokens() const;
+
+    // Precedence management
+    void setTerminalPrecedence(const std::string& terminal, int precedence, Associativity assoc);
+    void setProductionPrecedence(int prodIndex, int precedence);
+    int getProductionNumber(const std::string& lhs, const std::vector<std::string>& rhs) const;
+
+    // Error reporting helper
+    const std::set<std::string>& getExpectedTokens(int state) const;
 
 private:
     const GrammarAugment& grammar;
@@ -34,6 +50,13 @@ private:
 
     std::vector<std::map<std::string, Action>> actionTable;
     std::vector<std::map<std::string, int>> gotoTable;
+    std::vector<std::set<std::string>> expectedTokensPerState;
 
-    int getProductionNumber(const std::string& lhs, const std::vector<std::string>& rhs) const;
+    // Precedence data structures
+    std::map<std::string, std::pair<int, Associativity>> terminalPrecedence;
+    std::map<int, int> productionPrecedence;
+    
+    // Conflict resolution
+    bool resolveConflict(const Action& existing, const Action& proposed, 
+                         const std::string& terminal);
 };

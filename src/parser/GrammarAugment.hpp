@@ -16,6 +16,7 @@ public:
     const std::string& getStartSymbol() const { return startSymbol; }
     const std::map<std::string, std::vector<std::vector<std::string>>>& getProductions() const { return productions; }
     bool isNonTerminal(const std::string& sym) const { return nonTerminals.count(sym); }
+    bool isTerminal(const std::string& sym) const { return terminals.count(sym); }
 
 private:
 

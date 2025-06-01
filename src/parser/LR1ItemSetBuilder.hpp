@@ -29,6 +29,8 @@ public:
     explicit LR1ItemSetBuilder(const GrammarAugment& grammar);
     void constructItemSets();
     void printItemSets() const;
+    const std::vector<std::set<LR1Item>>& getItemSets() const { return itemSets; }
+    const std::vector<std::map<std::string, size_t>>& getTransitions() const { return transitions; }
 
 private:
     std::set<LR1Item> closure(const std::set<LR1Item>& items) const;

@@ -9,6 +9,20 @@ SymbolTable& SemanticAnalyzer::getSymbolTable() {
     return symbolTable;
 }
 
+bool SemanticAnalyzer::conformsTo(const std::string& subtype, const std::string& supertype) {
+    if (subtype == "Error" || supertype == "Error") return false;
+    if (subtype == supertype) return true;
+    if (supertype == "Object") return true;
+
+    TypeSymbol* sub = symbolTable.lookupType(subtype);
+    while (sub && !sub->parentType.empty()) {
+        if (sub->parentType == supertype) return true;
+        sub = symbolTable.lookupType(sub->parentType);
+    }
+
+    return false;
+}
+
 void SemanticAnalyzer::analyze(const std::vector<ASTNode*>& nodes) {
     std::cout << "Entra en analyze." << std::endl;
 
@@ -347,6 +361,12 @@ void SemanticAnalyzer::visit(VariableDeclarationNode& node) {
         return;
     }
 
+    if (!node.initializer && node.declaredType.empty()) {
+        errors.emplace_back("Variable '" + node.name + "' sin tipo ni inicializador", node.line());
+        node._type = "Error";
+        return;
+    }
+
     if (node.initializer) {
         node.initializer->accept(*this);
         std::string initType = node.initializer->type();
@@ -393,6 +413,12 @@ void SemanticAnalyzer::visit(LetNode& node) {
             node._type = "Error";
         }
 
+        if (!decl.initializer && decl.declaredType.empty()) {
+            errors.emplace_back("Variable '" + decl.name + "' sin tipo ni inicializador", node.line());
+            node._type = "Error";
+        }
+
+
         // Verificar duplicados en el mismo let
         if (symbolTable.existsInCurrentScope(decl.name)) {
             errors.emplace_back("Variable '" + decl.name + "' ya declarada en este ámbito", node.line());
@@ -405,7 +431,7 @@ void SemanticAnalyzer::visit(LetNode& node) {
         std::string initType = decl.initializer->type();
 
         // Validar tipo declarado vs inferido
-        if (!decl.declaredType.empty() && decl.declaredType != initType) {
+        if (!decl.declaredType.empty() && !conformsTo(initType, decl.declaredType)) {
             errors.emplace_back("Tipo declarado '" + decl.declaredType + "' no coincide con inicializador '" + initType + "'", node.line());
             node._type = "Error";
         }
@@ -444,21 +470,15 @@ void SemanticAnalyzer::visit(AssignmentNode& node) {
     node.rhs->accept(*this);
     std::string rhsType = node.rhs->type();
 
-    if (rhsType != symbol->type) {
+    if (!conformsTo(rhsType, symbol->type)) {
         errors.emplace_back("Tipo incorrecto en asignación: esperado '" + symbol->type + "', obtenido '" + rhsType + "'", node.line());
         node._type = "Error";
     }
 
-    node._type = symbol->type; // Tipo de la expresión es el de la variable
+    node._type = symbol->type;
 }
 
 void SemanticAnalyzer::visit(IfNode& node) {
-    // 1. Verificar que existe else
-    if (!node.elseBody) {
-        errors.emplace_back("La expresión if debe tener cláusula else", node.line());
-        node._type = "Error";
-        return;
-    }
 
     std::vector<std::string> branchTypes;
     bool hasErrors = false;
@@ -468,7 +488,7 @@ void SemanticAnalyzer::visit(IfNode& node) {
         // Analizar condición
         branch.condition->accept(*this);
         std::string condType = branch.condition->type();
-        if (condType != "boolean") {
+        if (condType != "Boolean") {
             errors.emplace_back("Condición debe ser booleana", branch.condition->line());
             // node._type = "Error";
             hasErrors = true;
@@ -479,22 +499,28 @@ void SemanticAnalyzer::visit(IfNode& node) {
         branchTypes.push_back(branch.body->type());
     }
 
-    // 3. Analizar else
-    node.elseBody->accept(*this);
-    branchTypes.push_back(node.elseBody->type());
-
-    // 4. Verificar compatibilidad de tipos
-    if (!hasErrors) {
-        std::string commonType = branchTypes[0];
-        for (size_t i = 1; i < branchTypes.size(); ++i) {
-            if (branchTypes[i] != commonType) {
-                errors.emplace_back("Tipos incompatibles en ramas del if", node.line());
-                // node._type = "Error";
-                break;
-            }
-        }
-        node._type = commonType;
+    // Procesar 'else' si está presente
+    if (node.elseBody) {
+        node.elseBody->accept(*this);
+        branchTypes.push_back(node.elseBody->type());
     }
+
+    if (hasErrors) {
+        node._type = "Error";
+        return;
+    }
+
+    // Verificar consistencia de tipos
+    const std::string& commonType = branchTypes.front();
+    for (const auto& t : branchTypes) {
+        if (t != commonType) {
+            errors.emplace_back("Tipos incompatibles en ramas del 'if'", node.line());
+            node._type = "Error";
+            return;
+        }
+    }
+
+    node._type = commonType;
 }
 
 void SemanticAnalyzer::visit(WhileNode& node) {
@@ -532,21 +558,18 @@ void SemanticAnalyzer::visit(ForNode& node) {
 
 
 void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
-    // 1. Verificar si ya existe
     if (symbolTable.lookupType(node.name)) {
         errors.emplace_back("Tipo '" + node.name + "' ya declarado", node.line());
         return;
     }
 
-    // 2. Verificar que no herede de tipos prohibidos
     const std::set<std::string> builtinTypes = {"Number", "String", "Boolean"};
     if (node.baseType.has_value() && builtinTypes.count(*node.baseType)) {
         errors.emplace_back("No se puede heredar de tipo básico '" + *node.baseType + "'", node.line());
         return;
     }
 
-    // 3. Registrar tipo
-    std::string parent = node.baseType.has_value() ? *node.baseType : "Object";
+    std::string parent = node.baseType.value_or("Object");
     std::vector<std::string> paramNames;
     for (const auto& param : *node.constructorParams) {
         paramNames.push_back(param.name);
@@ -557,7 +580,6 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
         return;
     }
 
-    // 4. Validar y evaluar baseArgs en el contexto de los parámetros del tipo actual
     if (node.baseType.has_value()) {
         symbolTable.enterScope();
         for (const auto& param : *node.constructorParams) {
@@ -566,22 +588,32 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
         for (ASTNode* arg : node.baseArgs) {
             arg->accept(*this);
         }
+
+        TypeSymbol* parentSym = symbolTable.lookupType(parent);
+        if (parentSym && parentSym->typeParams.size() != node.baseArgs.size()) {
+            errors.emplace_back("Cantidad incorrecta de argumentos para constructor del padre", node.line());
+        }
+
         symbolTable.exitScope();
     }
 
-    // 5. Evaluar inicialización de atributos sin acceso a self
     symbolTable.enterScope();
     for (const auto& param : *node.constructorParams) {
-        symbolTable.addSymbol(param.name, "Unknown", false);  // Se puede mejorar con inferencia
+        symbolTable.addSymbol(param.name, "Unknown", false);
     }
 
     for (const auto& attr : *node.attributes) {
         attr.initializer->accept(*this);
-        symbolTable.addTypeAttribute(node.name, attr.name, attr.initializer->type());
+        std::string inferredType = attr.initializer->type();
+
+        if (inferredType == "Error") {
+            errors.emplace_back("No se pudo inferir el tipo del atributo '" + attr.name + "'", node.line());
+        } else {
+            symbolTable.addTypeAttribute(node.name, attr.name, inferredType);
+        }
     }
     symbolTable.exitScope();
 
-    // 6. Evaluar métodos con acceso a self
     TypeSymbol* typeSym = symbolTable.lookupType(node.name);
     for (const auto& method : *node.methods) {
         symbolTable.enterScope();
@@ -592,14 +624,18 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
 
         method.body->accept(*this);
 
-        // Registrar método
+        if (!method.returnType.empty() &&
+            !conformsTo(method.body->type(), method.returnType)) {
+            errors.emplace_back("El cuerpo del método '" + method.name + "' no conforma al tipo de retorno declarado", node.line());
+        }
+
         std::vector<std::string> paramTypes;
         for (const auto& param : *method.params) {
             paramTypes.push_back(param.type);
         }
+
         symbolTable.addTypeMethod(node.name, method.name, method.returnType, paramTypes);
 
-        // Verificar herencia de firma si aplica
         if (!typeSym->parentType.empty()) {
             TypeSymbol* parentSym = symbolTable.lookupType(typeSym->parentType);
             if (parentSym) {
@@ -617,6 +653,7 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
         symbolTable.exitScope();
     }
 }
+
 
 void SemanticAnalyzer::visit(NewInstanceNode& node) {
     TypeSymbol* typeSym = symbolTable.lookupType(node.typeName);

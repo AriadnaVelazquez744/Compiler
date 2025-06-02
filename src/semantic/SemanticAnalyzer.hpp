@@ -14,6 +14,8 @@ private:
 
     bool isValidIdentifier(const std::string& name);
 
+    bool conformsTo(const std::string& subtype, const std::string& supertype);
+
 public:
     void analyze(const std::vector<ASTNode*>& nodes);
 

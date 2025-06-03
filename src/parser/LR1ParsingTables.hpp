@@ -44,6 +44,15 @@ public:
     // Error reporting helper
     const std::set<std::string>& getExpectedTokens(int state) const;
 
+    const std::map<std::string, Action>& getActionTable(int state) const {
+        return actionTable[state];
+    }
+
+    const std::map<std::string, int>& getGotoTable(int state) const {
+        return gotoTable[state];
+    }
+
+
 private:
     const GrammarAugment& grammar;
     const LR1ItemSetBuilder& itemSetBuilder;

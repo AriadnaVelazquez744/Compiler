@@ -1,0 +1,80 @@
+//===================--------------GRAMMAR_RULES---------------==================//
+
+{"program","(stm)*"},
+{"stm", "(((func_decl | print | expr) SEMICOLON) | (cond (SEMICOLON)?))"},
+
+{"print", "PRINT LPAREN value RPAREN"},
+
+{"func_decl", "FUNC ID LPAREN (params)? RPAREN ((LAMBDA value) | block_expr)"},
+{"params", "ID (COMMA ID)*"},
+
+{"expr", "NUMBER | STRING | BOOLEAN | NULL_VAL | ID | bin_expr | unary_expr | brace | func_call_expr | reassign_expr | const | build_in"},
+
+{"value", "exp | cond"}
+{"arg", "value (COMMA value)*"},
+
+{"reassign_expr", "ID REASSIGN value"},
+{"func_call_expr", "ID LPAREN (arg)? RPAREN"},
+{"const", "E | PI"},
+{"bin_expr", value (ADD | SUB | MULT | DIV | MOD | POW | CONCAT | CONCAT_SPACE | LT | GT | LE | GE | EQ | NE | AND | OR) value},
+{"unary_expr", "(SUB | NOT) value"},
+{"brace", "LPAREN value RPAREN"},
+{"build_in", "(SIN | COS | MIN | MAX | SQRT | EXP | RANDOM | LOG) LPAREN (arg)? RPAREN"},
+
+{"cond", "if_expr | while_expr | for_expr | let_expr | block_expr"},
+
+{"block_expr", "LBRACE ((stm | (cond SEMICOLON))* | body) RBRACE"},
+
+{"body", "stm | print | func_decl | value"},
+
+{"if_expr", "IF LPAREN value RPAREN body (ELIF LPAREN value RPAREN body)* ELSE body"},
+{"let_expr", "LET ID ASSIGN value (COMMA ID ASSIGN value)* IN ((LPAREN body RPAREN) | body) (SEMICOLON)? "},
+{"while_expr" "WHILE LPAREN value RPAREN body"},
+{"for_expr", "FOR LPAREN ID IN RANGE LPAREN value COMMA value RPAREN RPAREN body"},
+
+
+// ======================---------------PRECEDENCIA-----------==========================//
+
+// Precedence definitions (higher number = higher precedence)
+tableBuilder.setTerminalPrecedence("ADD", 2, Associativity::Left);
+tableBuilder.setTerminalPrecedence("SUB", 2, Associativity::Left);
+
+tableBuilder.setTerminalPrecedence("MULT", 3, Associativity::Left);
+tableBuilder.setTerminalPrecedence("DIV", 3, Associativity::Left);
+tableBuilder.setTerminalPrecedence("MOD", 3, Associativity::Left);
+
+tableBuilder.setTerminalPrecedence("SIN", 4, Associativity::Right);
+tableBuilder.setTerminalPrecedence("COS", 4, Associativity::Right);
+tableBuilder.setTerminalPrecedence("MAX", 4, Associativity::Right);
+tableBuilder.setTerminalPrecedence("MIN", 4, Associativity::Right);
+tableBuilder.setTerminalPrecedence("SQTR", 4, Associativity::Right);
+tableBuilder.setTerminalPrecedence("LOG", 4, Associativity::Right);
+tableBuilder.setTerminalPrecedence("EXP", 4, Associativity::Right);
+tableBuilder.setTerminalPrecedence("RANDOM", 4, Associativity::Right);
+
+tableBuilder.setTerminalPrecedence("LT", 5, Associativity::Left);
+tableBuilder.setTerminalPrecedence("GT", 5, Associativity::Left);
+tableBuilder.setTerminalPrecedence("LE", 5, Associativity::Left);
+tableBuilder.setTerminalPrecedence("GE", 5, Associativity::Left);
+tableBuilder.setTerminalPrecedence("EQ", 5, Associativity::Left);
+tableBuilder.setTerminalPrecedence("NE", 5, Associativity::Left);
+
+tableBuilder.setTerminalPrecedence("AND", 6, Associativity::Left);
+tableBuilder.setTerminalPrecedence("OR", 6, Associativity::Left);
+
+tableBuilder.setTerminalPrecedence("NOT", 10, Associativity::Right);
+tableBuilder.setTerminalPrecedence("SUB", 10, Associativity::Right);
+
+tableBuilder.setTerminalPrecedence("CONCAT", 11, Associativity::NonAssoc);
+tableBuilder.setTerminalPrecedence("CONCAT_SPACE", 11, Associativity::NonAssoc);
+
+
+// Only expression production needs precedence
+int binExprProd = tableBuilder.getProductionNumber("bin_expr", {"expr", "alt_gen_1", "expr"});
+tableBuilder.setProductionPrecedence(elemExprProd, 3);
+
+int buildInExprProd = tableBuilder.getProductionNumber("build_in", {"expr", "alt_gen_1", "expr"});
+tableBuilder.setProductionPrecedence(elemExprProd, 4);
+
+int binExprProd = tableBuilder.getProductionNumber("unary_expr", {"alt_gen_1", "expr"});
+tableBuilder.setProductionPrecedence(elemExprProd, 6);

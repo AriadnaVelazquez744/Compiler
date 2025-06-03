@@ -83,6 +83,7 @@ std::vector<std::shared_ptr<ASTNode>> Parser::parse() {
         case ActionType::Reduce: {
             const auto& [lhs, rhs] = flatProductions[action.target];
             std::vector<std::shared_ptr<ASTNode>> children(rhs.size());
+            
             for (int i = static_cast<int>(rhs.size()) - 1; i >= 0; --i) {
                 stateStack.pop();
                 children[i] = valueStack.top();

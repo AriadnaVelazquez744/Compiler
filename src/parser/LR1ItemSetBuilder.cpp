@@ -9,33 +9,34 @@ void LR1ItemSetBuilder::constructItemSets() {
     std::string start = grammar.getStartSymbol();
     std::string augmented = start + "'";
     std::set<LR1Item> startItemSet = closure({{augmented, {start}, 0, "$"}});
+
     itemSets.push_back(startItemSet);
     transitions.push_back({});
+
+    std::unordered_map<std::set<LR1Item>, size_t> itemSetToIndex;
+    itemSetToIndex[startItemSet] = 0;
 
     for (size_t i = 0; i < itemSets.size(); ++i) {
         std::map<std::string, std::set<LR1Item>> nextSets;
 
         for (const auto& item : itemSets[i]) {
             if (item.dotPos < item.rhs.size()) {
-                std::string nextSym = item.rhs[item.dotPos];
-                auto nextItem = item;
-                ++nextItem.dotPos;
-                nextSets[nextSym].insert(nextItem);
+                std::string sym = item.rhs[item.dotPos];
+                LR1Item nextItem = item;
+                nextItem.dotPos++;
+                nextSets[sym].insert(nextItem);
             }
         }
 
-        for (const auto& [sym, items] : nextSets) {
-            std::set<LR1Item> closureSet = closure(items);
-            auto it = std::find(itemSets.begin(), itemSets.end(), closureSet);
-            size_t idx;
-            if (it == itemSets.end()) {
+        for (const auto& [sym, kernelItems] : nextSets) {
+            std::set<LR1Item> closureSet = closure(kernelItems);
+
+            auto [it, inserted] = itemSetToIndex.emplace(closureSet, itemSets.size());
+            if (inserted) {
                 itemSets.push_back(closureSet);
-                transitions.push_back({}); // <-- add this line
-                idx = itemSets.size() - 1;
-            } else {
-                idx = std::distance(itemSets.begin(), it);
+                transitions.push_back({});
             }
-            transitions[i][sym] = idx;
+            transitions[i][sym] = it->second;
         }
     }
 }
@@ -45,38 +46,48 @@ std::set<std::string> LR1ItemSetBuilder::firstOfSequence(const std::vector<std::
 }
 
 std::set<LR1Item> LR1ItemSetBuilder::closure(const std::set<LR1Item>& items) const {
+    // Check full cache first
+    auto cacheIt = closureCache.find(items);
+    if (cacheIt != closureCache.end()) return cacheIt->second;
+
     std::set<LR1Item> closureSet = items;
-    bool changed = true;
+    std::vector<LR1Item> worklist(items.begin(), items.end());
 
-    while (changed) {
-        changed = false;
-        std::set<LR1Item> newItems;
+    while (!worklist.empty()) {
+        LR1Item item = worklist.back();
+        worklist.pop_back();
 
-        for (const auto& item : closureSet) {
-            if (item.dotPos >= item.rhs.size()) continue;
+        if (item.dotPos >= item.rhs.size()) continue;
 
-            const std::string& B = item.rhs[item.dotPos];
-            if (!grammar.isNonTerminal(B)) continue;
+        const std::string& B = item.rhs[item.dotPos];
+        if (!grammar.isNonTerminal(B)) continue;
 
-            std::vector<std::string> beta(item.rhs.begin() + item.dotPos + 1, item.rhs.end());
-            beta.push_back(item.lookahead);
-            std::set<std::string> lookaheadSet = firstOfSequence(beta);
+        std::vector<std::string> beta(item.rhs.begin() + item.dotPos + 1, item.rhs.end());
+        beta.push_back(item.lookahead);
 
-            const auto& Bprods = grammar.getProductions().at(B);
-            for (const auto& rhs : Bprods) {
-                for (const std::string& la : lookaheadSet) {
-                    LR1Item newItem{B, rhs, 0, la};
-                    if (closureSet.find(newItem) == closureSet.end()) {
-                        newItems.insert(newItem);
-                        changed = true;
-                    }
+        // Cache FIRST(βa)
+        static std::unordered_map<std::vector<std::string>, std::set<std::string>> firstCache;
+        auto itFirst = firstCache.find(beta);
+        std::set<std::string> lookaheads;
+        if (itFirst != firstCache.end()) {
+            lookaheads = itFirst->second;
+        } else {
+            lookaheads = firstOfSequence(beta);
+            firstCache[beta] = lookaheads;
+        }
+
+        const auto& Bprods = grammar.getProductions().at(B);
+        for (const auto& rhs : Bprods) {
+            for (const auto& la : lookaheads) {
+                LR1Item newItem{B, rhs, 0, la};
+                if (closureSet.insert(newItem).second) {
+                    worklist.push_back(newItem); // new item added
                 }
             }
         }
-
-        closureSet.insert(newItems.begin(), newItems.end());
     }
 
+    closureCache[items] = closureSet;
     return closureSet;
 }
 

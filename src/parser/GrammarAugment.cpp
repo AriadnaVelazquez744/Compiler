@@ -54,6 +54,13 @@ void GrammarAugment::readGrammar(const std::string& filename) {
     for (const std::string& nt : nonTerminals) {
         firstSet[nt] = {};
     }
+
+    int prodIndex = 0;
+    for (const auto& [lhs, prodList] : productions) {
+        for (const auto& rhs : prodList) {
+            productionToIndex[{lhs, rhs}] = prodIndex++;
+        }
+    }
 }
 
 std::set<std::string> GrammarAugment::computeFirstForSequence(const std::vector<std::string>& seq) const {

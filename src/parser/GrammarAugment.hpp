@@ -14,13 +14,18 @@ public:
     void printFollowSets() const;
     std::set<std::string> computeFirstForSequence(const std::vector<std::string>& seq) const;
     const std::string& getStartSymbol() const { return startSymbol; }
+    
     const std::map<std::string, std::vector<std::vector<std::string>>>& getProductions() const { return productions; }
+    const std::map<std::pair<std::string, std::vector<std::string>>, int>& getProductionToIndex() const { return productionToIndex; }
+
     bool isNonTerminal(const std::string& sym) const { return nonTerminals.count(sym); }
     bool isTerminal(const std::string& sym) const { return terminals.count(sym); }
 
 private:
 
     std::map<std::string, std::vector<std::vector<std::string>>> productions;
+    std::map<std::pair<std::string, std::vector<std::string>>, int> productionToIndex;
+
     std::set<std::string> nonTerminals;
     std::set<std::string> terminals;
     std::string startSymbol;

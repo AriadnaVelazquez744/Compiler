@@ -35,7 +35,7 @@ public:
     virtual void visit(BlockNode& node) = 0;
     virtual void visit(VariableDeclarationNode& node) = 0;
     virtual void visit(IdentifierNode& node) = 0;
-    virtual void visit(FunctionDeclarationNode& node) = 0; // <--- Añadir esta línea
+    virtual void visit(FunctionDeclarationNode& node) = 0;
     virtual void visit(LetNode& node) = 0;
     virtual void visit(AssignmentNode& node) = 0;
     virtual void visit(IfNode& node) = 0;

@@ -99,6 +99,7 @@ void LR1ParsingTableGenerator::generateParsingTables() {
     for (size_t state = 0; state < itemSets.size(); ++state) {
         const auto& items = itemSets[state];
 
+        // Process each item in the current state
         for (const auto& item : items) {
             if (item.dotPos < item.rhs.size()) {
                 const std::string& symbol = item.rhs[item.dotPos];
@@ -106,9 +107,12 @@ void LR1ParsingTableGenerator::generateParsingTables() {
                     auto it = transitions[state].find(symbol);
                     if (it != transitions[state].end()) {
                         Action newAction{ActionType::Shift, static_cast<int>(it->second)};
+                        
+                        // Check for existing action
                         auto existingIt = actionTable[state].find(symbol);
                         if (existingIt != actionTable[state].end()) {
                             if (!resolveConflict(static_cast<int>(state), existingIt->second, newAction, symbol)) {
+                                // Keep existing action if resolution favors it
                                 continue;
                             }
                         }
@@ -123,10 +127,13 @@ void LR1ParsingTableGenerator::generateParsingTables() {
                 } else {
                     int prodNum = getProductionNumber(item.lhs, item.rhs);
                     const std::string& lookahead = item.lookahead;
+                    
+                    // Check for existing action
                     auto existingIt = actionTable[state].find(lookahead);
                     if (existingIt != actionTable[state].end()) {
                         Action newAction{ActionType::Reduce, prodNum};
                         if (!resolveConflict(static_cast<int>(state), existingIt->second, newAction, lookahead)) {
+                            // Keep existing action if resolution favors it
                             continue;
                         }
                     }
@@ -136,6 +143,7 @@ void LR1ParsingTableGenerator::generateParsingTables() {
             }
         }
 
+        // Process GOTO entries for non-terminals
         for (const auto& [symbol, targetState] : transitions[state]) {
             if (grammar.isNonTerminal(symbol)) {
                 gotoTable[state][symbol] = static_cast<int>(targetState);
@@ -146,7 +154,7 @@ void LR1ParsingTableGenerator::generateParsingTables() {
 
 void LR1ParsingTableGenerator::printActionTable() const {
     std::cout << "=== ACTION Table ===\n";
-    for (size_t state = 0; state < 300; ++state) {
+    for (size_t state = 0; state < actionTable.size(); ++state) {
         std::cout << "State " << state << ":\n";
         for (const auto& [symbol, action] : actionTable[state]) {
             std::cout << "  [" << symbol << "] = ";

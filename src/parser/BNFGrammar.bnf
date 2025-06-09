@@ -1,12 +1,122 @@
-program : expr SEMICOLON
-alt_gen_0 : NUMBER
-alt_gen_0 : ID
-alt_gen_0 : STRING
-alt_gen_0 : BOOLEAN
-alt_gen_0 : NULL_VAL
-alt_gen_0 : elem_expr
-expr : alt_gen_0
-alt_gen_1 : ADD
-alt_gen_1 : SUB
-alt_gen_1 : MULT
-elem_expr : expr alt_gen_1 expr
+S' : program
+
+program : stm_list
+
+stm_list : ε
+stm_list : stm stm_list
+
+stm : func_decl SEMICOLON
+stm : print SEMICOLON
+stm : expr SEMICOLON
+stm : cond SEMICOLON
+stm : cond
+
+print : PRINT LPAREN value RPAREN
+
+func_decl : FUNC ID LPAREN params_opt RPAREN LAMBDA value
+func_decl : FUNC ID LPAREN params_opt RPAREN block_expr
+
+params_opt : ε
+params_opt : params
+
+params : ID param_tail
+param_tail : ε
+param_tail : COMMA ID param_tail
+
+expr : NUMBER
+expr : STRING
+expr : BOOLEAN
+expr : NULL_VAL
+expr : ID
+expr : bin_expr
+expr : unary_expr
+expr : brace
+expr : func_call_expr
+expr : reassign_expr
+expr : const
+expr : build_in
+
+value : expr
+value : cond
+
+arg : value arg_tail
+arg_tail : ε
+arg_tail : COMMA value arg_tail
+
+reassign_expr : ID REASSIGN value
+
+func_call_expr : ID LPAREN arg_opt RPAREN
+arg_opt : ε
+arg_opt : arg
+
+const : E
+const : PI
+
+bin_expr : value ADD value
+bin_expr : value SUB value
+bin_expr : value MULT value
+bin_expr : value DIV value
+bin_expr : value MOD value
+bin_expr : value POW value
+bin_expr : value CONCAT value
+bin_expr : value CONCAT_SPACE value
+bin_expr : value LT value
+bin_expr : value GT value
+bin_expr : value LE value
+bin_expr : value GE value
+bin_expr : value EQ value
+bin_expr : value NE value
+bin_expr : value AND value
+bin_expr : value OR value
+
+unary_expr : SUB value
+unary_expr : NOT value
+
+brace : LPAREN value RPAREN
+
+build_in : SIN LPAREN arg RPAREN
+build_in : COS LPAREN arg RPAREN
+build_in : MIN LPAREN arg RPAREN
+build_in : MAX LPAREN arg RPAREN
+build_in : SQRT LPAREN arg RPAREN
+build_in : EXP LPAREN arg RPAREN
+build_in : RANDOM LPAREN RPAREN
+build_in : LOG LPAREN arg RPAREN
+
+cond : if_expr
+cond : while_expr
+cond : for_expr
+cond : let_expr
+cond : block_expr
+
+block_expr : LBRACE block_body RBRACE
+
+block_body : body_stmts
+block_body : body
+
+body_stmts : ε
+body_stmts : body_stmt body_stmts
+
+body_stmt : stm
+body_stmt : cond SEMICOLON
+
+body : stm
+body : print
+body : func_decl
+body : value
+
+if_expr : IF LPAREN value RPAREN body elif_chain ELSE body
+elif_chain : ε
+elif_chain : ELIF LPAREN value RPAREN body elif_chain
+
+let_expr : LET ID ASSIGN value let_tail IN let_body let_end
+let_tail : ε
+let_tail : COMMA ID ASSIGN value let_tail
+let_body : LPAREN body RPAREN
+let_body : body
+let_end : ε
+let_end : SEMICOLON
+
+while_expr : WHILE LPAREN value RPAREN body
+
+for_expr : FOR LPAREN ID IN RANGE LPAREN value COMMA value RPAREN RPAREN body

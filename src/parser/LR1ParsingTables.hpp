@@ -66,6 +66,6 @@ private:
     std::map<int, int> productionPrecedence;
     
     // Conflict resolution
-    bool resolveConflict(const Action& existing, const Action& proposed, 
+    bool resolveConflict(int state, const Action& existing, const Action& proposed, 
                          const std::string& terminal);
 };

@@ -377,7 +377,7 @@ void LLVMGenerator::visit(BlockNode& node) {
     }
 
     context.popFuncScope();
-    
+
     if (!lastValidResult) {
         throw std::runtime_error("❌ Block has no returnable value on last expression (line " + std::to_string(node.line()) + ")");
     }
@@ -385,3 +385,17 @@ void LLVMGenerator::visit(BlockNode& node) {
     // Ensure block returns something
     std::cout << "🔧 BlockNode emitted with " << node.expressions.size() << " expressions\n";
 }
+
+void LLVMGenerator::visit(IdentifierNode& node) {
+    llvm::Value* val = context.lookupLocal(node.name);
+
+    if (!val) {
+        throw std::runtime_error("❌ Undefined variable '" + node.name +
+                                 "' at line " + std::to_string(node.line()));
+    }
+
+    context.valueStack.push_back(val);
+
+    std::cout << "🔧 Identifier '" << node.name << "' resolved and pushed to stack\n";
+}
+

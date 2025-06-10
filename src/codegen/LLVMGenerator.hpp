@@ -20,12 +20,12 @@ public:
     void visit(class BuiltInFunctionNode& node) override;
     void visit(class BlockNode& node) override;
     void visit(class IdentifierNode& node) override;
+    void visit(class FunctionDeclarationNode& node) override;
 
     // Stubs for other nodes
     void visit(ASTNode&) override {}
     void visit(FunctionCallNode&) override {}
     void visit(VariableDeclarationNode&) override {}
-    void visit(FunctionDeclarationNode&) override {}
     void visit(LetNode&) override {}
     void visit(AssignmentNode&) override {}
     void visit(IfNode&) override {}

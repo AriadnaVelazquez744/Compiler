@@ -399,3 +399,24 @@ void LLVMGenerator::visit(IdentifierNode& node) {
     std::cout << "🔧 Identifier '" << node.name << "' resolved and pushed to stack\n";
 }
 
+void LLVMGenerator::visit(FunctionDeclarationNode& node) {
+    context.pushVarScope();  // Create a new variable scope for this invocation
+
+    const auto& params = *node.params;
+    if (params.size() > context.valueStack.size()) {
+        throw std::runtime_error("❌ Not enough arguments on stack for function '" + node.name + "'");
+    }
+
+    // Pop values in reverse and bind to parameter names
+    for (int i = params.size() - 1; i >= 0; --i) {
+        llvm::Value* val = context.valueStack.back();
+        context.valueStack.pop_back();
+        context.addLocal(params[i].name, val);
+    }
+
+    // Evaluate body and leave result on stack
+    node.body->accept(*this);
+
+    context.popVarScope();
+}
+

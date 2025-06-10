@@ -324,45 +324,27 @@ void LLVMGenerator::visit(BuiltInFunctionNode& node) {
     std::cout << "🔧 Built-in function '" << name << "' emitted.\n";
 }
 
-// void LLVMGenerator::visit(BlockNode& node) {
-//     if (node.expressions.empty()) {
-//         throw std::runtime_error("❌ A block must contain at least one expression (line " + std::to_string(node.line()) + ")");
-//     }
-
-//     llvm::Value* result = nullptr;
-
-//     for (size_t i = 0; i < node.expressions.size(); ++i) {
-//         ASTNode* expr = node.expressions[i];
-//         expr->accept(*this);
-
-//         if (i == node.expressions.size() - 1) {
-//             // Last expression: must return a value
-//             if (context.valueStack.empty()) {
-//                 throw std::runtime_error("❌ Last expression in block has no return value (line " + std::to_string(expr->line()) + ")");
-//             }
-//             result = context.valueStack.back();
-//         } else {
-//             // Non-last expressions: ignore any value they return
-//             if (!context.valueStack.empty()) {
-//                 context.valueStack.pop_back();
-//             }
-//         }
-//     }
-
-//     std::cout << "🔧 BlockNode emitted with " << node.expressions.size() << " expressions\n";
-// }
-
-
-
 void LLVMGenerator::visit(BlockNode& node) {
     if (node.expressions.empty()) {
-        throw std::runtime_error("❌ A block must contain at least one expression (line " + std::to_string(node.line()) + ")");
+        throw std::runtime_error("❌ Block must contain at least one expression (line " + std::to_string(node.line()) + ")");
+    }
+
+    context.pushFuncScope();
+
+    // Separate declarations from other expressions
+    std::vector<ASTNode*> bodyExprs;
+    for (ASTNode* expr : node.expressions) {
+        if (auto* decl = dynamic_cast<FunctionDeclarationNode*>(expr)) {
+            context.addFuncDecl(decl->name, decl); // Register locally
+        } else {
+            bodyExprs.push_back(expr);
+        }
     }
 
     llvm::Value* lastValidResult = nullptr;
 
-    for (size_t i = 0; i < node.expressions.size(); ++i) {
-        ASTNode* expr = node.expressions[i];
+    for (size_t i = 0; i < bodyExprs.size(); ++i) {
+        ASTNode* expr = bodyExprs[i];
         expr->accept(*this);
 
         bool isPrint = false;
@@ -374,7 +356,7 @@ void LLVMGenerator::visit(BlockNode& node) {
         if (!context.valueStack.empty()) {
             llvm::Value* val = context.valueStack.back();
 
-            if (i == node.expressions.size() - 1) {
+            if (i == bodyExprs.size() - 1) {
                 // Last expression in block
                 if (isPrint) {
                     // Duplicate value: keep both for print + return
@@ -394,6 +376,8 @@ void LLVMGenerator::visit(BlockNode& node) {
         }
     }
 
+    context.popFuncScope();
+    
     if (!lastValidResult) {
         throw std::runtime_error("❌ Block has no returnable value on last expression (line " + std::to_string(node.line()) + ")");
     }

@@ -1,8 +1,8 @@
 #include <cstdio>
 #include <iostream>
+#include "../ast/AST.hpp"
 #include "CodeGenContext.hpp"
 #include "LLVMGenerator.hpp"
-#include "../ast/AST.hpp"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -10,6 +10,20 @@ CodeGenContext::CodeGenContext()
     : builder(context), module("hulk_module", context) {}  // Associate module and builder with context
 
 void CodeGenContext::generateCode(std::vector<ASTNode*>& root) {
+    
+    // Separate the function declaration from the expression declarations for context
+    pushFuncScope();  // Global function registry
+
+    std::vector<ASTNode*> exprs;
+    for (ASTNode* node : root) {
+        if (auto* fn = dynamic_cast<FunctionDeclarationNode*>(node)) {
+            addFuncDecl(fn->name, fn);
+        } else {
+            exprs.push_back(node);
+        }
+    }
+    root = std::move(exprs);
+
     // Declare printf and puts for printing
     llvm::FunctionType* printfType = llvm::FunctionType::get(
         llvm::Type::getInt32Ty(context),

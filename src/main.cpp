@@ -1,89 +1,33 @@
-//main.cpp
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <memory>
 
 #include "lexer/Lexer.hpp"
-#include "lexer/Token.hpp"
-#include "lexer/LexerError.hpp"
-#include "parser/Parser.hpp"
-#include "parser/ParserError.hpp"
+#include "parser/GrammarAugment.hpp"
+#include "parser/LR1ItemSetBuilder.hpp"
+#include "parser/LR1ParsingTables.hpp"
+#include "parser/ParserDriver.hpp"
+#include "parser/SemanticActionDispatcher.hpp"
+#include "parser/PrecedenceSetup.hpp"
+#include "parser/TokenTypeStringMap.hpp"
 #include "ast/AST.hpp"
+// #include "semantic/SemanticAnalyzer.hpp"
+// #include "codegen/CodeGenContext.hpp"
 
-#include "ast/ASTVisitor.hpp"
-#include "ast/ASTPrinter.hpp"  // include the printer
+#include <filesystem> // C++17
 
-// Utility to convert TokenType enum to string
-std::string tokenTypeToString(TokenType type) {
-    switch (type) {
-        case TokenType::NUMBER: return "NUMBER";
-        case TokenType::STRING: return "STRING";
-        case TokenType::BOOL: return "BOOL";
-        case TokenType::NULL_VAL: return "NULL_VAL";
-        case TokenType::ID: return "ID";
-        case TokenType::ADD: return "ADD";
-        case TokenType::SUB: return "SUB";
-        case TokenType::MUL: return "MUL";
-        case TokenType::DIV: return "DIV";
-        case TokenType::MOD: return "MOD";
-        case TokenType::POW: return "POW";
-        case TokenType::LT: return "LT";
-        case TokenType::GT: return "GT";
-        case TokenType::LE: return "LE";
-        case TokenType::GE: return "GE";
-        case TokenType::EQ: return "EQ";
-        case TokenType::NE: return "NE";
-        case TokenType::AND: return "AND";
-        case TokenType::OR: return "OR";
-        case TokenType::NOT: return "NOT";
-        case TokenType::CONCAT: return "CONCAT";
-        case TokenType::CONCAT_SPACE: return "CONCAT_SPACE";
-        case TokenType::SIN: return "SIN";
-        case TokenType::COS: return "COS";
-        case TokenType::MAX: return "MAX";
-        case TokenType::MIN: return "MIN";
-        case TokenType::SQRT: return "SQRT";
-        case TokenType::EXP: return "EXP";
-        case TokenType::LOG: return "LOG";
-        case TokenType::RANDOM: return "RANDOM";
-        case TokenType::PRINT: return "PRINT";
-        case TokenType::READ: return "READ";
-        case TokenType::PARSE: return "PARSE";
-        case TokenType::PI: return "PI";
-        case TokenType::E: return "E";
-        case TokenType::FUNC: return "FUNC";
-        case TokenType::LET: return "LET";
-        case TokenType::IN: return "IN";
-        case TokenType::IF: return "IF";
-        case TokenType::ELSE: return "ELSE";
-        case TokenType::ELIF: return "ELIF";
-        case TokenType::FOR: return "FOR";
-        case TokenType::WHILE: return "WHILE";
-        case TokenType::RANGE: return "RANGE";
-        case TokenType::TYPE: return "TYPE";
-        case TokenType::NEW: return "NEW";
-        case TokenType::SELF: return "SELF";
-        case TokenType::INHERITS: return "INHERITS";
-        case TokenType::COMMA: return "COMMA";
-        case TokenType::SEMICOLON: return "SEMICOLON";
-        case TokenType::DOT: return "DOT";
-        case TokenType::LPAREN: return "LPAREN";
-        case TokenType::RPAREN: return "RPAREN";
-        case TokenType::LBRACE: return "LBRACE";
-        case TokenType::RBRACE: return "RBRACE";
-        case TokenType::ASSIGN: return "ASSIGN";
-        case TokenType::REASSIGN: return "REASSIGN";
-        case TokenType::END_OF_FILE: return "EOF";
-        case TokenType::UNKNOWN: return "UNKNOWN";
-        default: return "UNDEFINED";
+std::string readFile(const std::string& filename) {
+    // Ensure file has .hulk extension
+    if (!std::filesystem::path(filename).has_extension() ||
+        std::filesystem::path(filename).extension() != ".hulk") {
+        throw std::invalid_argument("Archivo debe tener extensión '.hulk'.");
     }
-}
 
-std::string readFile(const std::string& path) {
-    std::ifstream file(path);
-    if (!file) {
-        throw std::runtime_error("No se pudo abrir el archivo: " + path);
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("No se pudo abrir el archivo: " + filename);
     }
 
     std::stringstream buffer;
@@ -91,79 +35,123 @@ std::string readFile(const std::string& path) {
     return buffer.str();
 }
 
-int main(int argc, char** argv) {
-    std::string filename = "script.hulk";
 
-    if (argc >= 2) {
-        filename = argv[1];
+bool is_valid_ast(const std::vector<std::shared_ptr<ASTNode>>& nodes) {
+    if (nodes.empty()) {
+        std::cerr << "AST vacío: ningún nodo generado" << std::endl;
+        return false;
     }
+    for (const auto& node : nodes) {
+        if (!node) {
+            std::cerr << "AST contiene nodos nulos" << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
 
-    std::string sourceCode;
+int main(int argc, char** argv) {
+    const char* filename = (argc >= 2) ? argv[1] : "script.hulk";
+
+    std::string source;
     try {
-        sourceCode = readFile(filename);
+        source = readFile(filename);
     } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << "\n";
+        std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
 
-    Lexer lexer(sourceCode);
-
-    std::cout << "== Tokens leídos del archivo '" << filename << "':\n\n";
-
+    // 1. LEXER: Convert source code into tokens
+    Lexer lexer(source);
+    std::vector<std::shared_ptr<Token>> tokens;
     while (true) {
         auto token = lexer.nextToken();
+        tokens.push_back(token);
+        std::cerr << "Token encontrado: " << tokenTypeToString(token->type) << " => " << token->lexeme << "\n";
         if (token->type == TokenType::END_OF_FILE) break;
-
-        std::cout << "[Línea " << token->location.line
-                  << ", Columna " << token->location.column << "] "
-                  << tokenTypeToString(token->type)
-                  << " → \"" << token->lexeme << "\"\n";
     }
 
-    const auto& lexErrors = lexer.getErrors();
-    if (!lexErrors.empty()) {
-        std::cerr << "\n== Errores léxicos encontrados:\n";
-        for (const auto& err : lexErrors) {
-            std::cerr << "[Línea " << err.location.line
-                      << ", Columna " << err.location.column << "] "
-                      << "Error: " << err.message
-                      << " → \"" << err.offendingLexeme << "\"\n";
+    if (!lexer.getErrors().empty()) {
+        std::cerr << "Errores léxicos encontrados:\n";
+        for (const auto& err : lexer.getErrors()) {
+            std::cerr << "  Línea " << err.location.line << ", Columna " 
+                      << err.location.column << ": " << err.message << "\n";
         }
         return 1;
     }
 
-    std::cout << "\n== Análisis léxico completado sin errores.\n";
+    // 2. LOAD GRAMMAR AND BUILD PARSER
+    GrammarAugment grammar;
 
-    // ==== PARSER STAGE ====
-    std::cout << "\n== Iniciando análisis sintáctico...\n";
+    // std::string grammarPath = std::filesystem::current_path().string() + "parser/BNFGrammar.bnf";
+    try {
+        grammar.readGrammar("src/parser/BNFGrammar.bnf");
 
-    Parser parser(std::make_shared<Lexer>(sourceCode));
-    auto ast = parser.parseProgram();
-    const auto& parseErrors = parser.getErrors();
-
-    if (!parseErrors.empty()) {
-        std::cerr << "\n== Errores sintácticos encontrados:\n";
-        for (const auto& err : parseErrors) {
-            std::cerr << "[Línea " << err.location.line
-                      << ", Columna " << err.location.column << "] "
-                      << "Error: " << err.message
-                      << (err.expected.empty() ? "" : " (esperado: '" + err.expected + "')")
-                      << "\n";
-        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error al cargar la gramática: " << e.what() << std::endl;
         return 1;
     }
 
-    std::cout << "== Análisis sintáctico completado sin errores.\n";
-    std::cout << "== AST generado con " << ast.size() << " nodo(s) raíz.\n";
+    grammar.computeFirstSets();
+    grammar.computeFollowSets();
+    std::cerr << "conjuntos first y follow definidos \n";
 
-    ASTPrinter printer;
+    LR1ItemSetBuilder itemBuilder(grammar);
+    itemBuilder.constructItemSets();
+    std::cerr << "conjuntos LR(1) definidos \n";
 
-    for (const auto& node : ast) {
-        std::cout << "Nodo raíz:\n";
-        node->accept(printer);
-        std::cout << "\n";
+    LR1ParsingTableGenerator tableGen(grammar, itemBuilder);
+    setupPrecedence(tableGen); // External config
+    tableGen.generateParsingTables();
+    std::cerr << "tablas action and gotoc y precedencia establecida \n";
+
+    tableGen.printGotoTable();
+
+    // 3. PARSE TOKENS → AST
+    SemanticActionDispatcher dispatcher;
+    std::cerr << "action dispatcher inicialyze \n";
+
+    ParserDriver driver(tableGen, dispatcher);
+    std::cerr << "parser driver initialize \n";
+
+    ParseResult result = driver.parse(tokens);
+    std::cerr << "parse result generated \n";
+
+    if (!result.errors.empty()) {
+        std::cerr << "Errores de análisis sintáctico:\n";
+        for (const std::string& e : result.errors)
+            std::cerr << "  " << e << "\n";
+        return 1;
     }
 
+    if (!is_valid_ast(result.ast)) {
+        std::cerr << "Error: AST inválido.\n";
+        return 1;
+    }
+
+    std::cout << "AST generado exitosamente.\n";
+    for (const auto& node : result.ast) {
+        std::cout << "Tipo de nodo raíz: " << node->type() 
+                  << " | Línea: " << node->line() << "\n";
+    }
+
+    // // 4. SEMANTIC ANALYSIS (future)
+    // SemanticAnalyzer analyzer;
+    // analyzer.analyze(result.ast);
+
+    // std::cout << "Análisis semántico completado.\n";
+
+    // // 5. CODEGEN (optional)
+    // CodeGenContext codegen;
+    // try {
+    //     codegen.generateCode(result.ast);
+    // } catch (const std::exception& e) {
+    //     std::cerr << "Error en generación de código: " << e.what() << "\n";
+    //     return 1;
+    // }
+
+    // codegen.dumpIR("hulk-low-code.ll");
+    // std::cout << "IR volcado en 'hulk-low-code.ll'.\n";
 
     return 0;
 }

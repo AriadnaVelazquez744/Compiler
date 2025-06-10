@@ -420,3 +420,18 @@ void LLVMGenerator::visit(FunctionDeclarationNode& node) {
     context.popVarScope();
 }
 
+void LLVMGenerator::visit(FunctionCallNode& node) {
+    // Evaluate each argument (left-to-right) and push onto stack
+    for (ASTNode* arg : node.args) {
+        arg->accept(*this);
+    }
+
+    // Lookup FunctionDeclarationNode (not LLVM::Function)
+    auto* decl = context.lookupFuncDecl(node.funcName);
+    if (!decl) {
+        throw std::runtime_error("❌ Function not declared: " + node.funcName);
+    }
+
+    // Process the function body using the declaration
+    decl->accept(*this);  // Will consume args from stack, push result
+}

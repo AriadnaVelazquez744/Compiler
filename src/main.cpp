@@ -59,6 +59,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+
     std::cout << "AST terminado." << std::endl;
 
     for (auto node : root) {
@@ -67,9 +68,7 @@ int main(int argc, char **argv) {
     }
 
     // Crear el analizador semántico
-    SymbolTable symbolTable;
-    std::vector<SemanticError> semanticErrors;
-    SemanticAnalyzer semanticAnalyzer(symbolTable, semanticErrors);
+    SemanticAnalyzer semanticAnalyzer;
 
     std::cout << "Instancia anlizador creada." << std::endl;
 

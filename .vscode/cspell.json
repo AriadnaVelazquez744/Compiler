@@ -13,6 +13,7 @@
         "nonassoc",
         "nounput",
         "noyywrap",
+        "nullopt",
         "nullptr",
         "Parseado",
         "stod",

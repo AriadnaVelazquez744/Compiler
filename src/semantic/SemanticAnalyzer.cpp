@@ -9,10 +9,54 @@ SymbolTable& SemanticAnalyzer::getSymbolTable() {
     return symbolTable;
 }
 
+void SemanticAnalyzer::resolveFunctionTypes() {
+    auto functions = symbolTable.getUserDefinedFunctions();
+
+    for (Symbol& symbol : functions) {
+        if (!symbol.body) continue;
+
+        symbolTable.enterScope();
+
+        std::vector<std::string> paramNames;
+        std::vector<std::string>& paramTypes = symbol.params;
+
+        for (size_t i = 0; i < paramTypes.size(); ++i) {
+            std::string name = "param" + std::to_string(i);
+            paramNames.push_back(name);
+            std::string type = paramTypes[i].empty() ? "Unknown" : paramTypes[i];
+            symbolTable.addSymbol(name, type, false);
+        }
+
+        symbol.body->accept(*this);
+        std::string bodyType = symbol.body->type();
+
+        if (symbol.type.empty() || symbol.type == "Unknown") {
+            symbol.type = bodyType;
+        }
+
+        for (size_t i = 0; i < paramTypes.size(); ++i) {
+            Symbol* paramSym = symbolTable.lookup(paramNames[i]);
+            if (paramSym && (paramTypes[i].empty() || paramTypes[i] == "Unknown")) {
+                paramTypes[i] = paramSym->type;
+            }
+        }
+
+        symbolTable.exitScope();
+    }
+}
+
+
+
 bool SemanticAnalyzer::conformsTo(const std::string& subtype, const std::string& supertype) {
     if (subtype == "Error" || supertype == "Error") return false;
     if (subtype == supertype) return true;
     if (supertype == "Object") return true;
+    if (supertype == "")
+    {
+        return true;
+    }
+    
+    
 
     TypeSymbol* sub = symbolTable.lookupType(subtype);
     while (sub && !sub->parentType.empty()) {
@@ -30,6 +74,8 @@ void SemanticAnalyzer::analyze(const std::vector<ASTNode*>& nodes) {
     collector.addBuiltins();
     std::cout << "Builtins agregados." << std::endl;
 
+    
+
     for (ASTNode* node : nodes) {
         if (!node) {
             std::cerr << "Nodo nulo en AST." << std::endl;
@@ -41,6 +87,9 @@ void SemanticAnalyzer::analyze(const std::vector<ASTNode*>& nodes) {
     }
 
     std::cout << "Fase de recolección completada." << std::endl;
+
+    SemanticAnalyzer analyzer(symbolTable, errors);
+    analyzer.resolveFunctionTypes();    
 
     for (ASTNode* node : nodes) {
         try {
@@ -168,168 +217,182 @@ void SemanticAnalyzer::visit(BuiltInFunctionNode& node) {
 void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
     symbolTable.enterScope();
 
-    // Verificar parámetros únicos
-    std::unordered_map<std::string, bool> paramsSeen;
+    // Verificar que los parámetros no estén duplicados
+    std::unordered_map<std::string, bool> seen;
     for (const auto& param : *node.params) {
-        if (paramsSeen.count(param.name)) {
+        if (seen.count(param.name)) {
             errors.emplace_back("Parámetro duplicado '" + param.name + "'", node.line());
             node._type = "Error";
         } else {
-            paramsSeen[param.name] = true;
+            seen[param.name] = true;
             symbolTable.addSymbol(param.name, param.type, false);
         }
     }
 
-    // Analizar cuerpo
+    // Analizar el cuerpo de la función
     node.body->accept(*this);
     std::string bodyType = node.body->type();
 
-    // Verificar tipo de retorno
-    if (!node.returnType.empty() && node.returnType != bodyType) {
-        errors.emplace_back("Tipo de retorno incorrecto en función '" + node.name + "'", node.line());
-        node._type = "Error";
+    // Verificar y actualizar el tipo de retorno
+    if (!node.returnType.empty()) {
+        if (!conformsTo(bodyType, node.returnType)) {
+            errors.emplace_back("Tipo de retorno incorrecto en función '" + node.name + "'", node.line());
+            node._type = "Error";
+        }
+    } else {
+        node.returnType = bodyType; // Inferencia si no se especificó
+    }
+
+    // Inferencia de tipos de parámetros si no fueron anotados
+    for (auto& param : *node.params) {
+        if (param.type.empty()) {
+            Symbol* s = symbolTable.lookup(param.name);
+            std::cout << "tipo de paŕámetro." << std::endl;
+            if (s && s->type != "") {
+                param.type = s->type;
+            } else {
+                errors.emplace_back("No se pudo inferir tipo para el parámetro '" + param.name + "'", node.line());
+                node._type = "Error";
+            }
+        }
     }
 
     symbolTable.exitScope();
+
+    // No se agrega aquí a la tabla, lo hace FunctionCollector y guarda el cuerpo
 }
 
 void SemanticAnalyzer::visit(FunctionCallNode& node) {
-
     if (node.funcName == "base") {
-        // Verificar que estamos en un método de una clase derivada
-        Symbol* selfSym = symbolTable.lookup("self");
-        if (!selfSym) {
-            errors.emplace_back("'base' solo puede usarse en métodos", node.line());
+        Symbol* self = symbolTable.lookup("self");
+        if (!self) {
+            errors.emplace_back("'base' solo puede usarse dentro de métodos", node.line());
             node._type = "Error";
             return;
         }
-        TypeSymbol* typeSym = symbolTable.lookupType(selfSym->type);
+
+        TypeSymbol* typeSym = symbolTable.lookupType(self->type);
         if (!typeSym || typeSym->parentType == "Object") {
-            errors.emplace_back("'base' no disponible en este contexto", node.line());
+            errors.emplace_back("'base' no disponible para este tipo", node.line());
             node._type = "Error";
+            return;
         }
+
+        node._type = typeSym->parentType;
+        return;
     }
 
-    // Manejar funciones built-in primero
+    // Funciones built-in como 'print'
     if (node.funcName == "print") {
         for (auto arg : node.args) {
             arg->accept(*this);
         }
         node._type = "void";
-    } 
-    // else if (node.funcName == "sin" || node.funcName == "cos" || node.funcName == "exp") {
-    //     if (node.args.size() != 1) {
-    //         errors.emplace_back("Función " + node.funcName + " requiere 1 argumento", node.line());
-    //     } else {
-    //         node.args[0]->accept(*this);
-    //         if (node.args[0]->type() != "number") {
-    //             errors.emplace_back("Argumento de " + node.funcName + " debe ser número", node.line());
-    //         }
-    //     }
-    //     node._type = "number";
-    // } 
-    // else if (node.funcName == "log") {
-    //     if (node.args.size() != 2) {
-    //         errors.emplace_back("Función log requiere 2 argumentos", node.line());
-    //     } else {
-    //         node.args[0]->accept(*this);
-    //         node.args[1]->accept(*this);
-    //         if (node.args[0]->type() != "number" || node.args[1]->type() != "number") {
-    //             errors.emplace_back("Argumentos de log deben ser números", node.line());
-    //         }
-    //     }
-    //     node._type = "number";
-    // } 
-    // else if (node.funcName == "rand") {
-    //     if (!node.args.empty()) {
-    //         errors.emplace_back("Función rand no requiere argumentos", node.line());
-    //     }
-    //     node._type = "number";
-    // } 
-    // Verificar funciones definidas por el usuario
-    else {
-        Symbol* funcSymbol = symbolTable.lookup(node.funcName);
-        if (!funcSymbol || funcSymbol->kind != "function") {
-            errors.emplace_back("Función '" + node.funcName + "' no definida", node.line());
-            node._type = "Error";
-            return;
-        }
-
-        // Verificar número de argumentos
-        if (node.args.size() != funcSymbol->params.size()) {
-            errors.emplace_back("Número incorrecto de argumentos para '" + node.funcName + "'", node.line());
-            node._type = "Error";
-            return;
-        }
-
-        // Verificar tipos de argumentos
-        for (size_t i = 0; i < node.args.size(); ++i) {
-            node.args[i]->accept(*this);
-            std::string argType = node.args[i]->type();
-            if (argType != funcSymbol->params[i]) {
-                errors.emplace_back("Tipo incorrecto para argumento " + std::to_string(i+1) + " en '" + node.funcName + "'", node.line());
-                node._type = "Error";
-            }
-        }
-
-        node._type = funcSymbol->type;
+        return;
     }
+
+    // Funciones definidas por el usuario
+    Symbol* symbol = symbolTable.lookup(node.funcName);
+    if (!symbol || symbol->kind != "function") {
+        errors.emplace_back("Función '" + node.funcName + "' no definida", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    if (node.args.size() != symbol->params.size()) {
+        errors.emplace_back("Número incorrecto de argumentos para '" + node.funcName + "'", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    for (size_t i = 0; i < node.args.size(); ++i) {
+        node.args[i]->accept(*this);
+        std::string argType = node.args[i]->type();
+        std::string expectedType = symbol->params[i];
+
+        if (!conformsTo(argType, expectedType)) {
+            errors.emplace_back("Tipo incorrecto para argumento " + std::to_string(i + 1) +
+                " en '" + node.funcName + "': esperado '" + expectedType + "', obtenido '" + argType + "'",
+                node.line());
+            node._type = "Error";
+        }
+    }
+
+    node._type = symbol->type;
 }
 
+
 void SemanticAnalyzer::visit(BinaryOpNode& node) {
+
+    std::cout << "Visitando BinaryOpNode con operador: " << node.op << "\n";
+
+    if (auto* leftBin = dynamic_cast<BinaryOpNode*>(node.left)) {
+        std::cout << "  Left es otro BinaryOpNode con operador: " << leftBin->op << "\n";
+    } else {
+        std::cout << "  Left no es BinaryOpNode\n";
+    }
+
+    if (auto* rightBin = dynamic_cast<BinaryOpNode*>(node.right)) {
+        std::cout << "  Right es otro BinaryOpNode con operador: " << rightBin->op << "\n";
+    } else {
+        std::cout << "  Right no es BinaryOpNode\n";
+    }
+
     node.left->accept(*this);
     node.right->accept(*this);
 
     std::string leftType = node.left->type();
     std::string rightType = node.right->type();
 
-    // Operadores de comparación (devuelven boolean)
+    std::cout << ">>> Visitando operador binario: " << node.op << std::endl;
+    std::cout << "    Left node: " << node.left << std::endl;
+    std::cout << "    Right node: " << node.right << std::endl;
+    std::cout << "    Left type: " << leftType << std::endl;
+    std::cout << "    Right type: " << rightType << std::endl;
+
     const std::set<std::string> comparisonOps = {"==", "!=", "<", ">", "<=", ">="};
-    
+
     if (comparisonOps.count(node.op)) {
         if (node.op == "==" || node.op == "!=") {
-            if (leftType != rightType)
-            {
-                errors.emplace_back("Operandos de " + node.op + " deben ser iguales", node.line());
-                node._type = "Error"; // Marcar como error si los tipos son inválidos
+            if (!conformsTo(leftType, rightType) && !conformsTo(rightType, leftType)) {
+                errors.emplace_back("Operandos de " + node.op + " deben ser compatibles", node.line());
+                node._type = "Error";
+            } else {
+                node._type = "Boolean";
             }
-            else {
-            node._type = "Boolean"; // Solo asignar boolean si los operandos son válidos
-            }
-            } 
-        else if (leftType != "Number" || rightType != "Number") {
+        } else if (leftType != "Number" || rightType != "Number") {
             errors.emplace_back("Operandos de " + node.op + " deben ser números", node.line());
-            node._type = "error"; // Marcar como error si los tipos son inválidos
+            node._type = "Error";
         } else {
-            node._type = "Boolean"; // Solo asignar boolean si los operandos son válidos
+            node._type = "Boolean";
         }
     }
-    else if (node.op == "&" || node.op == "|")
-    {
-       if (leftType != "Boolean" || rightType != "Boolean") {
+    else if (node.op == "&" || node.op == "|") {
+        if (leftType != "Boolean" || rightType != "Boolean") {
             errors.emplace_back("Operandos de " + node.op + " deben ser booleanos", node.line());
-            node._type = "Error"; // Marcar como error si los tipos son inválidos
+            node._type = "Error";
         } else {
-            node._type = "Boolean"; // Solo asignar boolean si los operandos son válidos
+            node._type = "Boolean";
         }
-    }    // Operador de concatenación @
-
+    }
     else if (node.op == "@" || node.op == "@@") {
-        if (leftType != "String" && leftType != "Number") {
-            errors.emplace_back("Operando izquierdo de @ debe ser string o number", node.line());
+        if ((leftType != "String" && leftType != "Number") ||
+            (rightType != "String" && rightType != "Number")) {
+            errors.emplace_back("Operandos de @ deben ser string o number", node.line());
             node._type = "Error";
+        } else {
+            node._type = "String";
         }
-        if (rightType != "String" && rightType != "Number") {
-            errors.emplace_back("Operando derecho de @ debe ser string o number", node.line());
-            node._type = "Error";
-        }
-        node._type = "String";
-    } else {
+    }
+    else {
         if (leftType != "Number" || rightType != "Number") {
             errors.emplace_back("Operandos de " + node.op + " deben ser números", node.line());
             node._type = "Error";
+            std::cout << leftType << std::endl;
+            std::cout << rightType << std::endl;
+        } else {
+            node._type = "Number";
         }
-        node._type = "Number";
     }
 }
 
@@ -345,11 +408,15 @@ void SemanticAnalyzer::visit(LiteralNode& node) {
 
 void SemanticAnalyzer::visit(BlockNode& node) {
     symbolTable.enterScope();
+
+    std::string lastType = "Null";  // Por defecto
     for (auto expr : node.expressions) {
         expr->accept(*this);
+        lastType = expr->type();    // Actualiza con el tipo de la última expresión
     }
+
     symbolTable.exitScope();
-    node._type = "void";
+    node._type = lastType;
 }
 
 // ------------------------------------------------------
@@ -516,7 +583,10 @@ void SemanticAnalyzer::visit(IfNode& node) {
         if (t != commonType) {
             errors.emplace_back("Tipos incompatibles en ramas del 'if'", node.line());
             node._type = "Error";
+            std::cout << t << std::endl;
+            std::cout << commonType << std::endl;
             return;
+
         }
     }
 
@@ -527,9 +597,10 @@ void SemanticAnalyzer::visit(WhileNode& node) {
     // Verificar condición es booleana
     node.condition->accept(*this);
     std::string condType = node.condition->type();
-    if (condType != "boolean") {
+    if (condType != "Boolean") {
         errors.emplace_back("Condición del while debe ser booleana", node.line());
         node._type = "Error";
+        std::cout << condType << std::endl;
     }
 
     // Analizar cuerpo

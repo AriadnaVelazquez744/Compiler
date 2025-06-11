@@ -87,8 +87,6 @@ int yycolumn = 1;
 
 
 "print"                 { printf("print\n"); return PRINT; }
-"read"                  { printf("read\n"); return READ; } 
-"parse"                 { printf("parse\n"); return PARSE; }
 
 
 "PI"                    { printf("PI\n"); return PI; }
@@ -115,6 +113,7 @@ int yycolumn = 1;
 "new"                   { printf("new\n"); return NEW; }
 "self"                  { printf("self\n"); return SELF; }
 "inherits"              { printf("inherits\n"); return INHERITS; }
+"base"                  { printf("base\n"); return BASE; }
 
 
 [a-zA-Z_][a-zA-Z0-9_]*  {

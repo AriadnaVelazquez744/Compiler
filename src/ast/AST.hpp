@@ -251,7 +251,7 @@ struct IfBranch {
 
 class IfNode : public ASTNode {
 public:
-    std::vector<IfBranch>* branches; // if + elifs
+    std::vector<IfBranch>* branches; // if + elif
     ASTNode* elseBody;
     int _line;
     std::string _type;
@@ -335,8 +335,8 @@ public:
 
 class NewInstanceNode : public ASTNode {
 public:
-    std::string typeName;
-    std::vector<ASTNode*> args;
+    std::string typeName;  // Name of the type being instantiated
+    std::vector<ASTNode*> args;  // Arguments for the constructor
     int _line;
     std::string _type;
 
@@ -382,5 +382,32 @@ public:
     std::string type() const override { return _type; }
 };
 
+class BaseCallNode : public ASTNode {
+public:
+    std::vector<ASTNode*> args;
+    int _line;
+    std::string _type;
+
+    BaseCallNode(std::vector<ASTNode*> args, int line)
+        : args(std::move(args)), _line(line), _type("") {}
+
+    void accept(ASTVisitor& v) override { v.visit(*this); }
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
+class SelfCallNode : public ASTNode {
+public:
+    std::string varName;  // Name of the variable being accessed through self
+    int _line;
+    std::string _type;
+
+    SelfCallNode(const std::string& varName, int line)
+        : varName(varName), _line(line), _type("") {}
+
+    void accept(ASTVisitor& v) override { v.visit(*this); }
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
 
     

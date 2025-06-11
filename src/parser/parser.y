@@ -53,6 +53,8 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
     std::vector<IfBranch>* if_branch;
     std::vector<Parameter>* param;
     std::vector<LetDeclaration>* let_decl;
+    std::vector<AttributeDeclaration>* attr_decl;
+    std::vector<MethodDeclaration>* method_decl;
 }
 
 // --------------------------------------/* Definición de Tokens */------------------------------------------- //
@@ -107,8 +109,6 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 
 // funciones predeterminadas
 %token PRINT
-%token READ
-%token PARSE
 
 // constantes 
 %token PI 
@@ -128,6 +128,7 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %token NEW 
 %token SELF
 %token INHERITS
+%token BASE
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <node> statement
@@ -146,6 +147,12 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %type <param> params
 %type <if_branch> if_head
 %type <let_decl> decl
+%type <node> type_decl
+%type <attr_decl> attribute_decl
+%type <method_decl> method_decl
+%type <node> method_call
+%type <node> base_call
+%type <node> new_instance
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
 %left ADD SUB
@@ -170,30 +177,7 @@ statement:
                                         std::vector<ASTNode*> args = vectorize($3, nullptr, 1);
                                         $$ = new BuiltInFunctionNode("print", args, yylloc.first_line);
                                     }
-    /* | READ ';'                      { 
-                                        std::string input; 
-                                        //std::cin >> input;
-                                        std::getline(std::cin, input); 
-                                        //$$ = new std::string(input); 
-                                        std::cout << "Entrada: " << input << std::endl;
-                                    }
-    | PARSE '(' expression ')' ';'  {
-                                        const std::string& raw = *$3;
-                                        // Try parse as number
-                                        try {
-                                            double num = std::stod(raw);
-                                            std::cout << "Parseado como número: " << num << std::endl;
-                                        } catch (...) {
-                                            // Try parse as boolean
-                                            if (raw == "true" || raw == "True")
-                                                std::cout << "Parseado como booleano: true" << std::endl;
-                                            else if (raw == "false" || raw == "False")
-                                                std::cout << "Parseado como booleano: false" << std::endl;
-                                            else
-                                                std::cout << "Parse fallido: " << raw << std::endl;
-                                        }
-                                        
-                                    } */
+    | type_decl                     { $$ = $1; }
     | block_expr                    { $$ = $1; }
     | FUNC ID '(' params ')' LAMBDA body
                                     {
@@ -218,9 +202,13 @@ statement:
         | BOOL                  { $$ = new LiteralNode($1 ? "true" : "false", "Boolean", yylloc.first_line); }
         | NULL_VAL              { $$ = new LiteralNode("null", "Null", yylloc.first_line); }
         | ID                    { $$ = new IdentifierNode(*$1, yylloc.first_line); }
+        | SELF '.' ID           { $$ = new SelfCallNode(*$3, yylloc.first_line); }
+        | new_instance          { $$ = $1; }
         | elem_expr             { $$ = $1; }
         | block_expr            { $$ = $1; }
         | func_call_expr        { $$ = $1; }
+        | method_call           { $$ = $1; }
+        | base_call             { $$ = $1; }
         | assign_expr           { $$ = $1; }
         | let_expr              { $$ = $1; std::cout << "let_expr " << std::endl; }
         | if_expr               { $$ = $1; std::cout << "if_expr " << std::endl; }
@@ -462,6 +450,60 @@ statement:
 
         for_expr:
             FOR '(' ID IN RANGE '(' expression ',' expression ')' ')' body      { $$ = new ForNode(*$3, $7, $9, $12, yylloc.first_line); }
+        ;
+
+        type_decl:
+            TYPE ID '(' params ')' '{' attribute_decl method_decl '}' {
+                $$ = new TypeDeclarationNode(*$2, $4, $7, $8, std::nullopt, std::vector<ASTNode*>(), yylloc.first_line);
+            }
+            | TYPE ID '{' attribute_decl method_decl '}' {
+                $$ = new TypeDeclarationNode(*$2, new std::vector<Parameter>(), $4, $5, std::nullopt, std::vector<ASTNode*>(), yylloc.first_line);
+            }
+            | TYPE ID '(' params ')' INHERITS ID '(' args ')' '{' attribute_decl method_decl '}' {
+                $$ = new TypeDeclarationNode(*$2, $4, $12, $13, *$7, *$9, yylloc.first_line);
+            }
+        ;
+
+        attribute_decl:
+            /* empty */                     { $$ = new std::vector<AttributeDeclaration>(); }
+            | ID '=' expression ';'         { 
+                $$ = new std::vector<AttributeDeclaration>();
+                $$->push_back(AttributeDeclaration(*$1, $3));
+            }
+            | attribute_decl ID '=' expression ';' { 
+                $1->push_back(AttributeDeclaration(*$2, $4));
+                $$ = $1;
+            }
+        ;
+
+        method_decl:
+            /* empty */                     { $$ = new std::vector<MethodDeclaration>(); }
+            | ID '(' params ')' LAMBDA expression ';' {
+                $$ = new std::vector<MethodDeclaration>();
+                $$->push_back(MethodDeclaration(*$1, $3, $6));
+            }
+            | method_decl ID '(' params ')' LAMBDA expression ';' {
+                $1->push_back(MethodDeclaration(*$2, $4, $7));
+                $$ = $1;
+            }
+        ;
+
+        method_call:
+            expression '.' ID '(' args ')' {
+                $$ = new MethodCallNode($1, *$3, *$5, yylloc.first_line);
+            }
+        ;
+
+        base_call:
+            BASE '(' args ')' {
+                $$ = new BaseCallNode(*$3, yylloc.first_line);
+            }
+        ;
+
+        new_instance:
+            NEW ID '(' args ')' {
+                $$ = new NewInstanceNode(*$2, *$4, yylloc.first_line);
+            }
         ;
 
 %%

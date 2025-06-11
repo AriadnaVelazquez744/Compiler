@@ -9,41 +9,41 @@ SymbolTable& SemanticAnalyzer::getSymbolTable() {
     return symbolTable;
 }
 
-void SemanticAnalyzer::resolveFunctionTypes() {
-    auto functions = symbolTable.getUserDefinedFunctions();
+// void SemanticAnalyzer::resolveFunctionTypes() {
+//     auto functions = symbolTable.getUserDefinedFunctions();
 
-    for (Symbol& symbol : functions) {
-        if (!symbol.body) continue;
+//     for (Symbol& symbol : functions) {
+//         if (!symbol.body) continue;
 
-        symbolTable.enterScope();
+//         symbolTable.enterScope();
 
-        std::vector<std::string> paramNames;
-        std::vector<std::string>& paramTypes = symbol.params;
+//         std::vector<std::string> paramNames;
+//         std::vector<std::string>& paramTypes = symbol.params;
 
-        for (size_t i = 0; i < paramTypes.size(); ++i) {
-            std::string name = "param" + std::to_string(i);
-            paramNames.push_back(name);
-            std::string type = paramTypes[i].empty() ? "Unknown" : paramTypes[i];
-            symbolTable.addSymbol(name, type, false);
-        }
+//         for (size_t i = 0; i < paramTypes.size(); ++i) {
+//             std::string name = "param" + std::to_string(i);
+//             paramNames.push_back(name);
+//             std::string type = paramTypes[i].empty() ? "Unknown" : paramTypes[i];
+//             symbolTable.addSymbol(name, type, false);
+//         }
 
-        symbol.body->accept(*this);
-        std::string bodyType = symbol.body->type();
+//         symbol.body->accept(*this);
+//         std::string bodyType = symbol.body->type();
 
-        if (symbol.type.empty() || symbol.type == "Unknown") {
-            symbol.type = bodyType;
-        }
+//         if (symbol.type.empty() || symbol.type == "Unknown") {
+//             symbol.type = bodyType;
+//         }
 
-        for (size_t i = 0; i < paramTypes.size(); ++i) {
-            Symbol* paramSym = symbolTable.lookup(paramNames[i]);
-            if (paramSym && (paramTypes[i].empty() || paramTypes[i] == "Unknown")) {
-                paramTypes[i] = paramSym->type;
-            }
-        }
+//         for (size_t i = 0; i < paramTypes.size(); ++i) {
+//             Symbol* paramSym = symbolTable.lookup(paramNames[i]);
+//             if (paramSym && (paramTypes[i].empty() || paramTypes[i] == "Unknown")) {
+//                 paramTypes[i] = paramSym->type;
+//             }
+//         }
 
-        symbolTable.exitScope();
-    }
-}
+//         symbolTable.exitScope();
+//     }
+// }
 
 
 
@@ -88,8 +88,8 @@ void SemanticAnalyzer::analyze(const std::vector<ASTNode*>& nodes) {
 
     std::cout << "Fase de recolección completada." << std::endl;
 
-    SemanticAnalyzer analyzer(symbolTable, errors);
-    analyzer.resolveFunctionTypes();    
+    // SemanticAnalyzer analyzer(symbolTable, errors);
+    // analyzer.resolveFunctionTypes();    
 
     for (ASTNode* node : nodes) {
         try {

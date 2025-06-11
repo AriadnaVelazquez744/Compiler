@@ -7,7 +7,7 @@
 class SemanticAnalyzer : public ASTVisitor {
 private:
     SymbolTable symbolTable;
-    std::vector<SemanticError> errors;
+    
 
     // Helper para verificar funciones matemáticas
     void checkMathFunction(const std::string& funcName, const std::vector<ASTNode*>& args, int line);
@@ -16,8 +16,13 @@ private:
 
     bool conformsTo(const std::string& subtype, const std::string& supertype);
 
+     std::vector<SemanticError> errors;
+
 public:
     void analyze(const std::vector<ASTNode*>& nodes);
+    SemanticAnalyzer(SymbolTable& table, std::vector<SemanticError>& errs)
+        : symbolTable(table), errors(errs) {}
+    void resolveFunctionTypes();
 
     // Métodos visit
     void visit(FunctionDeclarationNode& node) override;

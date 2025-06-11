@@ -16,13 +16,13 @@ private:
 
     bool conformsTo(const std::string& subtype, const std::string& supertype);
 
-     std::vector<SemanticError> errors;
+    std::vector<SemanticError> errors;
 
 public:
     void analyze(const std::vector<ASTNode*>& nodes);
-    SemanticAnalyzer(SymbolTable& table, std::vector<SemanticError>& errs)
-        : symbolTable(table), errors(errs) {}
-    void resolveFunctionTypes();
+    // SemanticAnalyzer(SymbolTable& table, std::vector<SemanticError>& errs)
+    //     : symbolTable(table), errors(errs) {}
+    // void resolveFunctionTypes();
 
     // Métodos visit
     void visit(FunctionDeclarationNode& node) override;

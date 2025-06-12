@@ -368,14 +368,14 @@ struct MethodDeclaration {
 
 class MethodCallNode : public ASTNode {
 public:
-    ASTNode* object;
+    std::string instanceName;
     std::string methodName;
     std::vector<ASTNode*> args;
     int _line;
     std::string _type;
 
-    MethodCallNode(ASTNode* obj, std::string methodName, std::vector<ASTNode*> args, int line)
-        : object(obj), methodName(std::move(methodName)), args(std::move(args)), _line(line), _type("") {}
+    MethodCallNode(std::string instanceName, std::string methodName, std::vector<ASTNode*> args, int line)
+        : instanceName(instanceName), methodName(std::move(methodName)), args(std::move(args)), _line(line), _type("") {}
 
     void accept(ASTVisitor& v) override { v.visit(*this); }
     int line() const override { return _line; }

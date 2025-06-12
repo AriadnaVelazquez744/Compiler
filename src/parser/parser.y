@@ -142,6 +142,10 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %type <node> while_expr 
 %type <node> for_expr
 %type <node> body
+%type <node> method_call
+%type <node> base_call
+%type <node> new_instance
+%type <node> self_call
 %type <list> block_body
 %type <list> args
 %type <param> params
@@ -150,9 +154,6 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %type <node> type_decl
 %type <attr_decl> attribute_decl
 %type <method_decl> method_decl
-%type <node> method_call
-%type <node> base_call
-%type <node> new_instance
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
 %right NOT
@@ -202,7 +203,7 @@ statement:
         | BOOL                  { $$ = new LiteralNode($1 ? "true" : "false", "Boolean", yylloc.first_line); }
         | NULL_VAL              { $$ = new LiteralNode("null", "Null", yylloc.first_line); }
         | ID                    { $$ = new IdentifierNode(*$1, yylloc.first_line); }
-        | SELF '.' ID           { $$ = new SelfCallNode(*$3, yylloc.first_line); }
+        | self_call             { $$ = $1; }
         | new_instance          { $$ = $1; }
         | elem_expr             { $$ = $1; }
         | block_expr            { $$ = $1; }
@@ -386,7 +387,7 @@ statement:
         ;
 
         assign_expr:
-            ID REASSIGN expression    { $$ = new AssignmentNode(*$1, $3, yylloc.first_line);  }
+            ID REASSIGN expression              { $$ = new AssignmentNode(*$1, $3, yylloc.first_line);  }
         ;
 
         let_expr:
@@ -488,9 +489,13 @@ statement:
             }
         ;
 
+        self_call:
+            SELF '.' ID   { $$ = new SelfCallNode(*$3, yylloc.first_line); }
+        ;
+
         method_call:
-            expression '.' ID '(' args ')' {
-                $$ = new MethodCallNode($1, *$3, *$5, yylloc.first_line);
+            ID '.' ID '(' args ')' {
+                $$ = new MethodCallNode(*$1, *$3, *$5, yylloc.first_line);
             }
         ;
 

@@ -64,11 +64,11 @@ void SemanticAnalyzer::collectParamUsages(ASTNode* node, const std::string& para
     }
 
     // Method call
-    else if (auto* method = dynamic_cast<MethodCallNode*>(node)) {
-        collectParamUsages(method->object,paramName,  types);
-        for (auto* arg : method->args)
-            collectParamUsages(arg, paramName,  types);
-    }
+    // else if (auto* method = dynamic_cast<MethodCallNode*>(node)) {
+    //     collectParamUsages(method->object,paramName,  types);
+    //     for (auto* arg : method->args)
+    //         collectParamUsages(arg, paramName,  types);
+    // }
 
     // Let expression
     else if (auto* let = dynamic_cast<LetNode*>(node)) {
@@ -948,38 +948,38 @@ void SemanticAnalyzer::visit(NewInstanceNode& node) {
 }
 
 void SemanticAnalyzer::visit(MethodCallNode& node) {
-    node.object->accept(*this);
-    std::string objectType = node.object->type();
+    // node.instanceName->accept(*this);
+    // std::string objectType = node.instanceName->type();
 
-    TypeSymbol* typeSym = symbolTable.lookupType(objectType);
-    if (!typeSym) {
-        errors.emplace_back("Tipo '" + objectType + "' no definido para llamada a método", node.line());
-        node._type = "Error";
-        return;
-    }
+    // TypeSymbol* typeSym = symbolTable.lookupType(objectType);
+    // if (!typeSym) {
+    //     errors.emplace_back("Tipo '" + objectType + "' no definido para llamada a método", node.line());
+    //     node._type = "Error";
+    //     return;
+    // }
 
-    auto it = typeSym->methods.find(node.methodName);
-    if (it == typeSym->methods.end()) {
-        errors.emplace_back("Método '" + node.methodName + "' no existe en tipo '" + objectType + "'", node.line());
-        node._type = "Error";
-        return;
-    }
+    // auto it = typeSym->methods.find(node.methodName);
+    // if (it == typeSym->methods.end()) {
+    //     errors.emplace_back("Método '" + node.methodName + "' no existe en tipo '" + objectType + "'", node.line());
+    //     node._type = "Error";
+    //     return;
+    // }
 
-    Symbol& method = it->second;
-    if (node.args.size() != method.params.size()) {
-        errors.emplace_back("Cantidad incorrecta de argumentos en llamada a método '" + node.methodName + "'", node.line());
-        node._type = "Error";
-        return;
-    }
+    // Symbol& method = it->second;
+    // if (node.args.size() != method.params.size()) {
+    //     errors.emplace_back("Cantidad incorrecta de argumentos en llamada a método '" + node.methodName + "'", node.line());
+    //     node._type = "Error";
+    //     return;
+    // }
 
-    for (size_t i = 0; i < node.args.size(); ++i) {
-        node.args[i]->accept(*this);
-        if (node.args[i]->type() != method.params[i]) {
-            errors.emplace_back("Tipo de argumento " + std::to_string(i + 1) + " incorrecto en llamada a método '" + node.methodName + "'", node.line());
-        }
-    }
+    // for (size_t i = 0; i < node.args.size(); ++i) {
+    //     node.args[i]->accept(*this);
+    //     if (node.args[i]->type() != method.params[i]) {
+    //         errors.emplace_back("Tipo de argumento " + std::to_string(i + 1) + " incorrecto en llamada a método '" + node.methodName + "'", node.line());
+    //     }
+    // }
 
-    node._type = method.type;
+    // node._type = method.type;
 }
 
 void SemanticAnalyzer::visit(AttributeDeclaration& node) {

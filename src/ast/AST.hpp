@@ -228,12 +228,12 @@ public:
 
 class AssignmentNode : public ASTNode {
 public:
-    std::string name;
+    ASTNode* name;
     ASTNode* rhs;
     int _line;
     std::string _type;
 
-    AssignmentNode(std::string name, ASTNode* rhs, int ln)
+    AssignmentNode(ASTNode* name, ASTNode* rhs, int ln)
         : name(name), rhs(rhs), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -306,25 +306,30 @@ public:
     std::string type() const override { return _type; }
 };
 
+struct TypeBody {
+    std::vector<AttributeDeclaration>* attributes;
+    std::vector<MethodDeclaration>* methods;
+
+    TypeBody( std::vector<AttributeDeclaration>* attributes, std::vector<MethodDeclaration>* methods)
+        : attributes(attributes), methods(methods) {}
+};
 class TypeDeclarationNode : public ASTNode {
 public:
     std::string name;
     std::vector<Parameter>* constructorParams;
-    std::vector<AttributeDeclaration>* attributes;
-    std::vector<MethodDeclaration>* methods;
+    TypeBody* body;
     std::optional<std::string> baseType;            // Si hay herencia
     std::vector<ASTNode*> baseArgs;                 // Argumentos para el padre
     int _line;
 
     TypeDeclarationNode(std::string name,
                         std::vector<Parameter>* params,
-                        std::vector<AttributeDeclaration>* attrs,
-                        std::vector<MethodDeclaration>* methods,
+                        TypeBody* body,
                         std::optional<std::string> baseType,
                         std::vector<ASTNode*> baseArgs,
                         int line)
         : name(std::move(name)), constructorParams(params),
-          attributes(attrs), methods(methods),
+          body(body),
           baseType(std::move(baseType)), baseArgs(std::move(baseArgs)),
           _line(line) {}
 
@@ -368,14 +373,14 @@ struct MethodDeclaration {
 
 class MethodCallNode : public ASTNode {
 public:
-    ASTNode* object;
+    std::string instanceName;
     std::string methodName;
     std::vector<ASTNode*> args;
     int _line;
     std::string _type;
 
-    MethodCallNode(ASTNode* obj, std::string methodName, std::vector<ASTNode*> args, int line)
-        : object(obj), methodName(std::move(methodName)), args(std::move(args)), _line(line), _type("") {}
+    MethodCallNode(std::string instanceName, std::string methodName, std::vector<ASTNode*> args, int line)
+        : instanceName(instanceName), methodName(std::move(methodName)), args(std::move(args)), _line(line), _type("") {}
 
     void accept(ASTVisitor& v) override { v.visit(*this); }
     int line() const override { return _line; }

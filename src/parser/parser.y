@@ -55,6 +55,7 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
     std::vector<LetDeclaration>* let_decl;
     std::vector<AttributeDeclaration>* attr_decl;
     std::vector<MethodDeclaration>* method_decl;
+    TypeBody* type_body;
 }
 
 // --------------------------------------/* Definición de Tokens */------------------------------------------- //
@@ -134,6 +135,7 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %type <node> statement
 %type <node> expression
 %type <node> elem_expr
+%type <node> id
 %type <node> block_expr
 %type <node> func_call_expr
 %type <node> assign_expr
@@ -142,6 +144,10 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %type <node> while_expr 
 %type <node> for_expr
 %type <node> body
+%type <node> method_call
+%type <node> base_call
+%type <node> new_instance
+%type <node> self_call
 %type <list> block_body
 %type <list> args
 %type <param> params
@@ -150,18 +156,16 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %type <node> type_decl
 %type <attr_decl> attribute_decl
 %type <method_decl> method_decl
-%type <node> method_call
-%type <node> base_call
-%type <node> new_instance
+%type <type_body> type_body
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
+%left CONCAT CONCAT_SPACE
+%right NOT
+%left AND OR 
+%left LT GT LE GE EQ NE
+%right  POW SIN COS MIN MAX SQRT LOG EXP RANDOM
 %left ADD SUB
 %left MUL DIV MOD
-%right  POW SIN COS MIN MAX SQRT LOG EXP RANDOM
-%left LT GT LE GE EQ NE
-%left AND OR 
-%right NOT
-%nonassoc CONCAT CONCAT_SPACE
 
 %%
 
@@ -202,7 +206,7 @@ statement:
         | BOOL                  { $$ = new LiteralNode($1 ? "true" : "false", "Boolean", yylloc.first_line); }
         | NULL_VAL              { $$ = new LiteralNode("null", "Null", yylloc.first_line); }
         | ID                    { $$ = new IdentifierNode(*$1, yylloc.first_line); }
-        | SELF '.' ID           { $$ = new SelfCallNode(*$3, yylloc.first_line); }
+        | self_call             { $$ = $1; }
         | new_instance          { $$ = $1; }
         | elem_expr             { $$ = $1; }
         | block_expr            { $$ = $1; }
@@ -345,6 +349,10 @@ statement:
             }
         ;
 
+        id:
+            ID                    { $$ = new IdentifierNode(*$1, yylloc.first_line); }
+        ;
+
         block_expr:
             '{' block_body '}'  {
                                     $$ = new BlockNode(*$2, yylloc.first_line); // Placeholder
@@ -386,7 +394,8 @@ statement:
         ;
 
         assign_expr:
-            ID REASSIGN expression    { $$ = new AssignmentNode(*$1, $3, yylloc.first_line);  }
+            id REASSIGN expression              { $$ = new AssignmentNode($1, $3, yylloc.first_line);  }
+            | self_call REASSIGN expression     { $$ = new AssignmentNode($1, $3, yylloc.first_line);  }
         ;
 
         let_expr:
@@ -453,20 +462,43 @@ statement:
         ;
 
         type_decl:
-            TYPE ID '(' params ')' '{' attribute_decl method_decl '}' {
-                $$ = new TypeDeclarationNode(*$2, $4, $7, $8, std::nullopt, std::vector<ASTNode*>(), yylloc.first_line);
+            TYPE ID '(' params ')' '{' type_body '}' {
+                $$ = new TypeDeclarationNode(*$2, $4, $7, std::nullopt, std::vector<ASTNode*>(), yylloc.first_line);
             }
-            | TYPE ID '{' attribute_decl method_decl '}' {
-                $$ = new TypeDeclarationNode(*$2, new std::vector<Parameter>(), $4, $5, std::nullopt, std::vector<ASTNode*>(), yylloc.first_line);
+            | TYPE ID '{' type_body '}' {
+                $$ = new TypeDeclarationNode(*$2, new std::vector<Parameter>(), $4, std::nullopt, std::vector<ASTNode*>(), yylloc.first_line);
             }
-            | TYPE ID '(' params ')' INHERITS ID '(' args ')' '{' attribute_decl method_decl '}' {
-                $$ = new TypeDeclarationNode(*$2, $4, $12, $13, *$7, *$9, yylloc.first_line);
+            | TYPE ID '(' params ')' INHERITS ID '(' args ')' '{' type_body '}' {
+                $$ = new TypeDeclarationNode(*$2, $4, $12, *$7, *$9, yylloc.first_line);
+            }
+            | TYPE ID INHERITS ID '(' args ')' '{' type_body '}' {
+                $$ = new TypeDeclarationNode(*$2, new std::vector<Parameter>(), $9, std::make_optional(*$4), *$6, yylloc.first_line);
+            }
+            | TYPE ID '(' params ')' INHERITS ID '{' type_body '}' {
+                $$ = new TypeDeclarationNode(*$2, $4, $9, std::make_optional(*$7), std::vector<ASTNode*>(), yylloc.first_line);
+            }
+            | TYPE ID INHERITS ID '{' type_body '}' {
+                $$ = new TypeDeclarationNode(*$2, new std::vector<Parameter>(), $6, std::make_optional(*$4), std::vector<ASTNode*>(), yylloc.first_line);
+            }
+        ;
+        
+        type_body
+            : /* empty */ {
+                $$ = new TypeBody(new std::vector<AttributeDeclaration>(), new std::vector<MethodDeclaration>());
+            }
+            | attribute_decl {
+                $$ = new TypeBody($1, new std::vector<MethodDeclaration>());
+            }
+            | method_decl {
+                $$ = new TypeBody(new std::vector<AttributeDeclaration>(), $1);
+            }
+            | attribute_decl method_decl {
+                $$ = new TypeBody($1, $2);
             }
         ;
 
         attribute_decl:
-            /* empty */                     { $$ = new std::vector<AttributeDeclaration>(); }
-            | ID '=' expression ';'         { 
+            ID '=' expression ';'         { 
                 $$ = new std::vector<AttributeDeclaration>();
                 $$->push_back(AttributeDeclaration(*$1, $3));
             }
@@ -477,20 +509,34 @@ statement:
         ;
 
         method_decl:
-            /* empty */                     { $$ = new std::vector<MethodDeclaration>(); }
-            | ID '(' params ')' LAMBDA expression ';' {
+            ID '(' params ')' LAMBDA expression ';' {
                 $$ = new std::vector<MethodDeclaration>();
                 $$->push_back(MethodDeclaration(*$1, $3, $6));
+            }
+            | ID '(' params ')' block_expr ';' {
+                $$ = new std::vector<MethodDeclaration>();
+                $$->push_back(MethodDeclaration(*$1, $3, $5));
             }
             | method_decl ID '(' params ')' LAMBDA expression ';' {
                 $1->push_back(MethodDeclaration(*$2, $4, $7));
                 $$ = $1;
             }
+            | method_decl ID '(' params ')' block_expr ';' {
+                $1->push_back(MethodDeclaration(*$2, $4, $6));
+                $$ = $1;
+            }
+        ;
+
+        self_call:
+            SELF '.' ID   { $$ = new SelfCallNode(*$3, yylloc.first_line); }
         ;
 
         method_call:
-            expression '.' ID '(' args ')' {
-                $$ = new MethodCallNode($1, *$3, *$5, yylloc.first_line);
+            ID '.' ID '(' args ')' {
+                $$ = new MethodCallNode(*$1, *$3, *$5, yylloc.first_line);
+            }
+            | SELF '.' ID '(' args ')' {
+                $$ = new MethodCallNode("self", *$3, *$5, yylloc.first_line);
             }
         ;
 

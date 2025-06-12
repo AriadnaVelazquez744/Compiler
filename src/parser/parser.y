@@ -155,12 +155,12 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %type <node> new_instance
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
+%right NOT
+%left AND OR 
+%left LT GT LE GE EQ NE
+%right  POW SIN COS MIN MAX SQRT LOG EXP RANDOM
 %left ADD SUB
 %left MUL DIV MOD
-%right  POW SIN COS MIN MAX SQRT LOG EXP RANDOM
-%left LT GT LE GE EQ NE
-%left AND OR 
-%right NOT
 %nonassoc CONCAT CONCAT_SPACE
 
 %%

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <unordered_set>
 #include <vector>
+#include <algorithm>
 
 
 SymbolTable& SemanticAnalyzer::getSymbolTable() {
@@ -14,14 +15,71 @@ SymbolTable& SemanticAnalyzer::getSymbolTable() {
 
 std::string SemanticAnalyzer::inferParamUsageType(const std::string& paramName, ASTNode* body) {
     std::set<std::string> usageTypes;
-
     collectParamUsages(body, paramName, usageTypes);
 
     if (usageTypes.empty()) return "Unknown";
 
-    return symbolTable.lowestCommonAncestor(std::vector<std::string>(
-        usageTypes.begin(), usageTypes.end()
-    ));
+    // Si solo hay un tipo, ese es el tipo más específico
+    if (usageTypes.size() == 1) {
+        return *usageTypes.begin();
+    }
+
+    // Si hay múltiples tipos, necesitamos encontrar el más específico común
+    std::vector<std::string> types(usageTypes.begin(), usageTypes.end());
+    
+    // Si todos los tipos son Unknown, asumimos Number
+    bool allUnknown = true;
+    for (const auto& type : types) {
+        if (type != "Unknown") {
+            allUnknown = false;
+            break;
+        }
+    }
+    if (allUnknown) {
+        return "Number";
+    }
+
+    // Filtrar tipos Unknown
+    types.erase(
+        std::remove_if(types.begin(), types.end(),
+            [](const std::string& t) { return t == "Unknown"; }),
+        types.end()
+    );
+
+    // Si después de filtrar Unknown no quedan tipos, asumimos Number
+    if (types.empty()) {
+        return "Number";
+    }
+
+    std::string commonType = symbolTable.lowestCommonAncestor(types);
+
+    // Verificar si hay ambigüedad en la jerarquía de tipos
+    bool hasAmbiguity = false;
+    for (const auto& type : types) {
+        if (type != commonType && !symbolTable.isSubtype(type, commonType)) {
+            hasAmbiguity = true;
+            break;
+        }
+    }
+
+    // Si hay ambigüedad, intentamos ser más específicos
+    if (hasAmbiguity) {
+        // Si hay Number entre los tipos, preferimos Number
+        if (std::find(types.begin(), types.end(), std::string("Number")) != types.end()) {
+            return "Number";
+        }
+        // Si hay String entre los tipos, preferimos String
+        if (std::find(types.begin(), types.end(), std::string("String")) != types.end()) {
+            return "String";
+        }
+        // Si hay Boolean entre los tipos, preferimos Boolean
+        if (std::find(types.begin(), types.end(), std::string("Boolean")) != types.end()) {
+            return "Boolean";
+        }
+        return "Object"; // Si no podemos ser más específicos, usamos Object
+    }
+
+    return commonType;
 }
 
 
@@ -35,80 +93,246 @@ void SemanticAnalyzer::collectParamUsages(ASTNode* node, const std::string& para
         }
     }
 
-    // Binary operation
+    // Binary operation - verificar restricciones de tipo
     else if (auto* bin = dynamic_cast<BinaryOpNode*>(node)) {
-        collectParamUsages(bin->left, paramName,  types);
-        collectParamUsages(bin->right, paramName,  types);
+        collectParamUsages(bin->left, paramName, types);
+        collectParamUsages(bin->right, paramName, types);
+        
+        // Verificar restricciones de tipo para operaciones específicas
+        if (bin->op == "+" || bin->op == "-" || bin->op == "*" || bin->op == "/" || bin->op == "^"|| bin->op == "%") {
+            // Operaciones aritméticas requieren Number
+            auto* leftId = dynamic_cast<IdentifierNode*>(bin->left);
+            auto* rightId = dynamic_cast<IdentifierNode*>(bin->right);
+            if ((leftId && leftId->name == paramName) || (rightId && rightId->name == paramName)) {
+                types.insert("Number");
+            }
+        }
+        else if (bin->op == ">" || bin->op == "<" || bin->op == ">=" || bin->op == "<=") {
+            // Operaciones de comparación requieren Number
+            auto* leftId = dynamic_cast<IdentifierNode*>(bin->left);
+            auto* rightId = dynamic_cast<IdentifierNode*>(bin->right);
+            if ((leftId && leftId->name == paramName) || (rightId && rightId->name == paramName)) {
+                types.insert("Number");
+            }
+        }
+        else if (bin->op == "&" || bin->op == "|") {
+            // Operaciones lógicas requieren Boolean
+            auto* leftId = dynamic_cast<IdentifierNode*>(bin->left);
+            auto* rightId = dynamic_cast<IdentifierNode*>(bin->right);
+            if ((leftId && leftId->name == paramName) || (rightId && rightId->name == paramName)) {
+                types.insert("Boolean");
+            }
+        }
+        else if (bin->op == "@" || bin->op == "@@") {
+            // Operaciones de concatenación requieren String o Number
+            auto* leftId = dynamic_cast<IdentifierNode*>(bin->left);
+            auto* rightId = dynamic_cast<IdentifierNode*>(bin->right);
+            
+            if (leftId && leftId->name == paramName) {
+                // Si el otro operando es un literal, usamos su tipo
+                if (auto* rightLit = dynamic_cast<LiteralNode*>(bin->right)) {
+                    types.insert(rightLit->type());
+                } else {
+                    // Si no podemos inferir el tipo del otro operando,
+                    // permitimos tanto String como Number
+                    types.insert("String");
+                    types.insert("Number");
+                }
+            }
+            if (rightId && rightId->name == paramName) {
+                // Si el otro operando es un literal, usamos su tipo
+                if (auto* leftLit = dynamic_cast<LiteralNode*>(bin->left)) {
+                    types.insert(leftLit->type());
+                } else {
+                    // Si no podemos inferir el tipo del otro operando,
+                    // permitimos tanto String como Number
+                    types.insert("String");
+                    types.insert("Number");
+                }
+            }
+        }
+        else if (bin->op == "==" || bin->op == "!=") {
+            // Operaciones de comparación requieren tipos compatibles
+            auto* leftId = dynamic_cast<IdentifierNode*>(bin->left);
+            auto* rightId = dynamic_cast<IdentifierNode*>(bin->right);
+            if (leftId && leftId->name == paramName) {
+                types.insert(bin->right->type());
+            }
+            if (rightId && rightId->name == paramName) {
+                types.insert(bin->left->type());
+            }
+        }
     }
-
     // Unary operation
     else if (auto* un = dynamic_cast<UnaryOpNode*>(node)) {
-        collectParamUsages(un->operand, paramName,  types);
+        collectParamUsages(un->operand, paramName, types);
+        auto* operandId = dynamic_cast<IdentifierNode*>(un->operand);
+        
+        if (operandId && operandId->name == paramName) {
+            if (un->op == "!") {
+                types.insert("Boolean");
+            }
+        }
     }
 
     // Function call
     else if (auto* call = dynamic_cast<FunctionCallNode*>(node)) {
         for (auto* arg : call->args)
-            collectParamUsages(arg, paramName,  types);
+            collectParamUsages(arg, paramName, types);
+            
+        // Si el parámetro es uno de los argumentos, inferir del tipo esperado por la función
+        Symbol* funcSym = symbolTable.lookup(call->funcName);
+        if (funcSym && funcSym->kind == "function") {
+            for (size_t i = 0; i < call->args.size(); ++i) {
+                if (auto* id = dynamic_cast<IdentifierNode*>(call->args[i])) {
+                    if (id->name == paramName) {
+                        // Si el tipo del parámetro de la función es Unknown, intentar inferirlo del cuerpo
+                        if (funcSym->params[i] == "Unknown" && funcSym->body) {
+                            std::set<std::string> paramTypes;
+                            collectParamUsages(funcSym->body, funcSym->params[i], paramTypes);
+                            if (!paramTypes.empty()) {
+                                types.insert(*paramTypes.begin());
+                            } else {
+                                // Si no podemos inferir del cuerpo, intentar inferir del tipo de retorno
+                                if (funcSym->type != "Unknown") {
+                                    types.insert(funcSym->type);
+                                }
+                            }
+                        } else {
+                            types.insert(funcSym->params[i]);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Built-in function call
     else if (auto* builtin = dynamic_cast<BuiltInFunctionNode*>(node)) {
         for (auto* arg : builtin->args)
-            collectParamUsages(arg, paramName,  types);
+            collectParamUsages(arg, paramName, types);
     }
 
-    // Function declaration
-    else if (auto* func = dynamic_cast<FunctionDeclarationNode*>(node)) {
-        collectParamUsages(func->body, paramName,  types);
-    }
+    //Method call
+    else if (auto* method = dynamic_cast<MethodCallNode*>(node)) {
+        // Analizar todos los argumentos de la llamada al método
+        for (auto* arg : method->args) {
+            collectParamUsages(arg, paramName, types);
+        }
 
-    // Method call
-    // else if (auto* method = dynamic_cast<MethodCallNode*>(node)) {
-    //     collectParamUsages(method->object,paramName,  types);
-    //     for (auto* arg : method->args)
-    //         collectParamUsages(arg, paramName,  types);
-    // }
+        // Obtener el tipo del objeto (instanceName se refiere al nombre de la instancia)
+        std::string objType;
+
+        // Buscamos el símbolo de la instancia para obtener su tipo
+        Symbol* instanceSym = symbolTable.lookup(method->instanceName);
+        if (!instanceSym) return; // si no se encuentra, abortamos esta rama
+
+        objType = instanceSym->type;
+        TypeSymbol* typeSym = symbolTable.lookupType(objType);
+
+        // Verificar herencia si es necesario
+        while (typeSym) {
+            auto it = typeSym->methods.find(method->methodName);
+            if (it != typeSym->methods.end()) {
+                const Symbol& methodSym = it->second;
+
+                for (size_t i = 0; i < method->args.size(); ++i) {
+                    if (auto* id = dynamic_cast<IdentifierNode*>(method->args[i])) {
+                        if (id->name == paramName && i < methodSym.params.size()) {
+                            types.insert(methodSym.params[i]);
+                        }
+                    }
+                }
+
+                break; // método encontrado, no seguimos subiendo en herencia
+            }
+
+            if (typeSym->parentType.empty()) break;
+            typeSym = symbolTable.lookupType(typeSym->parentType);
+        }
+    }
 
     // Let expression
     else if (auto* let = dynamic_cast<LetNode*>(node)) {
+        // Primero analizar las declaraciones
         for (auto& decl : *let->declarations) {
-            collectParamUsages(decl.initializer, paramName,  types);
+            collectParamUsages(decl.initializer, paramName, types);
+            
+            // Si el parámetro es usado en el inicializador, su tipo debe ser compatible
+            if (auto* id = dynamic_cast<IdentifierNode*>(decl.initializer)) {
+                if (id->name == paramName) {
+                    types.insert(decl.declaredType);
+                }
+            }
         }
-        collectParamUsages( let->body, paramName, types);
+        collectParamUsages(let->body, paramName, types);
     }
 
     // If expression
     else if (auto* ifn = dynamic_cast<IfNode*>(node)) {
+        // Analizar condición
+        collectParamUsages(ifn->branches->front().condition, paramName, types);
+        
+        // Analizar todas las ramas
         for (auto& branch : *ifn->branches) {
-            collectParamUsages( branch.condition, paramName, types);
-            collectParamUsages(branch.body, paramName,  types);
+            collectParamUsages(branch.body, paramName, types);
         }
-        if (ifn->elseBody)
-            collectParamUsages(ifn->elseBody ,paramName,  types);
+        
+        // Analizar else si existe
+        if (ifn->elseBody) {
+            collectParamUsages(ifn->elseBody, paramName, types);
+        }
     }
 
-    // While
+    // While expression
     else if (auto* wh = dynamic_cast<WhileNode*>(node)) {
-        collectParamUsages(wh->condition, paramName,  types);
-        collectParamUsages(wh->body, paramName,  types);
+        collectParamUsages(wh->condition, paramName, types);
+        collectParamUsages(wh->body, paramName, types);
     }
 
-    // For
+    // For expression
     else if (auto* forNode = dynamic_cast<ForNode*>(node)) {
-        collectParamUsages(forNode->init_range, paramName,  types);
-        collectParamUsages(forNode->end_range, paramName,  types);
-        collectParamUsages(forNode->body, paramName,  types);
+        collectParamUsages(forNode->init_range, paramName, types);
+        collectParamUsages(forNode->end_range, paramName, types);
+        collectParamUsages(forNode->body, paramName, types);
     }
 
-    // Assignment
+    //Assignment
     else if (auto* assign = dynamic_cast<AssignmentNode*>(node)) {
-        collectParamUsages(assign->rhs, paramName,  types);
+        collectParamUsages(assign->rhs, paramName, types);
+
+    if (auto* id = dynamic_cast<IdentifierNode*>(assign->rhs)) {
+        if (id->name == paramName) {
+            std::string targetName;
+
+            if (auto* idName = dynamic_cast<IdentifierNode*>(assign->name)) {
+                targetName = idName->name;
+            } else if (auto* selfField = dynamic_cast<SelfCallNode*>(assign->name)) {
+                targetName = selfField->varName;
+            }
+
+            if (!targetName.empty()) {
+                Symbol* varSym = symbolTable.lookup(targetName);
+                if (varSym) {
+                    types.insert(varSym->type);
+                }
+            }
+        }
+    }
     }
 
     // Variable declaration
     else if (auto* decl = dynamic_cast<VariableDeclarationNode*>(node)) {
-        collectParamUsages(decl->initializer, paramName,  types);
+        if (decl->initializer) {
+            collectParamUsages(decl->initializer, paramName, types);
+            
+            // Si el parámetro es usado en el inicializador, su tipo debe ser compatible
+            if (auto* id = dynamic_cast<IdentifierNode*>(decl->initializer)) {
+                if (id->name == paramName) {
+                    types.insert(decl->declaredType);
+                }
+            }
+        }
     }
 
     // Block
@@ -120,18 +344,42 @@ void SemanticAnalyzer::collectParamUsages(ASTNode* node, const std::string& para
     // New instance
     else if (auto* inst = dynamic_cast<NewInstanceNode*>(node)) {
         for (auto* arg : inst->args)
-            collectParamUsages(arg, paramName,  types);
+            collectParamUsages(arg, paramName, types);
+            
+        // Si el parámetro es uno de los argumentos, inferir del tipo esperado por el constructor
+        TypeSymbol* typeSym = symbolTable.lookupType(inst->typeName);
+        if (typeSym) {
+            for (size_t i = 0; i < inst->args.size(); ++i) {
+                if (auto* id = dynamic_cast<IdentifierNode*>(inst->args[i])) {
+                    if (id->name == paramName && i < typeSym->typeParams.size()) {
+                        types.insert(typeSym->typeParams[i]);
+                    }
+                }
+            }
+        }
     }
 
     // Type declaration
-    // else if (auto* typeDecl = dynamic_cast<TypeDeclarationNode*>(node)) {
-    //     for (const auto& attr : *typeDecl->attributes)
-    //         collectParamUsages(attr.initializer, paramName,  types);
-    //     for (const auto& method : *typeDecl->methods)
-    //         collectParamUsages(method.body, paramName,  types);
-    //     for (ASTNode* arg : typeDecl->baseArgs)
-    //         collectParamUsages(arg, paramName,  types);
-    // }
+    else if (auto* typeDecl = dynamic_cast<TypeDeclarationNode*>(node)) {
+         // Recolectar tipos desde atributos
+        if (typeDecl->body && typeDecl->body->attributes) {
+            for (const auto& attr : *typeDecl->body->attributes) {
+                collectParamUsages(attr.initializer, paramName, types);
+            }
+        }
+
+        // Recolectar tipos desde cuerpos de métodos
+        if (typeDecl->body && typeDecl->body->methods) {
+            for (const auto& method : *typeDecl->body->methods) {
+                collectParamUsages(method.body, paramName, types);
+            }
+        }
+
+        // Argumentos al padre (base constructor args)
+        for (ASTNode* arg : typeDecl->baseArgs) {
+            collectParamUsages(arg, paramName, types);
+        }
+    }
 
     // Literal: no hay nada que recorrer
     else if (dynamic_cast<LiteralNode*>(node)) {
@@ -295,7 +543,7 @@ void SemanticAnalyzer::visit(ASTNode& node) {}
 // Implementación de visitas a nodos
 
 void SemanticAnalyzer::visit(UnaryOpNode& node) {
-    node.operand->accept(*this); // Analiza operand
+    node.operand->accept(*this);
     std::string operandType = node.operand->type();
 
     if (node.op == "-") {
@@ -305,14 +553,18 @@ void SemanticAnalyzer::visit(UnaryOpNode& node) {
         }
         node._type = "Number";
     } else if (node.op == "!") {
+        // Para negación lógica, si el operando es Unknown, asumimos Boolean
+        if (operandType == "Unknown") operandType = "Boolean";
+        
         if (operandType != "Boolean") {
             errors.emplace_back("El operador '!' requiere un operando de tipo Boolean", node.line());
             node._type = "Error";
+        } else {
+            node._type = "Boolean";
         }
-        node._type = "Boolean";
     } else {
         errors.emplace_back("Operador unario desconocido: " + node.op, node.line());
-        node._type = "Error";;
+        node._type = "Error";
     }
 }
 
@@ -387,11 +639,20 @@ void SemanticAnalyzer::visit(BuiltInFunctionNode& node) {
 
 
 void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
+    std::cout << "\n=== Iniciando análisis de función: " << node.name << " ===\n";
+    // Paso 0: Pre-registro provisional en la tabla de símbolos
+    std::vector<std::string> paramTypes;
+    for (const auto& param : *node.params)
+        paramTypes.push_back(param.type.empty() ? "Unknown" : param.type);
+
+    symbolTable.addFunction(node.name, "Unknown", paramTypes); // tipo de retorno provisional
+
     symbolTable.enterScope();
 
     std::unordered_map<std::string, bool> paramSeen;
 
     // Paso 1: insertar todos los parámetros con tipo Unknown (si no están anotados)
+    std::cout << "Paso 1: Registrando parámetros\n";
     for (const auto& param : *node.params) {
         if (paramSeen.count(param.name)) {
             errors.emplace_back("Parámetro duplicado '" + param.name + "'", node.line());
@@ -401,63 +662,100 @@ void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
 
         paramSeen[param.name] = true;
         std::string paramType = param.type.empty() ? "Unknown" : param.type;
+        std::cout << "  - Parámetro: " << param.name << " con tipo inicial: " << paramType << "\n";
         symbolTable.addSymbol(param.name, paramType, false);
     }
 
     // Paso 2: analizar el cuerpo con símbolos disponibles
+    std::cout << "Paso 2: Analizando cuerpo de la función\n";
     node.body->accept(*this);
     std::string bodyType = node.body->type();
+    std::cout << "  - Tipo del cuerpo: " << bodyType << "\n";
 
+    // Paso 3: Inferencia de tipos para parámetros sin tipo explícito
+    std::cout << "DEBUG: Iniciando inferencia de tipos para parámetros\n";
     for (auto& param : *node.params) {
-    if (param.type.empty()) {
-        std::string inferred = inferParamUsageType(param.name, node.body);
-        if (inferred == "Unknown" || inferred.empty()) {
-            errors.emplace_back("No se pudo inferir el tipo del parámetro '" + param.name + "'", node.line());
-            node._type = "Error";
-        } else {
-            param.type = inferred;
-            symbolTable.updateSymbolType(param.name, inferred);
+        if (!param.type.empty()) {
+            continue;
         }
-    }
-}
 
+        std::cout << "  - Intentando inferir tipo para parámetro: " << param.name << "\n";
 
-    // Paso 3: Inferencia firme para parámetros sin tipo explícito
-    for (auto& param : *node.params) {
-        if (!param.type.empty()) continue;
-
-        std::set<std::string> observedTypes;
-        collectParamUsages(node.body, param.name,  observedTypes);
-
-        if (observedTypes.empty()) {
-            errors.emplace_back("No se pudo inferir tipo para parámetro '" + param.name + "'", node.line());
-            node._type = "Error";
-        } else if (observedTypes.size() == 1) {
-            param.type = *observedTypes.begin();
-        } else {
-            std::set<std::string> usageTypes;
-
-            std::vector<std::string> observedVec(usageTypes.begin(), usageTypes.end());
-            std::string common = symbolTable.lowestCommonAncestor(observedVec);
-            if (common == "Object") {
-                errors.emplace_back("Inferencia ambigua para parámetro '" + param.name + "'", node.line());
-                node._type = "Error";
-            } else {
-                param.type = common;
+        // Si el cuerpo es una llamada a función, verificar el tipo esperado por la función
+        if (auto* call = dynamic_cast<FunctionCallNode*>(node.body)) {
+            Symbol* funcSym = symbolTable.lookup(call->funcName);
+            if (funcSym && funcSym->kind == "function") {
+                for (size_t i = 0; i < call->args.size(); ++i) {
+                    if (auto* id = dynamic_cast<IdentifierNode*>(call->args[i])) {
+                        if (id->name == param.name) {
+                            std::string expectedType = funcSym->params[i];
+                            if (expectedType != "Unknown") {
+                                param.type = expectedType;
+                                symbolTable.updateSymbolType(param.name, expectedType);
+                                std::cout << "    - Tipo inferido de llamada a función: " << expectedType << "\n";
+                                continue;
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        // Actualizar en la tabla de símbolos con tipo inferido
-        symbolTable.lookup(param.name)->type = param.type;
+        // Si el cuerpo es una operación binaria, verificar restricciones de operadores
+        if (auto* bin = dynamic_cast<BinaryOpNode*>(node.body)) {
+            std::cout << "    - Cuerpo es una operación binaria con operador: " << bin->op << "\n";
+            if (bin->op == "+" || bin->op == "-" || bin->op == "*" || bin->op == "/") {
+                auto* leftId = dynamic_cast<IdentifierNode*>(bin->left);
+                auto* rightId = dynamic_cast<IdentifierNode*>(bin->right);
+                
+                std::cout << "    - Verificando operandos:\n";
+                if (leftId) std::cout << "      - Izquierdo: " << leftId->name << "\n";
+                if (rightId) std::cout << "      - Derecho: " << rightId->name << "\n";
+                
+                if ((leftId && leftId->name == param.name) || 
+                    (rightId && rightId->name == param.name)) {
+                    std::cout << "    - Parámetro usado en operación aritmética, asignando tipo Number\n";
+                    param.type = "Number";
+                    symbolTable.updateSymbolType(param.name, "Number");
+                    continue;
+                }
+            }
+        }
+
+        // Si no es una operación binaria o no se pudo inferir por operador,
+        // usar el método general de inferencia
+        std::cout << "    - Usando método general de inferencia\n";
+        std::string inferredType = inferParamUsageType(param.name, node.body);
+        std::cout << "    - Tipo inferido: " << inferredType << "\n";
+
+        if (inferredType == "Unknown") {
+            errors.emplace_back("No se pudo inferir el tipo del parámetro '" + param.name + "'", node.line());
+            node._type = "Error";
+            continue;
+        }
+
+        param.type = inferredType;
+        symbolTable.updateSymbolType(param.name, inferredType);
     }
 
     // Paso 4: Verificación de tipo de retorno
-    if (!node.returnType.empty() && node.returnType != bodyType) {
+    std::cout << "Paso 4: Verificando tipo de retorno\n";
+    if (!node.returnType.empty() && !conformsTo(bodyType, node.returnType)) {
         errors.emplace_back("Tipo de retorno incorrecto en función '" + node.name + "'", node.line());
         node._type = "Error";
     }
 
     node._type = node.returnType.empty() ? bodyType : node.returnType;
+    std::cout << "  - Tipo final de la función: " << node._type << "\n";
+
+    // Actualizar el tipo de retorno en la tabla de símbolos
+    Symbol* funcSym = symbolTable.lookup(node.name);
+    if (funcSym) {
+        funcSym->type = node._type;
+    }
+
+    std::cout << "=== Fin del análisis de función ===\n\n";
+
     symbolTable.exitScope();
 }
 
@@ -504,54 +802,66 @@ void SemanticAnalyzer::visit(FunctionCallNode& node) {
         return;
     }
 
+    // Primero analizar todos los argumentos
     for (size_t i = 0; i < node.args.size(); ++i) {
         node.args[i]->accept(*this);
         std::string argType = node.args[i]->type();
         std::string expectedType = symbol->params[i];
+
+        // Si el tipo esperado es Unknown, intentar inferirlo del cuerpo de la función
+        if (expectedType == "Unknown" && symbol->body) {
+            std::set<std::string> paramTypes;
+            collectParamUsages(symbol->body, symbol->params[i], paramTypes);
+            if (!paramTypes.empty()) {
+                expectedType = *paramTypes.begin();
+                symbol->params[i] = expectedType; // Actualizar el tipo en la tabla de símbolos
+            }
+        }
 
         if (!conformsTo(argType, expectedType)) {
             errors.emplace_back("Tipo incorrecto para argumento " + std::to_string(i + 1) +
                 " en '" + node.funcName + "': esperado '" + expectedType + "', obtenido '" + argType + "'",
                 node.line());
             node._type = "Error";
+            return;
         }
     }
 
+    // El tipo de la llamada es el tipo de retorno de la función
     node._type = symbol->type;
+    
+    // Si el tipo de retorno es Unknown, intentar inferirlo del cuerpo
+    if (node._type == "Unknown" && symbol->body) {
+        symbol->body->accept(*this);
+        node._type = symbol->body->type();
+        symbol->type = node._type; // Actualizar el tipo en la tabla de símbolos
+    }
 }
 
 
 void SemanticAnalyzer::visit(BinaryOpNode& node) {
-
-    std::cout << "Visitando BinaryOpNode con operador: " << node.op << "\n";
-
-    if (auto* leftBin = dynamic_cast<BinaryOpNode*>(node.left)) {
-        std::cout << "  Left es otro BinaryOpNode con operador: " << leftBin->op << "\n";
-    } else {
-        std::cout << "  Left no es BinaryOpNode\n";
-    }
-
-    if (auto* rightBin = dynamic_cast<BinaryOpNode*>(node.right)) {
-        std::cout << "  Right es otro BinaryOpNode con operador: " << rightBin->op << "\n";
-    } else {
-        std::cout << "  Right no es BinaryOpNode\n";
-    }
-
     node.left->accept(*this);
     node.right->accept(*this);
 
     std::string leftType = node.left->type();
     std::string rightType = node.right->type();
 
-    std::cout << ">>> Visitando operador binario: " << node.op << std::endl;
-    std::cout << "    Left node: " << node.left << std::endl;
-    std::cout << "    Right node: " << node.right << std::endl;
-    std::cout << "    Left type: " << leftType << std::endl;
-    std::cout << "    Right type: " << rightType << std::endl;
-
     const std::set<std::string> comparisonOps = {"==", "!=", "<", ">", "<=", ">="};
+    const std::set<std::string> arithmeticOps = {"+", "-", "*", "/", "^", "%"};
 
     if (comparisonOps.count(node.op)) {
+        // Para comparaciones, si alguno es Unknown, intentamos inferir del otro
+        if (leftType == "Unknown") {
+            if (rightType == "Number" || rightType == "String" || rightType == "Boolean") {
+                leftType = rightType;
+            }
+        }
+        if (rightType == "Unknown") {
+            if (leftType == "Number" || leftType == "String" || leftType == "Boolean") {
+                rightType = leftType;
+            }
+        }
+
         if (node.op == "==" || node.op == "!=") {
             if (!conformsTo(leftType, rightType) && !conformsTo(rightType, leftType)) {
                 errors.emplace_back("Operandos de " + node.op + " deben ser compatibles", node.line());
@@ -559,14 +869,43 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
             } else {
                 node._type = "Boolean";
             }
-        } else if (leftType != "Number" || rightType != "Number") {
+        } else {
+            // Para <, >, <=, >=, ambos operandos deben ser Number
+            if (leftType == "Unknown") leftType = "Number";
+            if (rightType == "Unknown") rightType = "Number";
+            
+            if (leftType != "Number" || rightType != "Number") {
+                errors.emplace_back("Operandos de " + node.op + " deben ser números", node.line());
+                node._type = "Error";
+            } else {
+                node._type = "Boolean";
+            }
+        }
+    }
+    else if (arithmeticOps.count(node.op)) {
+        // Si alguno de los operandos es Unknown, asumimos que es Number
+        if (node.op == "+")
+        {
+            std::cout << leftType << std::endl;
+            std::cout << "Hola" << std::endl;
+            std::cout << rightType << std::endl;
+        }
+        
+        if (leftType == "Unknown" || leftType == "") leftType = "Number";
+        if (rightType == "Unknown"|| rightType == "") rightType = "Number";
+        
+        if (leftType != "Number" || rightType != "Number") {
             errors.emplace_back("Operandos de " + node.op + " deben ser números", node.line());
             node._type = "Error";
         } else {
-            node._type = "Boolean";
+            node._type = "Number";
         }
     }
     else if (node.op == "&" || node.op == "|") {
+        // Para operadores lógicos, si alguno es Unknown, asumimos Boolean
+        if (leftType == "Unknown") leftType = "Boolean";
+        if (rightType == "Unknown") rightType = "Boolean";
+        
         if (leftType != "Boolean" || rightType != "Boolean") {
             errors.emplace_back("Operandos de " + node.op + " deben ser booleanos", node.line());
             node._type = "Error";
@@ -575,6 +914,21 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
         }
     }
     else if (node.op == "@" || node.op == "@@") {
+        // Si alguno de los operandos es Unknown, permitimos tanto String como Number
+        if (leftType == "Unknown") {
+            if (rightType == "String" || rightType == "Number") {
+                leftType = rightType;
+            } else if (rightType == "Unknown") {
+                leftType = "String"; // Preferimos String para concatenación
+                rightType = "String";
+            }
+        }
+        if (rightType == "Unknown") {
+            if (leftType == "String" || leftType == "Number") {
+                rightType = leftType;
+            }
+        }
+
         if ((leftType != "String" && leftType != "Number") ||
             (rightType != "String" && rightType != "Number")) {
             errors.emplace_back("Operandos de @ deben ser string o number", node.line());
@@ -584,17 +938,10 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
         }
     }
     else {
-        if (leftType != "Number" || rightType != "Number") {
-            errors.emplace_back("Operandos de " + node.op + " deben ser números", node.line());
-            node._type = "Error";
-            std::cout << leftType << std::endl;
-            std::cout << rightType << std::endl;
-        } else {
-            node._type = "Number";
-        }
+        errors.emplace_back("Operador binario desconocido: " + node.op, node.line());
+        node._type = "Error";
     }
 }
-
 // ------------------------------------------------------
 
 
@@ -670,20 +1017,15 @@ bool SemanticAnalyzer::isValidIdentifier(const std::string& name) {
 }
 
 void SemanticAnalyzer::visit(LetNode& node) {
-    symbolTable.enterScope(); // Nuevo ámbito
+    symbolTable.enterScope();
 
     for (auto& decl : *node.declarations) {
         // Verificar nombre válido
         if (!isValidIdentifier(decl.name)) {
             errors.emplace_back("Nombre inválido: '" + decl.name + "'", node.line());
             node._type = "Error";
+            continue;
         }
-
-        if (!decl.initializer && decl.declaredType.empty()) {
-            errors.emplace_back("Variable '" + decl.name + "' sin tipo ni inicializador", node.line());
-            node._type = "Error";
-        }
-
 
         // Verificar duplicados en el mismo let
         if (symbolTable.existsInCurrentScope(decl.name)) {
@@ -696,14 +1038,17 @@ void SemanticAnalyzer::visit(LetNode& node) {
         decl.initializer->accept(*this);
         std::string initType = decl.initializer->type();
 
-        // Validar tipo declarado vs inferido
-        if (!decl.declaredType.empty() && !conformsTo(initType, decl.declaredType)) {
+        // Si no hay tipo declarado, usar el tipo del inicializador
+        if (decl.declaredType.empty()) {
+            decl.declaredType = initType;
+        } else if (!conformsTo(initType, decl.declaredType)) {
             errors.emplace_back("Tipo declarado '" + decl.declaredType + "' no coincide con inicializador '" + initType + "'", node.line());
             node._type = "Error";
+            continue;
         }
 
-        // Registrar en tabla de símbolos (no constante)
-        symbolTable.addSymbol(decl.name, decl.declaredType.empty() ? initType : decl.declaredType, false);
+        // Registrar en tabla de símbolos
+        symbolTable.addSymbol(decl.name, decl.declaredType, false);
     }
 
     // Analizar cuerpo
@@ -730,6 +1075,7 @@ void SemanticAnalyzer::visit(AssignmentNode& node) {
         node._type = "Error";
         return;
     }
+
 
     if (!symbol) {
         errors.emplace_back("Variable '" + name + "' no declarada", node.line());
@@ -837,101 +1183,119 @@ void SemanticAnalyzer::visit(ForNode& node) {
 
 
 void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
-    // if (symbolTable.lookupType(node.name)) {
-    //     errors.emplace_back("Tipo '" + node.name + "' ya declarado", node.line());
-    //     return;
-    // }
+    std::string parent = node.baseType.value_or("Object");
 
-    // const std::set<std::string> builtinTypes = {"Number", "String", "Boolean"};
-    // if (node.baseType.has_value() && builtinTypes.count(*node.baseType)) {
-    //     errors.emplace_back("No se puede heredar de tipo básico '" + *node.baseType + "'", node.line());
-    //     return;
-    // }
+    // Validación: no heredar de tipos básicos
+    const std::set<std::string> builtinTypes = {"Number", "String", "Boolean"};
+    if (node.baseType.has_value() && builtinTypes.count(*node.baseType)) {
+        errors.emplace_back("No se puede heredar de tipo básico '" + *node.baseType + "'", node.line());
+        return;
+    }
 
-    // std::string parent = node.baseType.value_or("Object");
-    // std::vector<std::string> paramNames;
-    // for (const auto& param : *node.constructorParams) {
-    //     paramNames.push_back(param.name);
-    // }
+    // Registrar el tipo
+    std::vector<std::string> constructorParamNames;
+    for (const auto& param : *node.constructorParams) {
+        constructorParamNames.push_back(param.name);
+    }
 
-    // if (!symbolTable.addType(node.name, parent, paramNames)) {
-    //     errors.emplace_back("Tipo '" + node.name + "' ya fue registrado", node.line());
-    //     return;
-    // }
+    if (!symbolTable.addType(node.name, parent, constructorParamNames)) {
+        errors.emplace_back("Tipo '" + node.name + "' ya fue declarado", node.line());
+        return;
+    }
 
-    // if (node.baseType.has_value()) {
-    //     symbolTable.enterScope();
-    //     for (const auto& param : *node.constructorParams) {
-    //         symbolTable.addSymbol(param.name, "Unknown", false);
-    //     }
-    //     for (ASTNode* arg : node.baseArgs) {
-    //         arg->accept(*this);
-    //     }
+    // Evaluar baseArgs en contexto de parámetros del tipo actual
+    if (node.baseType.has_value()) {
+        symbolTable.enterScope();
+        for (const auto& param : *node.constructorParams) {
+            std::string paramType = param.type.empty() ? "Unknown" : param.type;
+            symbolTable.addSymbol(param.name, paramType, false);
+        }
 
-    //     TypeSymbol* parentSym = symbolTable.lookupType(parent);
-    //     if (parentSym && parentSym->typeParams.size() != node.baseArgs.size()) {
-    //         errors.emplace_back("Cantidad incorrecta de argumentos para constructor del padre", node.line());
-    //     }
+        for (ASTNode* arg : node.baseArgs) {
+            arg->accept(*this);
+        }
 
-    //     symbolTable.exitScope();
-    // }
+        TypeSymbol* parentSym = symbolTable.lookupType(parent);
+        if (parentSym && parentSym->typeParams.size() != node.baseArgs.size()) {
+            errors.emplace_back("Cantidad incorrecta de argumentos para constructor del padre", node.line());
+        }
 
-    // symbolTable.enterScope();
-    // for (const auto& param : *node.constructorParams) {
-    //     symbolTable.addSymbol(param.name, "Unknown", false);
-    // }
+        symbolTable.exitScope();
+    }
 
-    // for (const auto& attr : *node.attributes) {
-    //     attr.initializer->accept(*this);
-    //     std::string inferredType = attr.initializer->type();
+    // Evaluar atributos sin acceso a 'self'
+    symbolTable.enterScope();
+    for (const auto& param : *node.constructorParams) {
+        std::string paramType = param.type.empty() ? "Unknown" : param.type;
+        symbolTable.addSymbol(param.name, paramType, false);
+    }       
 
-    //     if (inferredType == "Error") {
-    //         errors.emplace_back("No se pudo inferir el tipo del atributo '" + attr.name + "'", node.line());
-    //     } else {
-    //         symbolTable.addTypeAttribute(node.name, attr.name, inferredType);
-    //     }
-    // }
-    // symbolTable.exitScope();
+    for (const auto& attr : *node.body->attributes) {
+        attr.initializer->accept(*this);
+        std::string attrType = attr.initializer->type();
+        if (attrType == "Error") {
+            errors.emplace_back("No se pudo inferir el tipo del atributo '" + attr.name + "'", node.line());
+        } else {
+            symbolTable.addTypeAttribute(node.name, attr.name, attrType);
+        }
+    }
 
-    // TypeSymbol* typeSym = symbolTable.lookupType(node.name);
-    // for (const auto& method : *node.methods) {
-    //     symbolTable.enterScope();
-    //     symbolTable.addSymbol("self", node.name, true);
-    //     for (const auto& param : *method.params) {
-    //         symbolTable.addSymbol(param.name, param.type, false);
-    //     }
+    symbolTable.exitScope();
 
-    //     method.body->accept(*this);
+    // Evaluar métodos con acceso a self
+    TypeSymbol* typeSym = symbolTable.lookupType(node.name);
+    for (const auto& method : *node.body->methods) {
+        symbolTable.enterScope();
 
-    //     if (!method.returnType.empty() &&
-    //         !conformsTo(method.body->type(), method.returnType)) {
-    //         errors.emplace_back("El cuerpo del método '" + method.name + "' no conforma al tipo de retorno declarado", node.line());
-    //     }
+        // Insertar self
+        symbolTable.addSymbol("self", node.name, true);
 
-    //     std::vector<std::string> paramTypes;
-    //     for (const auto& param : *method.params) {
-    //         paramTypes.push_back(param.type);
-    //     }
+        // Insertar parámetros
+        for (const auto& param : *method.params) {
+            std::string paramType = param.type.empty() ? "Unknown" : param.type;
+            symbolTable.addSymbol(param.name, paramType, false);
+        }
 
-    //     symbolTable.addTypeMethod(node.name, method.name, method.returnType, paramTypes);
+        // Analizar cuerpo del método
+        method.body->accept(*this);
+        std::string methodBodyType = method.body->type();
 
-    //     if (!typeSym->parentType.empty()) {
-    //         TypeSymbol* parentSym = symbolTable.lookupType(typeSym->parentType);
-    //         if (parentSym) {
-    //             auto it = parentSym->methods.find(method.name);
-    //             if (it != parentSym->methods.end()) {
-    //                 const Symbol& inherited = it->second;
-    //                 if (inherited.params != paramTypes || inherited.type != method.returnType) {
-    //                     errors.emplace_back("Firma de método '" + method.name +
-    //                         "' no coincide con la del padre", node.line());
-    //                 }
-    //             }
-    //         }
-    //     }
+        // Verificar tipo de retorno si está anotado
+        if (!method.returnType.empty() &&
+            !conformsTo(methodBodyType, method.returnType)) {
+            errors.emplace_back("El cuerpo del método '" + method.name +
+                "' no conforma al tipo de retorno declarado", node.line());
+        }
 
-    //     symbolTable.exitScope();
-    // }
+        // Guardar firma del método
+        std::vector<std::string> paramTypes;
+        for (const auto& param : *method.params) {
+            paramTypes.push_back(param.type.empty() ? "Unknown" : param.type);
+        }
+
+        symbolTable.addTypeMethod(node.name, method.name,
+                                  method.returnType.empty() ? methodBodyType : method.returnType,
+                                  paramTypes);
+
+        // Validar firma heredada si aplica
+        if (!typeSym->parentType.empty()) {
+            TypeSymbol* parentSym = symbolTable.lookupType(typeSym->parentType);
+            if (parentSym) {
+                auto it = parentSym->methods.find(method.name);
+                if (it != parentSym->methods.end()) {
+                    const Symbol& inherited = it->second;
+                    if (inherited.params != paramTypes || inherited.type != method.returnType) {
+                        errors.emplace_back("Firma de método '" + method.name +
+                            "' no coincide con la del padre", node.line());
+                    }
+                }
+            }
+        }
+
+        symbolTable.exitScope();
+    }
 }
+
 
 
 void SemanticAnalyzer::visit(NewInstanceNode& node) {
@@ -957,39 +1321,58 @@ void SemanticAnalyzer::visit(NewInstanceNode& node) {
 }
 
 void SemanticAnalyzer::visit(MethodCallNode& node) {
-    // node.instanceName->accept(*this);
-    // std::string objectType = node.instanceName->type();
+    Symbol* instSym = symbolTable.lookup(node.instanceName);
+    if (!instSym) {
+        errors.emplace_back("Variable '" + node.instanceName + "' no declarada", node.line());
+        node._type = "Error";
+        return;
+    }
 
-    // TypeSymbol* typeSym = symbolTable.lookupType(objectType);
-    // if (!typeSym) {
-    //     errors.emplace_back("Tipo '" + objectType + "' no definido para llamada a método", node.line());
-    //     node._type = "Error";
-    //     return;
-    // }
+    TypeSymbol* typeSym = symbolTable.lookupType(instSym->type);
+    if (!typeSym) {
+        errors.emplace_back("Tipo '" + instSym->type + "' no definido", node.line());
+        node._type = "Error";
+        return;
+    }
 
-    // auto it = typeSym->methods.find(node.methodName);
-    // if (it == typeSym->methods.end()) {
-    //     errors.emplace_back("Método '" + node.methodName + "' no existe en tipo '" + objectType + "'", node.line());
-    //     node._type = "Error";
-    //     return;
-    // }
+    // Búsqueda jerárquica del método en la cadena de herencia
+    const Symbol* method = nullptr;
+    while (typeSym) {
+        auto it = typeSym->methods.find(node.methodName);
+        if (it != typeSym->methods.end()) {
+            method = &it->second;
+            break;
+        }
+        if (typeSym->parentType.empty()) break;
+        typeSym = symbolTable.lookupType(typeSym->parentType);
+    }
 
-    // Symbol& method = it->second;
-    // if (node.args.size() != method.params.size()) {
-    //     errors.emplace_back("Cantidad incorrecta de argumentos en llamada a método '" + node.methodName + "'", node.line());
-    //     node._type = "Error";
-    //     return;
-    // }
+    if (!method) {
+        errors.emplace_back("Método '" + node.methodName + "' no existe en tipo '" + instSym->type + "'", node.line());
+        node._type = "Error";
+        return;
+    }
 
-    // for (size_t i = 0; i < node.args.size(); ++i) {
-    //     node.args[i]->accept(*this);
-    //     if (node.args[i]->type() != method.params[i]) {
-    //         errors.emplace_back("Tipo de argumento " + std::to_string(i + 1) + " incorrecto en llamada a método '" + node.methodName + "'", node.line());
-    //     }
-    // }
+    // Validar cantidad de argumentos
+    if (node.args.size() != method->params.size()) {
+        errors.emplace_back("Cantidad incorrecta de argumentos en método '" + node.methodName + "'", node.line());
+        node._type = "Error";
+        return;
+    }
 
-    // node._type = method.type;
+    // Verificar tipos de argumentos
+    for (size_t i = 0; i < node.args.size(); ++i) {
+        node.args[i]->accept(*this);
+        if (!conformsTo(node.args[i]->type(), method->params[i])) {
+            errors.emplace_back("Tipo incorrecto para argumento " + std::to_string(i+1) +
+                                " en llamada a '" + node.methodName + "'", node.line());
+        }
+    }
+
+    node._type = method->type;
 }
+
+
 
 void SemanticAnalyzer::visit(AttributeDeclaration& node) {
     // Analyze the initializer expression
@@ -1054,4 +1437,24 @@ void SemanticAnalyzer::visit(SelfCallNode& node) {
     }
 
     node._type = it->second.type;
+}
+
+
+Symbol* SemanticAnalyzer::lookupMethodInHierarchy(const std::string& typeName, const std::string& methodName) {
+    std::cout << "[DEBUG] Buscando método '" << methodName << "' en jerarquía de tipo '" << typeName << "'\n";
+
+    TypeSymbol* typeSym = symbolTable.lookupType(typeName);
+    while (typeSym) {
+        std::cout << "  [DEBUG] Buscando en tipo: " << typeSym->name << "\n";
+        auto it = typeSym->methods.find(methodName);
+        if (it != typeSym->methods.end()) {
+            std::cout << "    [ENCONTRADO] Método '" << methodName << "' en tipo '" << typeSym->name << "'\n";
+            return &it->second;
+        }
+        if (typeSym->parentType.empty()) break;
+        typeSym = symbolTable.lookupType(typeSym->parentType);
+    }
+
+    std::cout << "    [NO ENCONTRADO] Método '" << methodName << "' no existe en jerarquía\n";
+    return nullptr;
 }

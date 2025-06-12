@@ -228,12 +228,12 @@ public:
 
 class AssignmentNode : public ASTNode {
 public:
-    std::string name;
+    ASTNode* name;
     ASTNode* rhs;
     int _line;
     std::string _type;
 
-    AssignmentNode(std::string name, ASTNode* rhs, int ln)
+    AssignmentNode(ASTNode* name, ASTNode* rhs, int ln)
         : name(name), rhs(rhs), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {

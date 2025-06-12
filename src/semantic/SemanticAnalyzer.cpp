@@ -714,22 +714,31 @@ void SemanticAnalyzer::visit(LetNode& node) {
 }
 
 void SemanticAnalyzer::visit(AssignmentNode& node) {
-    Symbol* symbol = symbolTable.lookup(node.name);
     
-    if (node.name == "self") {
+    std::string name;
+    if(auto* id = dynamic_cast<IdentifierNode*>(node.name)) {
+        name = id->name;
+    }
+    else if (auto* self = dynamic_cast<SelfCallNode*>(node.name)) {
+        name = self->varName;
+    }
+
+    Symbol* symbol = symbolTable.lookup(name);
+
+    if (name == "self") {
         errors.emplace_back("No se puede reasignar 'self'", node.line());
         node._type = "Error";
         return;
     }
 
     if (!symbol) {
-        errors.emplace_back("Variable '" + node.name + "' no declarada", node.line());
+        errors.emplace_back("Variable '" + name + "' no declarada", node.line());
         node._type = "Error";
         return;
     }
 
     if (symbol->is_const) {
-        errors.emplace_back("No se puede reasignar la constante '" + node.name + "'", node.line());
+        errors.emplace_back("No se puede reasignar la constante '" + name + "'", node.line());
         node._type = "Error";
     }
 

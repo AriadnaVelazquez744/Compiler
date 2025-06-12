@@ -134,6 +134,7 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %type <node> statement
 %type <node> expression
 %type <node> elem_expr
+%type <node> id
 %type <node> block_expr
 %type <node> func_call_expr
 %type <node> assign_expr
@@ -156,13 +157,13 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %type <method_decl> method_decl
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
+%left CONCAT CONCAT_SPACE
 %right NOT
 %left AND OR 
 %left LT GT LE GE EQ NE
 %right  POW SIN COS MIN MAX SQRT LOG EXP RANDOM
 %left ADD SUB
 %left MUL DIV MOD
-%nonassoc CONCAT CONCAT_SPACE
 
 %%
 
@@ -346,6 +347,10 @@ statement:
             }
         ;
 
+        id:
+            ID                    { $$ = new IdentifierNode(*$1, yylloc.first_line); }
+        ;
+
         block_expr:
             '{' block_body '}'  {
                                     $$ = new BlockNode(*$2, yylloc.first_line); // Placeholder
@@ -387,7 +392,8 @@ statement:
         ;
 
         assign_expr:
-            ID REASSIGN expression              { $$ = new AssignmentNode(*$1, $3, yylloc.first_line);  }
+            id REASSIGN expression              { $$ = new AssignmentNode($1, $3, yylloc.first_line);  }
+            | self_call REASSIGN expression     { $$ = new AssignmentNode($1, $3, yylloc.first_line);  }
         ;
 
         let_expr:
@@ -462,6 +468,15 @@ statement:
             }
             | TYPE ID '(' params ')' INHERITS ID '(' args ')' '{' attribute_decl method_decl '}' {
                 $$ = new TypeDeclarationNode(*$2, $4, $12, $13, *$7, *$9, yylloc.first_line);
+            }
+            | TYPE ID INHERITS ID '(' args ')' '{' attribute_decl method_decl '}' {
+                $$ = new TypeDeclarationNode(*$2, new std::vector<Parameter>(), $9, $10, std::make_optional(*$4), *$6, yylloc.first_line);
+            }
+            | TYPE ID '(' params ')' INHERITS ID '{' attribute_decl method_decl '}' {
+                $$ = new TypeDeclarationNode(*$2, $4, $9, $10, std::make_optional(*$7), std::vector<ASTNode*>(), yylloc.first_line);
+            }
+            | TYPE ID INHERITS ID '{' attribute_decl method_decl '}' {
+                $$ = new TypeDeclarationNode(*$2, new std::vector<Parameter>(), $6, $7, std::make_optional(*$4), std::vector<ASTNode*>(), yylloc.first_line);
             }
         ;
 

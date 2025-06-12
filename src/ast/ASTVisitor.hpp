@@ -21,6 +21,8 @@ class BuiltInFunctionNode;
 class AttributeDeclaration;
 class MethodDeclaration;
 class MethodCallNode;
+class BaseCallNode;
+class SelfCallNode;
 
 
 class ASTVisitor {
@@ -46,8 +48,8 @@ public:
     virtual void visit(AttributeDeclaration& node) = 0;
     virtual void visit(MethodDeclaration& node) = 0;
     virtual void visit(MethodCallNode& node) = 0;
-    // virtual void visit(BaseCallNode& node) = 0;
-    // virtual void visit(SelfCallNode& node) = 0;
+    virtual void visit(BaseCallNode& node) = 0;
+    virtual void visit(SelfCallNode& node) = 0;
     virtual void visit(UnaryOpNode& node) = 0;
     virtual void visit(BuiltInFunctionNode& node) = 0;
 };

@@ -23,6 +23,14 @@ public:
     // SemanticAnalyzer(SymbolTable& table, std::vector<SemanticError>& errs)
     //     : symbolTable(table), errors(errs) {}
     // void resolveFunctionTypes();
+    std::string inferParamUsageType(const std::string& paramName, ASTNode* body);
+   // CORRECTO:
+    void collectParamUsages(ASTNode* node, const std::string& paramName, std::set<std::string>& types);
+
+    // std::string lowestCommonAncestor(const std::set<std::string>& types);
+    // std::string commonAncestor(const std::string& t1, const std::string& t2);
+
+
 
     // Métodos visit
     void visit(FunctionDeclarationNode& node) override;
@@ -42,9 +50,11 @@ public:
     void visit(NewInstanceNode& node) override;
     void visit(UnaryOpNode& node) override;
     void visit(BuiltInFunctionNode& node) override;
-    // void visit(AttributeDeclaration& node) override;
-    // void visit(MethodDeclaration& node) override;
+    void visit(AttributeDeclaration& node) override;
+    void visit(MethodDeclaration& node) override;
     void visit(MethodCallNode& node) override;
+    void visit(BaseCallNode& node) override;
+    void visit(SelfCallNode& node) override;
 
     const std::vector<SemanticError>& getErrors() const { return errors; }
 

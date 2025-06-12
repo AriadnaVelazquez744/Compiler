@@ -4,10 +4,182 @@
 #include <cctype>
 #include <set> 
 #include <iostream>
+#include <unordered_set>
+#include <vector>
+
 
 SymbolTable& SemanticAnalyzer::getSymbolTable() {
     return symbolTable;
 }
+
+std::string SemanticAnalyzer::inferParamUsageType(const std::string& paramName, ASTNode* body) {
+    std::set<std::string> usageTypes;
+
+    collectParamUsages(body, paramName, usageTypes);
+
+    if (usageTypes.empty()) return "Unknown";
+
+    return symbolTable.lowestCommonAncestor(std::vector<std::string>(
+        usageTypes.begin(), usageTypes.end()
+    ));
+}
+
+
+void SemanticAnalyzer::collectParamUsages(ASTNode* node, const std::string& paramName, std::set<std::string>& types) {
+    if (!node) return;
+
+    // Identificador que referencia el parámetro
+    if (auto* id = dynamic_cast<IdentifierNode*>(node)) {
+        if (id->name == paramName && id->type() != "Unknown" && id->type() != "Error") {
+            types.insert(id->type());
+        }
+    }
+
+    // Binary operation
+    else if (auto* bin = dynamic_cast<BinaryOpNode*>(node)) {
+        collectParamUsages(bin->left, paramName,  types);
+        collectParamUsages(bin->right, paramName,  types);
+    }
+
+    // Unary operation
+    else if (auto* un = dynamic_cast<UnaryOpNode*>(node)) {
+        collectParamUsages(un->operand, paramName,  types);
+    }
+
+    // Function call
+    else if (auto* call = dynamic_cast<FunctionCallNode*>(node)) {
+        for (auto* arg : call->args)
+            collectParamUsages(arg, paramName,  types);
+    }
+
+    // Built-in function call
+    else if (auto* builtin = dynamic_cast<BuiltInFunctionNode*>(node)) {
+        for (auto* arg : builtin->args)
+            collectParamUsages(arg, paramName,  types);
+    }
+
+    // Function declaration
+    else if (auto* func = dynamic_cast<FunctionDeclarationNode*>(node)) {
+        collectParamUsages(func->body, paramName,  types);
+    }
+
+    // Method call
+    else if (auto* method = dynamic_cast<MethodCallNode*>(node)) {
+        collectParamUsages(method->object,paramName,  types);
+        for (auto* arg : method->args)
+            collectParamUsages(arg, paramName,  types);
+    }
+
+    // Let expression
+    else if (auto* let = dynamic_cast<LetNode*>(node)) {
+        for (auto& decl : *let->declarations) {
+            collectParamUsages(decl.initializer, paramName,  types);
+        }
+        collectParamUsages( let->body, paramName, types);
+    }
+
+    // If expression
+    else if (auto* ifn = dynamic_cast<IfNode*>(node)) {
+        for (auto& branch : *ifn->branches) {
+            collectParamUsages( branch.condition, paramName, types);
+            collectParamUsages(branch.body, paramName,  types);
+        }
+        if (ifn->elseBody)
+            collectParamUsages(ifn->elseBody ,paramName,  types);
+    }
+
+    // While
+    else if (auto* wh = dynamic_cast<WhileNode*>(node)) {
+        collectParamUsages(wh->condition, paramName,  types);
+        collectParamUsages(wh->body, paramName,  types);
+    }
+
+    // For
+    else if (auto* forNode = dynamic_cast<ForNode*>(node)) {
+        collectParamUsages(forNode->init_range, paramName,  types);
+        collectParamUsages(forNode->end_range, paramName,  types);
+        collectParamUsages(forNode->body, paramName,  types);
+    }
+
+    // Assignment
+    else if (auto* assign = dynamic_cast<AssignmentNode*>(node)) {
+        collectParamUsages(assign->rhs, paramName,  types);
+    }
+
+    // Variable declaration
+    else if (auto* decl = dynamic_cast<VariableDeclarationNode*>(node)) {
+        collectParamUsages(decl->initializer, paramName,  types);
+    }
+
+    // Block
+    else if (auto* block = dynamic_cast<BlockNode*>(node)) {
+        for (auto* expr : block->expressions)
+            collectParamUsages(expr, paramName, types);
+    }
+
+    // New instance
+    else if (auto* inst = dynamic_cast<NewInstanceNode*>(node)) {
+        for (auto* arg : inst->args)
+            collectParamUsages(arg, paramName,  types);
+    }
+
+    // Type declaration
+    else if (auto* typeDecl = dynamic_cast<TypeDeclarationNode*>(node)) {
+        for (const auto& attr : *typeDecl->attributes)
+            collectParamUsages(attr.initializer, paramName,  types);
+        for (const auto& method : *typeDecl->methods)
+            collectParamUsages(method.body, paramName,  types);
+        for (ASTNode* arg : typeDecl->baseArgs)
+            collectParamUsages(arg, paramName,  types);
+    }
+
+    // Literal: no hay nada que recorrer
+    else if (dynamic_cast<LiteralNode*>(node)) {
+        return;
+    }
+
+    // Otro nodo no manejado explícitamente
+    else {
+        // Opcional: log de depuración
+        // std::cerr << "Nodo no manejado en collectParamUsages: " << typeid(*node).name() << "\n";
+    }
+}
+
+// std::string SemanticAnalyzer::lowestCommonAncestor(const std::set<std::string>& types) {
+//     if (types.empty()) return "Object";
+//     if (types.size() == 1) return *types.begin();
+
+//     std::vector<std::string> all(types.begin(), types.end());
+//     std::string ancestor = all[0];
+//     for (size_t i = 1; i < all.size(); ++i) {
+//         ancestor = commonAncestor(ancestor, all[i]);
+//         if (ancestor == "Object") break;
+//     }
+//     return ancestor;
+// }
+
+// std::string SemanticAnalyzer::commonAncestor(const std::string& t1, const std::string& t2) {
+//     std::set<std::string> ancestors;
+//     std::string current = t1;
+//     while (!current.empty()) {
+//         ancestors.insert(current);
+//         TypeSymbol* type = symbolTable.lookupType(current);
+//         if (!type) break;
+//         current = type->parentType;
+//     }
+
+//     current = t2;
+//     while (!current.empty()) {
+//         if (ancestors.count(current)) return current;
+//         TypeSymbol* type = symbolTable.lookupType(current);
+//         if (!type) break;
+//         current = type->parentType;
+//     }
+//     return "Object";
+// }
+
+
+
 
 // void SemanticAnalyzer::resolveFunctionTypes() {
 //     auto functions = symbolTable.getUserDefinedFunctions();
@@ -217,49 +389,76 @@ void SemanticAnalyzer::visit(BuiltInFunctionNode& node) {
 void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
     symbolTable.enterScope();
 
-    // Verificar que los parámetros no estén duplicados
-    std::unordered_map<std::string, bool> seen;
+    std::unordered_map<std::string, bool> paramSeen;
+
+    // Paso 1: insertar todos los parámetros con tipo Unknown (si no están anotados)
     for (const auto& param : *node.params) {
-        if (seen.count(param.name)) {
+        if (paramSeen.count(param.name)) {
             errors.emplace_back("Parámetro duplicado '" + param.name + "'", node.line());
             node._type = "Error";
-        } else {
-            seen[param.name] = true;
-            symbolTable.addSymbol(param.name, param.type, false);
+            continue;
         }
+
+        paramSeen[param.name] = true;
+        std::string paramType = param.type.empty() ? "Unknown" : param.type;
+        symbolTable.addSymbol(param.name, paramType, false);
     }
 
-    // Analizar el cuerpo de la función
+    // Paso 2: analizar el cuerpo con símbolos disponibles
     node.body->accept(*this);
     std::string bodyType = node.body->type();
 
-    // Verificar y actualizar el tipo de retorno
-    if (!node.returnType.empty()) {
-        if (!conformsTo(bodyType, node.returnType)) {
-            errors.emplace_back("Tipo de retorno incorrecto en función '" + node.name + "'", node.line());
-            node._type = "Error";
-        }
-    } else {
-        node.returnType = bodyType; // Inferencia si no se especificó
-    }
-
-    // Inferencia de tipos de parámetros si no fueron anotados
     for (auto& param : *node.params) {
-        if (param.type.empty()) {
-            Symbol* s = symbolTable.lookup(param.name);
-            std::cout << "tipo de paŕámetro." << std::endl;
-            if (s && s->type != "") {
-                param.type = s->type;
-            } else {
-                errors.emplace_back("No se pudo inferir tipo para el parámetro '" + param.name + "'", node.line());
+    if (param.type.empty()) {
+        std::string inferred = inferParamUsageType(param.name, node.body);
+        if (inferred == "Unknown" || inferred.empty()) {
+            errors.emplace_back("No se pudo inferir el tipo del parámetro '" + param.name + "'", node.line());
+            node._type = "Error";
+        } else {
+            param.type = inferred;
+            symbolTable.updateSymbolType(param.name, inferred);
+        }
+    }
+}
+
+
+    // Paso 3: Inferencia firme para parámetros sin tipo explícito
+    for (auto& param : *node.params) {
+        if (!param.type.empty()) continue;
+
+        std::set<std::string> observedTypes;
+        collectParamUsages(node.body, param.name,  observedTypes);
+
+        if (observedTypes.empty()) {
+            errors.emplace_back("No se pudo inferir tipo para parámetro '" + param.name + "'", node.line());
+            node._type = "Error";
+        } else if (observedTypes.size() == 1) {
+            param.type = *observedTypes.begin();
+        } else {
+            std::set<std::string> usageTypes;
+
+            std::vector<std::string> observedVec(usageTypes.begin(), usageTypes.end());
+            std::string common = symbolTable.lowestCommonAncestor(observedVec);
+            if (common == "Object") {
+                errors.emplace_back("Inferencia ambigua para parámetro '" + param.name + "'", node.line());
                 node._type = "Error";
+            } else {
+                param.type = common;
             }
         }
+
+        // Actualizar en la tabla de símbolos con tipo inferido
+        symbolTable.lookup(param.name)->type = param.type;
     }
 
-    symbolTable.exitScope();
+    // Paso 4: Verificación de tipo de retorno
+    if (!node.returnType.empty() && node.returnType != bodyType) {
+        errors.emplace_back("Tipo de retorno incorrecto en función '" + node.name + "'", node.line());
+        node._type = "Error";
+    }
 
-    // No se agrega aquí a la tabla, lo hace FunctionCollector y guarda el cuerpo
+    node._type = node.returnType.empty() ? bodyType : node.returnType;
+    symbolTable.exitScope();
 }
 
 void SemanticAnalyzer::visit(FunctionCallNode& node) {
@@ -781,4 +980,69 @@ void SemanticAnalyzer::visit(MethodCallNode& node) {
     }
 
     node._type = method.type;
+}
+
+void SemanticAnalyzer::visit(AttributeDeclaration& node) {
+    // Analyze the initializer expression
+    node.initializer->accept(*this);
+    // The type of the attribute will be the type of its initializer
+    // This is handled in TypeDeclarationNode visit method
+}
+
+void SemanticAnalyzer::visit(MethodDeclaration& node) {
+    // The method body and parameters are analyzed in TypeDeclarationNode visit method
+    // This is just a placeholder to satisfy the interface
+}
+
+void SemanticAnalyzer::visit(BaseCallNode& node) {
+    // Analyze all arguments
+    for (ASTNode* arg : node.args) {
+        arg->accept(*this);
+    }
+    
+    // Get the current type context
+    Symbol* self = symbolTable.lookup("self");
+    if (!self) {
+        errors.emplace_back("'base' solo puede usarse dentro de métodos", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    // Get the parent type
+    TypeSymbol* typeSym = symbolTable.lookupType(self->type);
+    if (!typeSym || typeSym->parentType.empty()) {
+        errors.emplace_back("'base' no disponible para este tipo", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    node._type = typeSym->parentType;
+}
+
+void SemanticAnalyzer::visit(SelfCallNode& node) {
+    // Check if we're in a method context
+    Symbol* self = symbolTable.lookup("self");
+    if (!self) {
+        errors.emplace_back("'self' solo puede usarse dentro de métodos", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    // Get the type of self
+    TypeSymbol* typeSym = symbolTable.lookupType(self->type);
+    if (!typeSym) {
+        errors.emplace_back("Tipo de 'self' no encontrado", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    // Check if the attribute exists
+    auto it = typeSym->attributes.find(node.varName);
+    if (it == typeSym->attributes.end()) {
+        errors.emplace_back("Atributo '" + node.varName + "' no existe en tipo '" + self->type + "'", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    node._type = it->second.type;
 }

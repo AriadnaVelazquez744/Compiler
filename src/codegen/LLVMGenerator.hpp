@@ -33,7 +33,9 @@ public:
     void visit(ForNode&) override {}
     void visit(TypeDeclarationNode&) override {}
     void visit(NewInstanceNode&) override {}
-    void visit(MethodCallNode&) override {}
-    // void visit(BaseCallNode&) override {}
-    // void visit(SelfCallNode&) override {}
+    void visit(AttributeDeclaration& node) override {}
+    void visit(MethodDeclaration& node) override {}
+    void visit(MethodCallNode& node) override {}
+    void visit(BaseCallNode&) override {}
+    void visit(SelfCallNode&) override {}
 };

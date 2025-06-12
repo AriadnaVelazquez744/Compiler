@@ -306,25 +306,30 @@ public:
     std::string type() const override { return _type; }
 };
 
+struct TypeBody {
+    std::vector<AttributeDeclaration>* attributes;
+    std::vector<MethodDeclaration>* methods;
+
+    TypeBody( std::vector<AttributeDeclaration>* attributes, std::vector<MethodDeclaration>* methods)
+        : attributes(attributes), methods(methods) {}
+};
 class TypeDeclarationNode : public ASTNode {
 public:
     std::string name;
     std::vector<Parameter>* constructorParams;
-    std::vector<AttributeDeclaration>* attributes;
-    std::vector<MethodDeclaration>* methods;
+    TypeBody* body;
     std::optional<std::string> baseType;            // Si hay herencia
     std::vector<ASTNode*> baseArgs;                 // Argumentos para el padre
     int _line;
 
     TypeDeclarationNode(std::string name,
                         std::vector<Parameter>* params,
-                        std::vector<AttributeDeclaration>* attrs,
-                        std::vector<MethodDeclaration>* methods,
+                        TypeBody* body,
                         std::optional<std::string> baseType,
                         std::vector<ASTNode*> baseArgs,
                         int line)
         : name(std::move(name)), constructorParams(params),
-          attributes(attrs), methods(methods),
+          body(body),
           baseType(std::move(baseType)), baseArgs(std::move(baseArgs)),
           _line(line) {}
 

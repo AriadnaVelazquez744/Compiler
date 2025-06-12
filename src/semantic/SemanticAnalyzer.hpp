@@ -27,6 +27,9 @@ public:
    // CORRECTO:
     void collectParamUsages(ASTNode* node, const std::string& paramName, std::set<std::string>& types);
 
+    Symbol* lookupMethodInHierarchy(const std::string& typeName, const std::string& methodName);
+
+
     // std::string lowestCommonAncestor(const std::set<std::string>& types);
     // std::string commonAncestor(const std::string& t1, const std::string& t2);
 

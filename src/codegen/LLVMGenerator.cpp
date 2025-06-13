@@ -563,3 +563,43 @@ void LLVMGenerator::visit(FunctionCallNode& node) {
     decl->accept(*this);  // Will consume args from stack, push result
     std::cout << "  📤 Function returned - Stack size: " << context.valueStack.size() << std::endl;
 }
+
+void LLVMGenerator::visit(AssignmentNode& node) {
+    std::cout << "🔍 AssignmentNode - Stack size before: " << context.valueStack.size() << std::endl;
+
+    // 1. Process the right-hand side value first
+    node.rhs->accept(*this);
+    llvm::Value* newValue = context.valueStack.back();
+    context.valueStack.pop_back();
+
+    // 2. Get the variable name from the left-hand side
+    if (auto* idNode = dynamic_cast<IdentifierNode*>(node.name)) {
+        const std::string& varName = idNode->name;
+        bool found = false;
+
+        // 3. Search through all scopes from innermost to outermost
+        for (auto it = context.localScopes.rbegin(); it != context.localScopes.rend(); ++it) {
+            auto foundVar = it->find(varName);
+            if (foundVar != it->end()) {
+                // Found the variable in this scope, update its value
+                foundVar->second = newValue;
+                found = true;
+            } else if (found) {
+                // If we previously found the variable but now we don't, stop searching
+                break;
+            }
+        }
+
+        if (!found) {
+            throw std::runtime_error("❌ Undefined variable '" + varName + 
+                                   "' at line " + std::to_string(node.line()));
+        }
+
+        // 5. Push the assigned value onto the stack
+        context.valueStack.push_back(newValue);
+        std::cout << "  ✅ Variable '" << varName << "' assigned in all relevant scopes - Stack size: " << context.valueStack.size() << std::endl;
+    } else {
+        throw std::runtime_error("❌ Left-hand side of assignment must be an identifier at line " + 
+                               std::to_string(node.line()));
+    }
+}

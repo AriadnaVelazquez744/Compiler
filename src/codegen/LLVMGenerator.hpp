@@ -22,12 +22,12 @@ public:
     void visit(class IdentifierNode& node) override;
     void visit(class FunctionDeclarationNode& node) override;
     void visit(class FunctionCallNode& node) override;
-
+    void visit(class LetNode& node) override;
+    void visit(class AssignmentNode& node) override;
+    
     // Stubs for other nodes
     void visit(ASTNode&) override {}
     void visit(VariableDeclarationNode&) override {}
-    void visit(class LetNode& node) override;
-    void visit(AssignmentNode&) override {}
     void visit(IfNode&) override {}
     void visit(WhileNode&) override {}
     void visit(ForNode&) override {}

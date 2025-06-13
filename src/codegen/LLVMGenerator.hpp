@@ -25,12 +25,12 @@ public:
     void visit(class LetNode& node) override;
     void visit(class AssignmentNode& node) override;
     void visit(class IfNode& node) override;
-
+    void visit(class WhileNode& node) override;
+    void visit(class ForNode& node) override;
+    
     // Stubs for other nodes
     void visit(ASTNode&) override {}
     void visit(VariableDeclarationNode&) override {}
-    void visit(class WhileNode& node) override;
-    void visit(ForNode&) override {}
     void visit(TypeDeclarationNode&) override {}
     void visit(NewInstanceNode&) override {}
     void visit(AttributeDeclaration& node) override {}

@@ -706,3 +706,131 @@ void LLVMGenerator::visit(WhileNode& node) {
 
     std::cout << "✅ WhileNode completed - Final stack size: " << context.valueStack.size() << std::endl;
 }
+
+void LLVMGenerator::visit(ForNode& node) {
+    std::cout << "🔍 ForNode - Stack size before: " << context.valueStack.size() << std::endl;
+
+    // 1. Initialize a varScope with inherit property
+    context.pushVarScope(true);
+
+    // 2. Evaluate init_range and end_range expressions
+    node.init_range->accept(*this);
+    llvm::Value* initValue = context.valueStack.back();
+    context.valueStack.pop_back();
+
+    node.end_range->accept(*this);
+    llvm::Value* endValue = context.valueStack.back();
+    context.valueStack.pop_back();
+
+    // 3. Add the variable varName with initValue to the scope
+    context.addLocal(node.varName, initValue);
+
+    // Create a vector to store loop body values
+    std::vector<llvm::Value*> loopBodyValues;
+
+    int iteration = 0;
+    // 4. Initialize the for loop
+    while (true) {
+        // Get current value of the loop variable
+        llvm::Value* currentValue = context.lookupLocal(node.varName);
+        
+        // Compare current value with end value
+        llvm::Value* condition = context.builder.CreateFCmpULT(
+            currentValue,
+            endValue,
+            "forcond"
+        );
+
+        // Check if we should continue the loop
+        if (auto* constInt = llvm::dyn_cast<llvm::ConstantInt>(condition)) {
+            if (constInt->getZExtValue() == 1) {
+                // 5. Evaluate body for this iteration
+                std::cout << "🔄 Iteration " << ++iteration << std::endl;
+                node.body->accept(*this);
+                
+                // 6. Store body value if any
+                if (!context.valueStack.empty()) {
+                    llvm::Value* bodyValue = context.valueStack.back();
+                    
+                    // Check if this is a print statement
+                    bool isPrint = false;
+                    if (auto* builtin = dynamic_cast<BuiltInFunctionNode*>(node.body)) {
+                        isPrint = (builtin->name == "print");
+                    }
+                    
+                    if (isPrint) {
+                        // For print statements, keep value in global stack and also store in local stack
+                        loopBodyValues.push_back(bodyValue);
+                    } else {
+                        // For non-print statements, remove from global stack and store in local stack
+                        context.valueStack.pop_back();
+                        loopBodyValues.push_back(bodyValue);
+                    }
+                }
+
+                // Increment loop variable
+                llvm::Value* one = llvm::ConstantFP::get(context.context, llvm::APFloat(1.0));
+                llvm::Value* nextValue = context.builder.CreateFAdd(currentValue, one, "nextval");
+                context.addLocal(node.varName, nextValue);
+            } else {
+                // Condition is false, exit loop
+                break;
+            }
+        } else {
+            // If not a constant, convert to boolean and check
+            condition = context.builder.CreateFCmpONE(
+                condition,
+                llvm::ConstantFP::get(context.context, llvm::APFloat(0.0)),
+                "forcond"
+            );
+            
+            if (auto* boolVal = llvm::dyn_cast<llvm::ConstantInt>(condition)) {
+                if (boolVal->getZExtValue() == 1) {
+                    // 5. Evaluate body for this iteration
+                    std::cout << "🔄 Iteration " << ++iteration << std::endl;
+                    node.body->accept(*this);
+                    
+                    // 6. Store body value if any
+                    if (!context.valueStack.empty()) {
+                        llvm::Value* bodyValue = context.valueStack.back();
+                        
+                        // Check if this is a print statement
+                        bool isPrint = false;
+                        if (auto* builtin = dynamic_cast<BuiltInFunctionNode*>(node.body)) {
+                            isPrint = (builtin->name == "print");
+                        }
+                        
+                        if (isPrint) {
+                            // For print statements, keep value in global stack and also store in local stack
+                            loopBodyValues.push_back(bodyValue);
+                        } else {
+                            // For non-print statements, remove from global stack and store in local stack
+                            context.valueStack.pop_back();
+                            loopBodyValues.push_back(bodyValue);
+                        }
+                    }
+
+                    // Increment loop variable
+                    llvm::Value* one = llvm::ConstantFP::get(context.context, llvm::APFloat(1.0));
+                    llvm::Value* nextValue = context.builder.CreateFAdd(currentValue, one, "nextval");
+                    context.addLocal(node.varName, nextValue);
+                } else {
+                    // Condition is false, exit loop
+                    break;
+                }
+            }
+        }
+    }
+
+    std::cout << "✅ For loop ended after " << iteration << " iterations" << std::endl;
+
+    // 7. Push the last body value to global stack if any
+    if (!loopBodyValues.empty()) {
+        context.valueStack.push_back(loopBodyValues.back());
+    }
+
+    // Clean up loop scope
+    context.popVarScope();
+
+    std::cout << "✅ ForNode completed - Final stack size: " << context.valueStack.size() << std::endl;
+}

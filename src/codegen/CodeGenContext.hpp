@@ -47,7 +47,14 @@ public:
     }
 
     // Func Scopes
-    void pushFuncScope() { functionScopes.emplace_back(); }
+    void pushFuncScope() { 
+        if (functionScopes.empty()) {
+            functionScopes.emplace_back();
+        } else {
+            // Copy all functions from the parent scope
+            functionScopes.push_back(functionScopes.back());
+        }
+    }
     void popFuncScope()  { functionScopes.pop_back(); }
     void addFuncDecl(const std::string& name, FunctionDeclarationNode* decl) {
         if (!functionScopes.empty()) functionScopes.back()[name] = decl;

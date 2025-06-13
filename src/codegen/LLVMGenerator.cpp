@@ -603,3 +603,31 @@ void LLVMGenerator::visit(AssignmentNode& node) {
                                std::to_string(node.line()));
     }
 }
+
+void LLVMGenerator::visit(IfNode& node) {
+    std::cout << "🔍 IfNode - Stack size before: " << context.valueStack.size() << std::endl;
+    
+    // Process each branch (if + elif)
+    for (const IfBranch& branch : *node.branches) {
+        // Evaluate condition
+        branch.condition->accept(*this);
+        llvm::Value* condition = context.valueStack.back();
+        context.valueStack.pop_back();
+
+        // Direct comparison with true (1)
+        if (auto* constInt = llvm::dyn_cast<llvm::ConstantInt>(condition)) {
+            if (constInt->getZExtValue() == 1) {
+                // Condition is true, evaluate body
+                branch.body->accept(*this);
+                return;
+            }
+        }
+    }
+
+    // If we get here, no condition was true, evaluate else body
+    if (node.elseBody) {
+        node.elseBody->accept(*this);
+    }
+
+    std::cout << "✅ IfNode completed - Final stack size: " << context.valueStack.size() << std::endl;
+}

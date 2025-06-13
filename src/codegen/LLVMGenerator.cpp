@@ -180,20 +180,72 @@ void LLVMGenerator::visit(BinaryOpNode& node) {
 
     else if (op == "@" || op == "@@") {
         const char* funcName = (op == "@") ? "hulk_str_concat" : "hulk_str_concat_space";
+        std::cout << "🔍 String concatenation with " << funcName << std::endl;
 
-        // Declare function if not already in module
+        // Convert numbers to strings if needed
+        llvm::Value* leftStr = left;
+        llvm::Value* rightStr = right;
+
+        // Helper function to convert number to string
+        auto convertToString = [&](llvm::Value* val) -> llvm::Value* {
+            if (val->getType()->isDoubleTy()) {
+                // Get the sprintf function
+                llvm::Function* sprintfFn = context.module.getFunction("sprintf");
+                if (!sprintfFn) {
+                    llvm::FunctionType* sprintfType = llvm::FunctionType::get(
+                        llvm::Type::getInt32Ty(context.context),
+                        {
+                            llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0),
+                            llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0)
+                        },
+                        true
+                    );
+                    sprintfFn = llvm::Function::Create(
+                        sprintfType,
+                        llvm::Function::ExternalLinkage,
+                        "sprintf",
+                        context.module
+                    );
+                }
+
+                // Allocate buffer for the string
+                llvm::Value* buffer = context.builder.CreateAlloca(
+                    llvm::Type::getInt8Ty(context.context),
+                    llvm::ConstantInt::get(llvm::Type::getInt64Ty(context.context), 32)
+                );
+
+                // Format string for double
+                llvm::Value* formatStr = context.builder.CreateGlobalStringPtr("%g");
+
+                // Call sprintf
+                std::vector<llvm::Value*> args = {buffer, formatStr, val};
+                context.builder.CreateCall(sprintfFn, args);
+
+                return buffer;
+            }
+            return val;
+        };
+
+        // Convert operands if they are numbers
+        leftStr = convertToString(left);
+        rightStr = convertToString(right);
+
+        // Declare concatenation function if not already in module
         llvm::Function* concatFn = context.module.getFunction(funcName);
         if (!concatFn) {
             llvm::FunctionType* concatType = llvm::FunctionType::get(
                 llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0),
-                {llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0), llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0)},
+                {
+                    llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0),
+                    llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0)
+                },
                 false
             );
             concatFn = llvm::Function::Create(concatType, llvm::Function::ExternalLinkage, funcName, context.module);
         }
 
-        // Emit call
-        result = context.builder.CreateCall(concatFn, {left, right}, "concat");
+        // Emit call with converted operands
+        result = context.builder.CreateCall(concatFn, {leftStr, rightStr}, "concat");
     }
 
 
@@ -329,6 +381,7 @@ void LLVMGenerator::visit(BlockNode& node) {
         throw std::runtime_error("❌ Block must contain at least one expression (line " + std::to_string(node.line()) + ")");
     }
 
+    std::cout << "🔍 BlockNode - Stack size before: " << context.valueStack.size() << std::endl;
     context.pushFuncScope();
 
     // Separate declarations from other expressions
@@ -336,6 +389,7 @@ void LLVMGenerator::visit(BlockNode& node) {
     for (ASTNode* expr : node.expressions) {
         if (auto* decl = dynamic_cast<FunctionDeclarationNode*>(expr)) {
             context.addFuncDecl(decl->name, decl); // Register locally
+            std::cout << "  📝 Registered function: " << decl->name << std::endl;
         } else {
             bodyExprs.push_back(expr);
         }
@@ -345,6 +399,7 @@ void LLVMGenerator::visit(BlockNode& node) {
 
     for (size_t i = 0; i < bodyExprs.size(); ++i) {
         ASTNode* expr = bodyExprs[i];
+        std::cout << "  🔄 Evaluating expression " << i + 1 << "/" << bodyExprs.size() << " - Stack size: " << context.valueStack.size() << std::endl;
         expr->accept(*this);
 
         bool isPrint = false;
@@ -374,6 +429,7 @@ void LLVMGenerator::visit(BlockNode& node) {
                 }
             }
         }
+        std::cout << "  📤 Expression " << i + 1 << " completed - Stack size: " << context.valueStack.size() << std::endl;
     }
 
     context.popFuncScope();
@@ -382,8 +438,7 @@ void LLVMGenerator::visit(BlockNode& node) {
         throw std::runtime_error("❌ Block has no returnable value on last expression (line " + std::to_string(node.line()) + ")");
     }
 
-    // Ensure block returns something
-    std::cout << "🔧 BlockNode emitted with " << node.expressions.size() << " expressions\n";
+    std::cout << "  ✅ BlockNode completed - Final stack size: " << context.valueStack.size() << std::endl;
 }
 
 void LLVMGenerator::visit(IdentifierNode& node) {
@@ -400,6 +455,8 @@ void LLVMGenerator::visit(IdentifierNode& node) {
 }
 
 void LLVMGenerator::visit(FunctionDeclarationNode& node) {
+    std::cout << "🔍 FunctionDecl: " << node.name << " - Stack size before params: " << context.valueStack.size() << std::endl;
+    
     context.pushVarScope();  // Create a new variable scope for this invocation
 
     const auto& params = *node.params;
@@ -412,18 +469,33 @@ void LLVMGenerator::visit(FunctionDeclarationNode& node) {
         llvm::Value* val = context.valueStack.back();
         context.valueStack.pop_back();
         context.addLocal(params[i].name, val);
+        std::cout << "  📥 Bound param " << params[i].name << " - Stack size: " << context.valueStack.size() << std::endl;
     }
 
     // Evaluate body and leave result on stack
+    std::cout << "  🔄 Evaluating function body - Stack size: " << context.valueStack.size() << std::endl;
     node.body->accept(*this);
+    std::cout << "  📤 Body evaluated - Stack size: " << context.valueStack.size() << std::endl;
+
+    // If the body didn't leave a value on the stack, we need to handle that
+    if (context.valueStack.empty()) {
+        std::cout << "  ⚠️ No return value, pushing null" << std::endl;
+        context.valueStack.push_back(
+            llvm::ConstantPointerNull::get(llvm::PointerType::get(llvm::Type::getInt8Ty(context.context), 0))
+        );
+    }
 
     context.popVarScope();
+    std::cout << "  ✅ Function " << node.name << " completed - Final stack size: " << context.valueStack.size() << std::endl;
 }
 
 void LLVMGenerator::visit(FunctionCallNode& node) {
+    std::cout << "🔍 FunctionCall: " << node.funcName << " - Stack size before args: " << context.valueStack.size() << std::endl;
+    
     // Evaluate each argument (left-to-right) and push onto stack
     for (ASTNode* arg : node.args) {
         arg->accept(*this);
+        std::cout << "  📥 Arg evaluated - Stack size: " << context.valueStack.size() << std::endl;
     }
 
     // Lookup FunctionDeclarationNode (not LLVM::Function)
@@ -432,6 +504,8 @@ void LLVMGenerator::visit(FunctionCallNode& node) {
         throw std::runtime_error("❌ Function not declared: " + node.funcName);
     }
 
+    std::cout << "  🔄 Calling function body - Stack size: " << context.valueStack.size() << std::endl;
     // Process the function body using the declaration
     decl->accept(*this);  // Will consume args from stack, push result
+    std::cout << "  📤 Function returned - Stack size: " << context.valueStack.size() << std::endl;
 }

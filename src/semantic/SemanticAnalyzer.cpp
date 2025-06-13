@@ -592,7 +592,11 @@ void SemanticAnalyzer::visit(BuiltInFunctionNode& node) {
         if (node.args.size() != 1) {
             errors.emplace_back("Función " + fn + " requiere 1 argumento", node.line());
             node._type = "Error";
-        } else if (node.args[0]->type() != "Number") {
+        
+        }
+        else if (node.args[0]->type() == "Unknown") node.args[0]->type() = "Number";
+         
+        else if (node.args[0]->type() != "Number") {
             errors.emplace_back("El argumento de '" + fn + "' debe ser un número", node.line());
             node._type = "Error";
         } else {
@@ -604,7 +608,12 @@ void SemanticAnalyzer::visit(BuiltInFunctionNode& node) {
         if (arity != 2) {
             errors.emplace_back("La función 'log' requiere 2 argumentos", node.line());
             node._type = "Error";
-        } else if (node.args[0]->type() != "Number" || node.args[1]->type() != "Number") {
+        }if (node.args[0]->type() == "Unknown"){
+            node.args[0]->type() = "Number";
+        }
+        if (node.args[1]->type() == "Unknown") node.args[1]->type() = "Number";
+        
+        else if (node.args[0]->type() != "Number" || node.args[1]->type() != "Number") {
             errors.emplace_back("Los argumentos de 'log' deben ser numéricos", node.line());
             node._type = "Error";
         } else {
@@ -623,7 +632,11 @@ void SemanticAnalyzer::visit(BuiltInFunctionNode& node) {
         if (arity != 2) {
             errors.emplace_back("La función '" + fn + "' requiere 2 argumentos", node.line());
             node._type = "Error";
-        } else if (node.args[0]->type() != "Number" || node.args[1]->type() != "Number") {
+        }if (node.args[0]->type() == "Unknown"){
+            node.args[0]->type() = "Number";
+        }
+        if (node.args[1]->type() == "Unknown") node.args[1]->type() = "Number";
+         else if (node.args[0]->type() != "Number" || node.args[1]->type() != "Number") {
             errors.emplace_back("Los argumentos de '" + fn + "' deben ser numéricos", node.line());
             node._type = "Error";
         } else {
@@ -915,15 +928,22 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
     }
     else if (node.op == "@" || node.op == "@@") {
         // Si alguno de los operandos es Unknown, permitimos tanto String como Number
-        if (leftType == "Unknown") {
+        if (node.op == "@")
+        {
+            std::cout << leftType << std::endl;
+            std::cout << "Ho" << std::endl;
+            std::cout << rightType << std::endl;
+        }
+        
+        if (leftType == "Unknown" || leftType == "") {
             if (rightType == "String" || rightType == "Number") {
                 leftType = rightType;
-            } else if (rightType == "Unknown") {
+            } else if (rightType == "Unknown"|| rightType == "") {
                 leftType = "String"; // Preferimos String para concatenación
                 rightType = "String";
             }
         }
-        if (rightType == "Unknown") {
+        if (rightType == "Unknown"|| rightType == "") {
             if (leftType == "String" || leftType == "Number") {
                 rightType = leftType;
             }
@@ -1183,57 +1203,100 @@ void SemanticAnalyzer::visit(ForNode& node) {
 
 
 void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
-    std::string parent = node.baseType.value_or("Object");
+    std::cout << "Analizando tipo: " << node.name << "\n";
 
-    // Validación: no heredar de tipos básicos
+    // 1. Verificar redefinición
+    if (symbolTable.lookupType(node.name)) {
+        errors.emplace_back("Tipo '" + node.name + "' ya está definido", node.line());
+        return;
+    }
+
+    // 2. Validar que no hereda de tipos prohibidos
     const std::set<std::string> builtinTypes = {"Number", "String", "Boolean"};
     if (node.baseType.has_value() && builtinTypes.count(*node.baseType)) {
         errors.emplace_back("No se puede heredar de tipo básico '" + *node.baseType + "'", node.line());
         return;
     }
 
-    // Registrar el tipo
-    std::vector<std::string> constructorParamNames;
+    std::string parent = node.baseType.value_or("Object");
+
+    // 3. Registrar el tipo en la tabla
+    std::vector<std::string> paramNames;
     for (const auto& param : *node.constructorParams) {
-        constructorParamNames.push_back(param.name);
+        paramNames.push_back(param.name);
     }
 
-    if (!symbolTable.addType(node.name, parent, constructorParamNames)) {
-        errors.emplace_back("Tipo '" + node.name + "' ya fue declarado", node.line());
+    if (!symbolTable.addType(node.name, parent, paramNames)) {
+        errors.emplace_back("No se pudo registrar el tipo '" + node.name + "'", node.line());
         return;
     }
 
-    // Evaluar baseArgs en contexto de parámetros del tipo actual
+    // 4. Si hereda y no declara baseArgs, asumir que se pasa los parámetros propios al padre
+    if (node.baseType.has_value() && node.baseArgs.empty()) {
+        TypeSymbol* parentSym = symbolTable.lookupType(*node.baseType);
+        if (!parentSym) {
+            std::cerr << "[DEBUG] No se encontró el tipo base '" << *node.baseType << "'\n";
+            errors.emplace_back("Tipo base '" + *node.baseType + "' no encontrado", node.line());
+            return;
+        }
+
+        // Herencia sin constructor explícito => heredar del padre
+        if (node.baseType.has_value() && node.constructorParams->empty() && node.baseArgs.empty()) {
+            TypeSymbol* parentSym = symbolTable.lookupType(*node.baseType);
+            if (parentSym) {
+                std::cerr << "[DEBUG] Tipo '" << node.name << "' hereda de '" << *node.baseType
+                        << "' sin constructor explícito. Heredando parámetros del padre...\n";
+                
+                for (const std::string& paramName : parentSym->typeParams) {
+                    node.constructorParams->emplace_back(Parameter{paramName, ""});
+                    node.baseArgs.push_back(new IdentifierNode(paramName, node.line()));
+                    std::cerr << "  + Param heredado: " << paramName << "\n";
+                }
+            }
+            symbolTable.updateTypeParams(node.name, parentSym->typeParams);
+        }
+
+
+        if (parentSym->typeParams.size() != node.constructorParams->size()) {
+            std::cerr << "[DEBUG] Tipo padre '" << parentSym->name
+                    << "' espera " << parentSym->typeParams.size()
+                    << " parámetros, pero se encontraron "
+                    << node.constructorParams->size()
+                    << " en el tipo hijo '" << node.name << "'\n";
+            errors.emplace_back("Cantidad incorrecta de argumentos para constructor del padre", node.line());
+            return;
+        }
+
+        for (const auto& param : *node.constructorParams) {
+            node.baseArgs.push_back(new IdentifierNode(param.name, node.line()));
+        }
+    }
+
+    // 5. Analizar baseArgs (si hay)
     if (node.baseType.has_value()) {
         symbolTable.enterScope();
         for (const auto& param : *node.constructorParams) {
-            std::string paramType = param.type.empty() ? "Unknown" : param.type;
-            symbolTable.addSymbol(param.name, paramType, false);
+            symbolTable.addSymbol(param.name, "Unknown", false);
         }
 
         for (ASTNode* arg : node.baseArgs) {
             arg->accept(*this);
         }
 
-        TypeSymbol* parentSym = symbolTable.lookupType(parent);
-        if (parentSym && parentSym->typeParams.size() != node.baseArgs.size()) {
-            errors.emplace_back("Cantidad incorrecta de argumentos para constructor del padre", node.line());
-        }
-
         symbolTable.exitScope();
     }
 
-    // Evaluar atributos sin acceso a 'self'
+    // 6. Analizar atributos (sin self)
     symbolTable.enterScope();
     for (const auto& param : *node.constructorParams) {
-        std::string paramType = param.type.empty() ? "Unknown" : param.type;
-        symbolTable.addSymbol(param.name, paramType, false);
-    }       
+        symbolTable.addSymbol(param.name, "Unknown", false);
+    }
 
     for (const auto& attr : *node.body->attributes) {
         attr.initializer->accept(*this);
         std::string attrType = attr.initializer->type();
-        if (attrType == "Error") {
+
+        if (attrType == "Error" || attrType.empty()) {
             errors.emplace_back("No se pudo inferir el tipo del atributo '" + attr.name + "'", node.line());
         } else {
             symbolTable.addTypeAttribute(node.name, attr.name, attrType);
@@ -1242,42 +1305,36 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
 
     symbolTable.exitScope();
 
-    // Evaluar métodos con acceso a self
+    // 7. Analizar métodos
     TypeSymbol* typeSym = symbolTable.lookupType(node.name);
+
     for (const auto& method : *node.body->methods) {
         symbolTable.enterScope();
-
-        // Insertar self
         symbolTable.addSymbol("self", node.name, true);
 
-        // Insertar parámetros
+        currentMethodContext = method.name;  // ⭐ guardar el nombre actual del método
+
         for (const auto& param : *method.params) {
-            std::string paramType = param.type.empty() ? "Unknown" : param.type;
-            symbolTable.addSymbol(param.name, paramType, false);
+            symbolTable.addSymbol(param.name, param.type, false);
         }
 
-        // Analizar cuerpo del método
         method.body->accept(*this);
-        std::string methodBodyType = method.body->type();
 
-        // Verificar tipo de retorno si está anotado
+        // Verificación de tipo de retorno
         if (!method.returnType.empty() &&
-            !conformsTo(methodBodyType, method.returnType)) {
+            !conformsTo(method.body->type(), method.returnType)) {
             errors.emplace_back("El cuerpo del método '" + method.name +
-                "' no conforma al tipo de retorno declarado", node.line());
+                                "' no conforma al tipo de retorno declarado", method.body->line());
         }
 
-        // Guardar firma del método
         std::vector<std::string> paramTypes;
         for (const auto& param : *method.params) {
-            paramTypes.push_back(param.type.empty() ? "Unknown" : param.type);
+            paramTypes.push_back(param.type);
         }
 
-        symbolTable.addTypeMethod(node.name, method.name,
-                                  method.returnType.empty() ? methodBodyType : method.returnType,
-                                  paramTypes);
+        symbolTable.addTypeMethod(node.name, method.name, method.returnType, paramTypes);
 
-        // Validar firma heredada si aplica
+        // 🔍 Verificación de firma heredada si aplica
         if (!typeSym->parentType.empty()) {
             TypeSymbol* parentSym = symbolTable.lookupType(typeSym->parentType);
             if (parentSym) {
@@ -1286,15 +1343,19 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
                     const Symbol& inherited = it->second;
                     if (inherited.params != paramTypes || inherited.type != method.returnType) {
                         errors.emplace_back("Firma de método '" + method.name +
-                            "' no coincide con la del padre", node.line());
+                            "' no coincide con la del tipo padre '" + typeSym->parentType + "'", method.body->line());
                     }
                 }
             }
         }
 
+        currentMethodContext.clear(); // 🧼 Limpiar al salir del método
         symbolTable.exitScope();
     }
+
+    std::cout << "Tipo '" << node.name << "' analizado correctamente\n";
 }
+
 
 
 
@@ -1387,12 +1448,6 @@ void SemanticAnalyzer::visit(MethodDeclaration& node) {
 }
 
 void SemanticAnalyzer::visit(BaseCallNode& node) {
-    // Analyze all arguments
-    for (ASTNode* arg : node.args) {
-        arg->accept(*this);
-    }
-    
-    // Get the current type context
     Symbol* self = symbolTable.lookup("self");
     if (!self) {
         errors.emplace_back("'base' solo puede usarse dentro de métodos", node.line());
@@ -1400,7 +1455,6 @@ void SemanticAnalyzer::visit(BaseCallNode& node) {
         return;
     }
 
-    // Get the parent type
     TypeSymbol* typeSym = symbolTable.lookupType(self->type);
     if (!typeSym || typeSym->parentType.empty()) {
         errors.emplace_back("'base' no disponible para este tipo", node.line());
@@ -1408,7 +1462,30 @@ void SemanticAnalyzer::visit(BaseCallNode& node) {
         return;
     }
 
-    node._type = typeSym->parentType;
+    // Necesitamos saber en qué método estamos
+    std::string currentMethodName = currentMethodContext;
+    if (currentMethodName.empty()) {
+        errors.emplace_back("'base' solo puede usarse dentro de un método con nombre", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    // Buscar en el padre el método con el mismo nombre
+    TypeSymbol* parentSym = symbolTable.lookupType(typeSym->parentType);
+    if (!parentSym) {
+        errors.emplace_back("Tipo padre '" + typeSym->parentType + "' no encontrado", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    auto it = parentSym->methods.find(currentMethodName);
+    if (it == parentSym->methods.end()) {
+        errors.emplace_back("Método '" + currentMethodName + "' no existe en el padre '" + parentSym->name + "'", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    node._type = it->second.type; // Usamos el tipo de retorno del método padre
 }
 
 void SemanticAnalyzer::visit(SelfCallNode& node) {
@@ -1458,3 +1535,5 @@ Symbol* SemanticAnalyzer::lookupMethodInHierarchy(const std::string& typeName, c
     std::cout << "    [NO ENCONTRADO] Método '" << methodName << "' no existe en jerarquía\n";
     return nullptr;
 }
+
+

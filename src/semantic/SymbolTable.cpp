@@ -179,3 +179,11 @@ std::string SymbolTable::lowestCommonAncestor(const std::vector<std::string>& ty
     return candidate;
 }
 
+void SymbolTable::updateTypeParams(const std::string& typeName, const std::vector<std::string>& params) {
+    auto it = types.find(typeName);
+    if (it != types.end()) {
+        it->second.typeParams = params;
+    }
+}
+
+

@@ -512,6 +512,37 @@ void LLVMGenerator::visit(FunctionDeclarationNode& node) {
     std::cout << "  ✅ Function " << node.name << " completed - Final stack size: " << context.valueStack.size() << std::endl;
 }
 
+void LLVMGenerator::visit(LetNode& node) {
+    std::cout << "🔍 LetNode - Stack size before: " << context.valueStack.size() << std::endl;
+    
+    // 1. Initialize new variable scope with inheritance
+    context.pushVarScope(true);  // true for inheritance
+
+    // 2. Process each declaration
+    for (const LetDeclaration& decl : *node.declarations) {
+        // Process the initializer first
+        decl.initializer->accept(*this);
+        llvm::Value* initValue = context.valueStack.back();
+        context.valueStack.pop_back();
+
+        // Add the variable to the current scope
+        context.addLocal(decl.name, initValue);
+        std::cout << "  📝 Added variable '" << decl.name << "' to scope" << std::endl;
+    }
+
+    // 3. Process the body
+    std::cout << "  🔄 Processing let body - Stack size: " << context.valueStack.size() << std::endl;
+    node.body->accept(*this);
+    std::cout << "  📤 Body processed - Stack size: " << context.valueStack.size() << std::endl;
+
+    // 4. Keep the body's return value on the stack
+    // The value is already on the stack from the body processing
+
+    // Clean up the scope
+    context.popVarScope();
+    std::cout << "  ✅ LetNode completed - Final stack size: " << context.valueStack.size() << std::endl;
+}
+
 void LLVMGenerator::visit(FunctionCallNode& node) {
     std::cout << "🔍 FunctionCall: " << node.funcName << " - Stack size before args: " << context.valueStack.size() << std::endl;
     

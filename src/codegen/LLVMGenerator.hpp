@@ -26,7 +26,7 @@ public:
     // Stubs for other nodes
     void visit(ASTNode&) override {}
     void visit(VariableDeclarationNode&) override {}
-    void visit(LetNode&) override {}
+    void visit(class LetNode& node) override;
     void visit(AssignmentNode&) override {}
     void visit(IfNode&) override {}
     void visit(WhileNode&) override {}

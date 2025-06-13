@@ -7,6 +7,14 @@
 #include <cstring>
 #include <math.h>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#ifndef M_E
+#define M_E 2.7182818284590452354
+#endif
+
 extern "C" {
     char* hulk_str_concat(const char* a, const char* b);
     char* hulk_str_concat_space(const char* a, const char* b);
@@ -442,6 +450,21 @@ void LLVMGenerator::visit(BlockNode& node) {
 }
 
 void LLVMGenerator::visit(IdentifierNode& node) {
+    // Handle mathematical constants
+    if (node.name == "PI" || node.name == "pi") {
+        llvm::Value* pi = llvm::ConstantFP::get(context.context, llvm::APFloat(M_PI));
+        context.valueStack.push_back(pi);
+        std::cout << "🔧 Mathematical constant PI emitted\n";
+        return;
+    }
+    else if (node.name == "E" || node.name == "e") {
+        llvm::Value* e = llvm::ConstantFP::get(context.context, llvm::APFloat(M_E));
+        context.valueStack.push_back(e);
+        std::cout << "🔧 Mathematical constant E emitted\n";
+        return;
+    }
+
+    // Handle regular variables
     llvm::Value* val = context.lookupLocal(node.name);
 
     if (!val) {

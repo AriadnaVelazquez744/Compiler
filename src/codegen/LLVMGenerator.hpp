@@ -29,7 +29,7 @@ public:
     // Stubs for other nodes
     void visit(ASTNode&) override {}
     void visit(VariableDeclarationNode&) override {}
-    void visit(WhileNode&) override {}
+    void visit(class WhileNode& node) override;
     void visit(ForNode&) override {}
     void visit(TypeDeclarationNode&) override {}
     void visit(NewInstanceNode&) override {}

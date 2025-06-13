@@ -631,3 +631,78 @@ void LLVMGenerator::visit(IfNode& node) {
 
     std::cout << "✅ IfNode completed - Final stack size: " << context.valueStack.size() << std::endl;
 }
+
+void LLVMGenerator::visit(WhileNode& node) {
+    std::cout << "🔍 WhileNode - Stack size before: " << context.valueStack.size() << std::endl;
+
+    // Create a new scope for the loop
+    context.pushVarScope(true);
+
+    // Create a vector to store loop body values
+    std::vector<llvm::Value*> loopBodyValues;
+
+    int iteration = 0;
+    // Start the loop
+    while (true) {
+        // Evaluate condition
+        node.condition->accept(*this);
+        llvm::Value* condition = context.valueStack.back();
+        context.valueStack.pop_back();
+
+        // Direct comparison with true (1)
+        if (auto* constInt = llvm::dyn_cast<llvm::ConstantInt>(condition)) {
+            if (constInt->getZExtValue() == 1) {
+                // Condition is true, evaluate body
+                std::cout << "🔄 Iteration " << ++iteration << std::endl;
+                node.body->accept(*this);
+                
+                // If body produced a value, store it
+                if (!context.valueStack.empty()) {
+                    llvm::Value* bodyValue = context.valueStack.back();
+                    context.valueStack.pop_back(); // Remove from global stack
+                    loopBodyValues.push_back(bodyValue);
+                }
+            } else {
+                // Condition is false, exit loop
+                break;
+            }
+        } else {
+            // If not a constant, convert to boolean and check
+            condition = context.builder.CreateFCmpONE(
+                condition,
+                llvm::ConstantFP::get(context.context, llvm::APFloat(0.0)),
+                "whilecond"
+            );
+            
+            if (auto* boolVal = llvm::dyn_cast<llvm::ConstantInt>(condition)) {
+                if (boolVal->getZExtValue() == 1) {
+                    // Condition is true, evaluate body
+                    std::cout << "🔄 Iteration " << ++iteration << std::endl;
+                    node.body->accept(*this);
+                    
+                    // If body produced a value, store it
+                    if (!context.valueStack.empty()) {
+                        llvm::Value* bodyValue = context.valueStack.back();
+                        context.valueStack.pop_back(); // Remove from global stack
+                        loopBodyValues.push_back(bodyValue);
+                    }
+                } else {
+                    // Condition is false, exit loop
+                    break;
+                }
+            }
+        }
+    }
+
+    std::cout << "✅ Loop ended after " << iteration << " iterations" << std::endl;
+
+    // After loop ends, push the last body value to global stack if any
+    if (!loopBodyValues.empty()) {
+        context.valueStack.push_back(loopBodyValues.back());
+    }
+
+    // Clean up loop scope
+    context.popVarScope();
+
+    std::cout << "✅ WhileNode completed - Final stack size: " << context.valueStack.size() << std::endl;
+}

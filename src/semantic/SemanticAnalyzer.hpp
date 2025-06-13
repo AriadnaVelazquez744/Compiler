@@ -17,6 +17,7 @@ private:
     bool conformsTo(const std::string& subtype, const std::string& supertype);
 
     std::vector<SemanticError> errors;
+    std::string currentMethodContext;
 
 public:
     void analyze(const std::vector<ASTNode*>& nodes);
@@ -28,6 +29,8 @@ public:
     void collectParamUsages(ASTNode* node, const std::string& paramName, std::set<std::string>& types);
 
     Symbol* lookupMethodInHierarchy(const std::string& typeName, const std::string& methodName);
+   
+    
 
 
     // std::string lowestCommonAncestor(const std::set<std::string>& types);

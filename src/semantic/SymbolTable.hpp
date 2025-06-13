@@ -87,5 +87,7 @@ public:
 
     std::vector<Symbol> getUserDefinedFunctions() const;
     bool updateSymbolType(const std::string& name, const std::string& newType);
+    void updateTypeParams(const std::string& typeName, const std::vector<std::string>& params);
+
 
 };

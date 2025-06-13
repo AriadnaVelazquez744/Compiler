@@ -209,8 +209,21 @@ void SemanticAnalyzer::collectParamUsages(ASTNode* node, const std::string& para
 
     // Built-in function call
     else if (auto* builtin = dynamic_cast<BuiltInFunctionNode*>(node)) {
-        for (auto* arg : builtin->args)
+        for (auto* arg : builtin->args) {
             collectParamUsages(arg, paramName, types);
+            
+            // Si este argumento es el parámetro que estamos inferiendo y la función requiere Number, inferir Number
+            if (auto* id = dynamic_cast<IdentifierNode*>(arg)) {
+                if (id->name == paramName) {
+                    static const std::set<std::string> numericBuiltins = {
+                        "sin", "cos", "exp", "sqrt", "log", "min", "max"
+                    };
+                    if (numericBuiltins.count(builtin->name)) {
+                        types.insert("Number");
+                    }
+                }
+            }
+        }
     }
 
     //Method call
@@ -594,7 +607,10 @@ void SemanticAnalyzer::visit(BuiltInFunctionNode& node) {
             node._type = "Error";
         
         }
-        else if (node.args[0]->type() == "Unknown") node.args[0]->type() = "Number";
+        if (node.args[0]->type() == "Unknown"){
+            std::cout << "Entra en DDD" << std::endl;
+            node.args[0]->type() = "Number";
+        } 
          
         else if (node.args[0]->type() != "Number") {
             errors.emplace_back("El argumento de '" + fn + "' debe ser un número", node.line());

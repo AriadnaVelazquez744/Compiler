@@ -33,12 +33,25 @@ public:
     std::vector<std::map<std::string, FunctionDeclarationNode*>> functionScopes;
 
     // Var Scopes
-    void pushVarScope() { localScopes.emplace_back(); }
+    void pushVarScope(bool inherit = true) { 
+        if (inherit && !localScopes.empty()) {
+            // Create new scope with copy of parent's variables
+            localScopes.push_back(localScopes.back());
+        } else {
+            // Create empty scope (no inheritance)
+            localScopes.emplace_back();
+        }
+    }
     void popVarScope()  { localScopes.pop_back(); }
     void addLocal(const std::string& name, llvm::Value* val) {
-        if (!localScopes.empty()) localScopes.back()[name] = val;
+        if (!localScopes.empty()) {
+            // Add or update variable in current scope
+            // This will shadow any variable with the same name in parent scopes
+            localScopes.back()[name] = val;
+        }
     }
     llvm::Value* lookupLocal(const std::string& name) const {
+        // Search from innermost to outermost scope
         for (auto it = localScopes.rbegin(); it != localScopes.rend(); ++it) {
             auto found = it->find(name);
             if (found != it->end()) return found->second;

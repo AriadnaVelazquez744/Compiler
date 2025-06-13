@@ -457,7 +457,7 @@ void LLVMGenerator::visit(IdentifierNode& node) {
 void LLVMGenerator::visit(FunctionDeclarationNode& node) {
     std::cout << "🔍 FunctionDecl: " << node.name << " - Stack size before params: " << context.valueStack.size() << std::endl;
     
-    context.pushVarScope();  // Create a new variable scope for this invocation
+    context.pushVarScope(false);  // Create an isolated scope for function parameters
 
     const auto& params = *node.params;
     if (params.size() > context.valueStack.size()) {

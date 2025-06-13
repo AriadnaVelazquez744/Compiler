@@ -1111,11 +1111,15 @@ void SemanticAnalyzer::visit(AssignmentNode& node) {
     node.rhs->accept(*this);
     std::string rhsType = node.rhs->type();
 
-    if (!conformsTo(rhsType, symbol->type)) {
+    if (symbol->type == "Unknown") {
+        symbolTable.updateSymbolType(name, rhsType);
+        node._type = rhsType;
+    } else if (!conformsTo(rhsType, symbol->type)) {
         errors.emplace_back("Tipo incorrecto en asignación: esperado '" + symbol->type + "', obtenido '" + rhsType + "'", node.line());
         node._type = "Error";
+    } else {
+        node._type = symbol->type;
     }
-
     node._type = symbol->type;
 }
 

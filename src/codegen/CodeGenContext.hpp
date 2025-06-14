@@ -4,6 +4,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Value.h"
+#include "TypeSystem.hpp"
 
 #include <string>
 #include <map>
@@ -22,6 +23,8 @@ public:
 
     std::map<std::string, llvm::Value*> locals; // Symbol table for local vars like 'self', loop vars, etc.
     std::vector<llvm::Value*> valueStack;       // 🔁 Stack to pass values up/down during AST traversal
+
+    TypeSystem typeSystem;             // Type system for managing types and instances
 
     CodeGenContext();  // Constructor initializes builder and module
 

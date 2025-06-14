@@ -11,17 +11,36 @@ CodeGenContext::CodeGenContext()
 
 void CodeGenContext::generateCode(std::vector<ASTNode*>& root) {
     
-    // Separate the function declaration from the expression declarations for context
-    pushFuncScope();  // Global function registry
-
+    // Separate type declarations, function declarations, and expressions
+    std::vector<ASTNode*> typeDecls;
+    std::vector<ASTNode*> funcDecls;
     std::vector<ASTNode*> exprs;
+
     for (ASTNode* node : root) {
-        if (auto* fn = dynamic_cast<FunctionDeclarationNode*>(node)) {
-            addFuncDecl(fn->name, fn);
+        if (auto* typeDecl = dynamic_cast<TypeDeclarationNode*>(node)) {
+            typeDecls.push_back(node);
+        } else if (auto* fn = dynamic_cast<FunctionDeclarationNode*>(node)) {
+            funcDecls.push_back(node);
         } else {
             exprs.push_back(node);
         }
     }
+
+    // Process type declarations first
+    pushFuncScope();  // Global function registry
+    LLVMGenerator generator(*this);
+    for (ASTNode* node : typeDecls) {
+        node->accept(generator);
+    }
+
+    // Then process function declarations
+    for (ASTNode* node : funcDecls) {
+        if (auto* fn = dynamic_cast<FunctionDeclarationNode*>(node)) {
+            addFuncDecl(fn->name, fn);
+        }
+    }
+
+    // Finally process expressions
     root = std::move(exprs);
 
     // Declare printf and puts for printing
@@ -49,9 +68,8 @@ void CodeGenContext::generateCode(std::vector<ASTNode*>& root) {
     llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", mainFunc);
     builder.SetInsertPoint(entry);
 
-    // Generar código para todos los nodos AST
-    LLVMGenerator generator(*this);
-    for (ASTNode* node : root) { // 🆕 Iterar sobre cada nodo
+    // Generate code for all remaining nodes
+    for (ASTNode* node : root) {
         node->accept(generator);
     }
 

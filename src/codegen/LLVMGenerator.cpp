@@ -834,3 +834,116 @@ void LLVMGenerator::visit(ForNode& node) {
 
     std::cout << "✅ ForNode completed - Final stack size: " << context.valueStack.size() << std::endl;
 }
+
+void LLVMGenerator::visit(TypeDeclarationNode& node) {
+    std::cout << "🔍 TypeDeclaration: " << node.name << std::endl;
+
+    // Register the type
+    auto& typeDef = context.typeSystem.registerType(node.name, node.baseType);
+
+    // Set current type for processing attributes and methods
+    context.typeSystem.setCurrentType(node.name);
+
+    // Process attributes
+    if (node.body->attributes) {
+        for (const auto& attr : *node.body->attributes) {
+            context.typeSystem.addAttribute(attr.name, node.name, attr.initializer);
+            std::cout << "  📝 Added attribute: " << attr.name << std::endl;
+        }
+    }
+
+    // Process methods
+    if (node.body->methods) {
+        for (const auto& method : *node.body->methods) {
+            context.typeSystem.addMethod(node.name, method.name, method.params, method.body, method.returnType);
+            std::cout << "  📝 Added method: " << method.name << std::endl;
+        }
+    }
+
+    // Process base constructor arguments if any
+    if (!node.baseArgs.empty() && node.baseType) {
+        // TODO: Handle base constructor arguments
+        std::cout << "  ⚠️ Base constructor arguments not yet implemented" << std::endl;
+    }
+
+    std::cout << "✅ Type " << node.name << " processed" << std::endl;
+}
+
+void LLVMGenerator::visit(NewInstanceNode& node) {
+    std::cout << "🔍 NewInstance: " << node.typeName << std::endl;
+
+    // Check if type exists
+    if (!context.typeSystem.typeExists(node.typeName)) {
+        throw std::runtime_error("Type '" + node.typeName + "' not found");
+    }
+
+    // Generate a unique instance name if not provided
+    std::string instanceName = "instance_" + node.typeName + "_" + std::to_string(context.valueStack.size());
+
+    // Create the instance
+    context.typeSystem.createInstance(instanceName, node.typeName);
+
+    // Process constructor arguments if any
+    for (ASTNode* arg : node.args) {
+        arg->accept(*this);
+    }
+
+    // TODO: Initialize instance attributes
+    std::cout << "  ⚠️ Instance initialization not yet implemented" << std::endl;
+
+    // Push the instance name onto the stack
+    llvm::Value* instancePtr = context.builder.CreateGlobalStringPtr(instanceName);
+    context.valueStack.push_back(instancePtr);
+
+    std::cout << "✅ Instance created: " << instanceName << std::endl;
+}
+
+void LLVMGenerator::visit(MethodCallNode& node) {
+    std::cout << "🔍 MethodCall: " << node.instanceName << "." << node.methodName << std::endl;
+
+    // Get the type of the instance
+    std::string typeName = context.typeSystem.getInstanceType(node.instanceName);
+    if (typeName.empty()) {
+        throw std::runtime_error("Instance '" + node.instanceName + "' not found");
+    }
+
+    // Set current type for self access
+    context.typeSystem.setCurrentType(typeName);
+
+    // Find the method
+    TypeMethod* method = context.typeSystem.findMethod(typeName, node.methodName);
+    if (!method) {
+        throw std::runtime_error("Method '" + node.methodName + "' not found in type '" + typeName + "'");
+    }
+
+    // Process method arguments
+    for (ASTNode* arg : node.args) {
+        arg->accept(*this);
+    }
+
+    // TODO: Call the method
+    std::cout << "  ⚠️ Method call not yet implemented" << std::endl;
+
+    std::cout << "✅ Method call processed" << std::endl;
+}
+
+void LLVMGenerator::visit(SelfCallNode& node) {
+    std::cout << "🔍 SelfCall: " << node.varName << std::endl;
+
+    // Get current type
+    std::string typeName = context.typeSystem.getCurrentType();
+    if (typeName.empty()) {
+        throw std::runtime_error("No current type for self access");
+    }
+
+    // Find the attribute
+    TypeAttribute* attr = context.typeSystem.findAttribute(typeName, node.varName);
+    if (!attr) {
+        throw std::runtime_error("Attribute '" + node.varName + "' not found in type '" + typeName + "'");
+    }
+
+    // TODO: Access the attribute value
+    std::cout << "  ⚠️ Self attribute access not yet implemented" << std::endl;
+
+    std::cout << "✅ Self access processed" << std::endl;
+}

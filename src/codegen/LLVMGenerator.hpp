@@ -31,11 +31,11 @@ public:
     // Stubs for other nodes
     void visit(ASTNode&) override {}
     void visit(VariableDeclarationNode&) override {}
-    void visit(TypeDeclarationNode&) override {}
-    void visit(NewInstanceNode&) override {}
+    void visit(class TypeDeclarationNode& node) override;
+    void visit(class NewInstanceNode& node) override;
     void visit(AttributeDeclaration& node) override {}
     void visit(MethodDeclaration& node) override {}
-    void visit(MethodCallNode& node) override {}
+    void visit(class MethodCallNode& node) override;
     void visit(BaseCallNode&) override {}
-    void visit(SelfCallNode&) override {}
+    void visit(class SelfCallNode& node) override;
 };

@@ -1040,7 +1040,7 @@ void LLVMGenerator::visit(SelfCallNode& node) {
     std::cout << "🔍 SelfCall: " << node.varName << std::endl;
 
     // Handle self variables
-    llvm::Value* val = context.getCurrentInstanceVar(node.varName);
+    llvm::Value* val = context.typeSystem.getCurrentInstanceVar(node.varName);
 
     if (!val) {
         throw std::runtime_error("❌ Undefined variable '" + node.varName +

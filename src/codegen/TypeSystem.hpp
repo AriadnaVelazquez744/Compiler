@@ -72,6 +72,9 @@ private:
     // Stack to track variables being processed
     std::vector<std::string> placeholderStack;
 
+    // Stack to track current instance variables
+    std::vector<std::map<std::string, llvm::Value*>> currentInstanceVarsStack;
+
 public:
     /**
      * @brief Registers a new type definition
@@ -270,5 +273,55 @@ public:
      */
     bool isPlaceholderStackEmpty() const {
         return placeholderStack.empty();
+    }
+
+    /**
+     * @brief Pushes a new instance variables map onto the stack
+     * @param vars Map of instance variables to push
+     */
+    void pushCurrentInstanceVars(const std::map<std::string, llvm::Value*>& vars) {
+        currentInstanceVarsStack.push_back(vars);
+    }
+
+    /**
+     * @brief Pops the top instance variables map from the stack
+     */
+    void popCurrentInstanceVars() {
+        if (!currentInstanceVarsStack.empty()) {
+            currentInstanceVarsStack.pop_back();
+        }
+    }
+
+    /**
+     * @brief Gets a value from the current instance variables map
+     * @param varName Variable name to look up
+     * @return Pointer to the value if found, nullptr otherwise
+     */
+    llvm::Value* getCurrentInstanceVar(const std::string& varName) {
+        if (currentInstanceVarsStack.empty()) {
+            return nullptr;
+        }
+        auto& currentVars = currentInstanceVarsStack.back();
+        auto it = currentVars.find(varName);
+        return it != currentVars.end() ? it->second : nullptr;
+    }
+
+    /**
+     * @brief Sets a value in the current instance variables map
+     * @param varName Variable name to set
+     * @param value Value to set
+     */
+    void setCurrentInstanceVar(const std::string& varName, llvm::Value* value) {
+        if (!currentInstanceVarsStack.empty()) {
+            currentInstanceVarsStack.back()[varName] = value;
+        }
+    }
+
+    /**
+     * @brief Checks if the instance variables stack is empty
+     * @return true if stack is empty, false otherwise
+     */
+    bool isInstanceVarsStackEmpty() const {
+        return currentInstanceVarsStack.empty();
     }
 }; 

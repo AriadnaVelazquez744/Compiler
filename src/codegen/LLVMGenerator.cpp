@@ -978,28 +978,60 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
 void LLVMGenerator::visit(MethodCallNode& node) {
     std::cout << "🔍 MethodCall: " << node.instanceName << "." << node.methodName << std::endl;
 
-    // Get the type of the instance
+    // 1. Get instance type and set currentType
     std::string typeName = context.typeSystem.getInstanceType(node.instanceName);
     if (typeName.empty()) {
         throw std::runtime_error("Instance '" + node.instanceName + "' not found");
     }
-
-    // Set current type for self access
     context.typeSystem.setCurrentType(typeName);
 
-    // Find the method
-    TypeMethod* method = context.typeSystem.findMethod(typeName, node.methodName);
-    if (!method) {
-        throw std::runtime_error("Method '" + node.methodName + "' not found in type '" + typeName + "'");
+    // 2. Push instance variables onto the stack
+    context.typeSystem.pushCurrentInstanceVars(context.typeSystem.getInstanceVars(node.instanceName));
+
+    // 3. Create new varScope without inheritance
+    context.pushVarScope(false);
+
+    // 4. Set method name in placeholderStack
+    context.typeSystem.pushPlaceholder(node.methodName);
+
+    // 5. Find method in type hierarchy
+    TypeMethod* method = nullptr;
+    std::string currType = typeName;
+    while (!currType.empty() && !method) {
+        method = context.typeSystem.findMethod(currType, node.methodName);
+        if (!method) {
+            currType = context.typeSystem.getParentType(currType).value_or("");
+        }
     }
 
-    // Process method arguments
+    if (!method) {
+        throw std::runtime_error("Method '" + node.methodName + "' not found in type hierarchy starting from '" + typeName + "'");
+    }
+
+    // 6. Process method arguments and parameters
+    std::vector<llvm::Value*> args;
     for (ASTNode* arg : node.args) {
         arg->accept(*this);
+        args.push_back(context.valueStack.back());
+        context.valueStack.pop_back();
     }
 
-    // TODO: Call the method
-    std::cout << "  ⚠️ Method call not yet implemented" << std::endl;
+    // Associate parameters with argument values
+    if (method->params) {
+        for (size_t i = 0; i < method->params->size() && i < args.size(); ++i) {
+            context.addLocal((*method->params)[i].name, args[i]);
+            std::cout << "  📝 Bound param " << (*method->params)[i].name << std::endl;
+        }
+    }
+
+    // 7. Evaluate method body
+    method->body->accept(*this);
+
+    // 8. Clean up
+    context.typeSystem.setCurrentType("");
+    context.typeSystem.popPlaceholder();
+    context.popVarScope();
+    context.typeSystem.popCurrentInstanceVars();
 
     std::cout << "✅ Method call processed" << std::endl;
 }

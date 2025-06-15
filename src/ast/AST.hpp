@@ -307,24 +307,26 @@ public:
 };
 
 struct TypeBody {
-    std::vector<AttributeDeclaration>* attributes;
-    std::vector<MethodDeclaration>* methods;
+    std::shared_ptr<std::vector<AttributeDeclaration>> attributes;
+    std::shared_ptr<std::vector<MethodDeclaration>> methods;
 
-    TypeBody( std::vector<AttributeDeclaration>* attributes, std::vector<MethodDeclaration>* methods)
+    TypeBody(std::shared_ptr<std::vector<AttributeDeclaration>> attributes, 
+             std::shared_ptr<std::vector<MethodDeclaration>> methods)
         : attributes(attributes), methods(methods) {}
 };
+
 class TypeDeclarationNode : public ASTNode {
 public:
     std::string name;
-    std::vector<Parameter>* constructorParams;
-    TypeBody* body;
+    std::shared_ptr<std::vector<Parameter>> constructorParams;
+    std::shared_ptr<TypeBody> body;
     std::optional<std::string> baseType;            // Si hay herencia
-    std::vector<std::shared_ptr<ASTNode>> baseArgs;                 // Argumentos para el padre
+    std::vector<std::shared_ptr<ASTNode>> baseArgs; // Argumentos para el padre
     int _line;
 
     TypeDeclarationNode(std::string name,
-                        std::vector<Parameter>* params,
-                        TypeBody* body,
+                        std::shared_ptr<std::vector<Parameter>> params,
+                        std::shared_ptr<TypeBody> body,
                         std::optional<std::string> baseType,
                         std::vector<std::shared_ptr<ASTNode>> baseArgs,
                         int line)
@@ -379,8 +381,10 @@ public:
     int _line;
     std::string _type;
 
-    MethodCallNode(std::shared_ptr<ASTNode> obj, std::string methodName, std::vector<ASTNode*> args, int line)
-        : object(obj), methodName(std::move(methodName)), args(std::move(args)), _line(line), _type("") {}
+    MethodCallNode(std::shared_ptr<ASTNode> obj, std::string methodName, 
+                  std::vector<std::shared_ptr<ASTNode>> args, int line)
+        : object(obj), methodName(std::move(methodName)), args(std::move(args)), 
+          _line(line), _type("") {}
 
     void accept(ASTVisitor& v) override { v.visit(*this); }
     int line() const override { return _line; }
@@ -389,11 +393,11 @@ public:
 
 class BaseCallNode : public ASTNode {
 public:
-    std::vector<ASTNode*> args;
+    std::vector<std::shared_ptr<ASTNode>> args;
     int _line;
     std::string _type;
 
-    BaseCallNode(std::vector<ASTNode*> args, int line)
+    BaseCallNode(std::vector<std::shared_ptr<ASTNode>> args, int line)
         : args(std::move(args)), _line(line), _type("") {}
 
     void accept(ASTVisitor& v) override { v.visit(*this); }

@@ -1,5 +1,5 @@
-#include "../src/parser/GrammarAugment.hpp"
-#include "../src/parser/LR1ItemSetBuilder.hpp"
+#include "../src/parser/core/GrammarAugment.hpp"
+#include "../src/parser/core/LR1ItemSetBuilder.hpp"
 #include <iostream>
 
 int main() {

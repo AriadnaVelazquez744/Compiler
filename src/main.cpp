@@ -5,12 +5,12 @@
 #include <memory>
 
 #include "lexer/Lexer.hpp"
-#include "parser/GrammarAugment.hpp"
-#include "parser/LR1ItemSetBuilder.hpp"
-#include "parser/LR1ParsingTables.hpp"
+#include "parser/core/GrammarAugment.hpp"
+#include "parser/core/LR1ItemSetBuilder.hpp"
+#include "parser/core/LR1ParsingTables.hpp"
 #include "parser/ParserDriver.hpp"
-#include "parser/SemanticActionDispatcher.hpp"
-#include "parser/PrecedenceSetup.hpp"
+#include "parser/grammar/SemanticActionDispatcher.hpp"
+#include "parser/grammar/PrecedenceSetup.hpp"
 #include "parser/TokenTypeStringMap.hpp"
 #include "ast/AST.hpp"
 // #include "semantic/SemanticAnalyzer.hpp"

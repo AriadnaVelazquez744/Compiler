@@ -1,7 +1,7 @@
-#include "../src/parser/GrammarAugment.hpp"
-#include "../src/parser/LR1ItemSetBuilder.hpp"
-#include "../src/parser/LR1ParsingTables.hpp"
-#include "../src/parser/PrecedenceSetup.hpp"
+#include "../src/parser/core/GrammarAugment.hpp"
+#include "../src/parser/core/LR1ItemSetBuilder.hpp"
+#include "../src/parser/core/LR1ParsingTables.hpp"
+#include "../src/parser/grammar/PrecedenceSetup.hpp"
 #include <iostream>
 
 int main() {

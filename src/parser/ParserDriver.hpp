@@ -2,8 +2,8 @@
 
 #include "../ast/AST.hpp"
 #include "../lexer/Lexer.hpp"
-#include "LR1ParsingTables.hpp"
-#include "SemanticActionDispatcher.hpp"
+#include "core/LR1ParsingTables.hpp"
+#include "grammar/SemanticActionDispatcher.hpp"
 #include <vector>
 #include <memory>
 #include <string>

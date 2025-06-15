@@ -1,4 +1,4 @@
-#include "../src/parser/GrammarNormalizer.hpp"
+#include "../src/parser/grammar/GrammarNormalizer.hpp"
 
 int main() {
     std::vector<RawRule> rules = {

@@ -1,9 +1,9 @@
-#include "../src/parser/Parser.hpp"
+#include "../src/parser/ParserDriver.hpp"
 #include "../src/ast/AST.hpp"
-#include "../src/parser/SemanticActionProvider.hpp"
-#include "../src/parser/GrammarAugment.hpp"
-#include "../src/parser/LR1ItemSetBuilder.hpp"
-#include "../src/parser/LR1ParsingTables.hpp"
+#include "../src/parser/grammar/SemanticActionProvider.hpp"
+#include "../src/parser/core/GrammarAugment.hpp"
+#include "../src/parser/core/LR1ItemSetBuilder.hpp"
+#include "../src/parser/core/LR1ParsingTables.hpp"
 #include <ostream>
 #include <iostream>
 

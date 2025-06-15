@@ -1,9 +1,9 @@
-#include "../src/parser/GrammarAugment.hpp"
+#include "../src/parser/grammar/GrammarAugment.hpp"
 #include <iostream>
 
 int main() {
     GrammarAugment grammar;
-    grammar.readGrammar("src/parser/BNFGrammar.bnf");
+    grammar.readGrammar("src/parser/grammar/BNFGrammar.bnf");
     grammar.computeFirstSets();
     grammar.computeFollowSets();
     grammar.printFirstSets();

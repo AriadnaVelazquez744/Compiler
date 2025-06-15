@@ -26,7 +26,7 @@ enum class TokenType {
     FUNC, LET, IN,
     IF, ELSE, ELIF,
     FOR, WHILE, RANGE,
-    TYPE, NEW, SELF, INHERITS,
+    TYPE, NEW, SELF, INHERITS, BASE,
 
     // Constants
     PI, E,

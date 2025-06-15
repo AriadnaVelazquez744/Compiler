@@ -64,7 +64,7 @@ std::shared_ptr<Token> Lexer::identifierOrKeyword() {
         {"while", TokenType::WHILE}, {"range", TokenType::RANGE},
         {"function", TokenType::FUNC}, {"type", TokenType::TYPE},
         {"new", TokenType::NEW}, {"self", TokenType::SELF},
-        {"inherits", TokenType::INHERITS},
+        {"inherits", TokenType::INHERITS}, {"base", TokenType::BASE},
         {"sin", TokenType::SIN}, {"cos", TokenType::COS},
         {"max", TokenType::MAX}, {"min", TokenType::MIN},
         {"sqrt", TokenType::SQRT}, {"exp", TokenType::EXP},

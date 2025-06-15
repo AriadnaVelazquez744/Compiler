@@ -10,6 +10,7 @@ SymbolTable::SymbolTable() {
     addType("Number", "Object");
     addType("String", "Object");
     addType("Boolean", "Object");
+    addType("Null", "");
 }
 
 void SymbolTable::enterScope() {

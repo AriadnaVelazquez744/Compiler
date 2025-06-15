@@ -749,6 +749,25 @@ void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
                     continue;
                 }
             }
+            else if (bin->op == "@" || bin->op == "@@") {
+                auto* leftId = dynamic_cast<IdentifierNode*>(bin->left);
+                auto* rightId = dynamic_cast<IdentifierNode*>(bin->right);
+                
+                if ((leftId && leftId->name == param.name) || 
+                    (rightId && rightId->name == param.name)) {
+                    // Si el otro operando es un literal, usar su tipo
+                    if (auto* otherLit = dynamic_cast<LiteralNode*>(leftId ? bin->right : bin->left)) {
+                        param.type = otherLit->type();
+                    } else {
+                        // Si no podemos inferir el tipo del otro operando,
+                        // permitir tanto String como Number
+                        param.type = "String";
+                    }
+                    symbolTable.updateSymbolType(param.name, param.type);
+                    std::cout << "    - Parámetro usado en concatenación, asignando tipo: " << param.type << "\n";
+                    continue;
+                }
+            }
         }
 
         // Si no es una operación binaria o no se pudo inferir por operador,
@@ -758,9 +777,15 @@ void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
         std::cout << "    - Tipo inferido: " << inferredType << "\n";
 
         if (inferredType == "Unknown") {
-            errors.emplace_back("No se pudo inferir el tipo del parámetro '" + param.name + "'", node.line());
-            node._type = "Error";
-            continue;
+            // Si no se pudo inferir, intentar inferir del tipo de retorno
+            if (bodyType != "Unknown" && bodyType != "Error") {
+                inferredType = bodyType;
+                std::cout << "    - Usando tipo de retorno como tipo inferido: " << inferredType << "\n";
+            } else {
+                errors.emplace_back("No se pudo inferir el tipo del parámetro '" + param.name + "'", node.line());
+                node._type = "Error";
+                continue;
+            }
         }
 
         param.type = inferredType;
@@ -847,12 +872,36 @@ void SemanticAnalyzer::visit(FunctionCallNode& node) {
             }
         }
 
+        // Si el tipo del argumento es Unknown, intentar inferirlo del tipo esperado
+        if (argType == "Unknown" && expectedType != "Unknown") {
+            argType = expectedType;
+            node.args[i]->type() = expectedType;
+        }
+
+        // Si ambos tipos son Unknown, intentar inferir del uso en el cuerpo
+        if (argType == "Unknown" && expectedType == "Unknown" && symbol->body) {
+            std::set<std::string> paramTypes;
+            collectParamUsages(symbol->body, symbol->params[i], paramTypes);
+            if (!paramTypes.empty()) {
+                expectedType = *paramTypes.begin();
+                symbol->params[i] = expectedType;
+                argType = expectedType;
+                node.args[i]->type() = expectedType;
+            }
+        }
+
+        // Verificar compatibilidad de tipos
         if (!conformsTo(argType, expectedType)) {
-            errors.emplace_back("Tipo incorrecto para argumento " + std::to_string(i + 1) +
-                " en '" + node.funcName + "': esperado '" + expectedType + "', obtenido '" + argType + "'",
-                node.line());
-            node._type = "Error";
-            return;
+            // Si el tipo esperado es Unknown, intentar inferir del argumento
+            if (expectedType == "Unknown" && argType != "Unknown") {
+                symbol->params[i] = argType;
+            } else {
+                errors.emplace_back("Tipo incorrecto para argumento " + std::to_string(i + 1) +
+                    " en '" + node.funcName + "': esperado '" + expectedType + "', obtenido '" + argType + "'",
+                    node.line());
+                node._type = "Error";
+                return;
+            }
         }
     }
 
@@ -989,16 +1038,35 @@ void SemanticAnalyzer::visit(LiteralNode& node) {
 // ------------------------------------------------------
 
 void SemanticAnalyzer::visit(BlockNode& node) {
-    symbolTable.enterScope();
-
-    std::string lastType = "Null";  // Por defecto
-    for (auto expr : node.expressions) {
-        expr->accept(*this);
-        lastType = expr->type();    // Actualiza con el tipo de la última expresión
+    if (node.expressions.empty()) {
+        node._type = "Null";
+        return;
     }
 
+    symbolTable.enterScope();
+
+    // Analizar todas las expresiones
+    for (auto* expr : node.expressions) {
+        expr->accept(*this);
+    }
+
+    // Obtener la última expresión
+    ASTNode* lastExpr = node.expressions.back();
+
+    // Si la última expresión es una declaración de función o un bloque que termina con una declaración de función
+    if (dynamic_cast<FunctionDeclarationNode*>(lastExpr) || 
+        (dynamic_cast<BlockNode*>(lastExpr) && 
+         !dynamic_cast<BlockNode*>(lastExpr)->expressions.empty() && 
+         dynamic_cast<FunctionDeclarationNode*>(dynamic_cast<BlockNode*>(lastExpr)->expressions.back()))) {
+        node._type = "Null";
+    } else {
+        // En caso contrario, el tipo del bloque es el tipo de su última expresión
+        node._type = lastExpr->type();
+    }
+
+        // node._type = node.expressions.back()->type();
+
     symbolTable.exitScope();
-    node._type = lastType;
 }
 
 // ------------------------------------------------------

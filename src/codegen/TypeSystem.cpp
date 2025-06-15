@@ -49,7 +49,7 @@ void TypeSystem::addMethod(const std::string& typeName, const std::string& metho
 }
 
 void TypeSystem::createInstance(const std::string& varName, const std::string& typeName, 
-                              const std::map<std::string, llvm::Value*>& vars) {
+                              const std::map<std::pair<std::string, std::string>, llvm::Value*>& vars) {
     if (!typeExists(typeName)) {
         throw std::runtime_error("Type '" + typeName + "' not found");
     }

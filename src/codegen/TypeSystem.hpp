@@ -10,6 +10,16 @@
 #include <llvm/IR/Value.h>
 
 /**
+ * @brief Represents a placeholder entry with name and type
+ */
+struct PlaceholderEntry {
+    std::string name;
+    std::string type;  // "var" or "method"
+
+    PlaceholderEntry(std::string n, std::string t) : name(std::move(n)), type(std::move(t)) {}
+};
+
+/**
  * @brief Represents a type's method with its parameters and body
  */
 struct TypeMethod {
@@ -63,17 +73,17 @@ private:
     // Maps instance variable names to their type names
     std::map<std::string, std::string> instanceTable;
     
-    // Maps instance names to their attribute values
-    std::map<std::string, std::map<std::string, llvm::Value*>> instanceVars;
+    // Maps instance names to their attribute values with type information
+    std::map<std::string, std::map<std::pair<std::string, std::string>, llvm::Value*>> instanceVars;
     
     // Current type being processed (for self and base calls)
     std::string currentType;
 
-    // Stack to track variables being processed
-    std::vector<std::string> placeholderStack;
+    // Stack to track variables being processed with their types
+    std::vector<PlaceholderEntry> placeholderStack;
 
-    // Stack to track current instance variables
-    std::vector<std::map<std::string, llvm::Value*>> currentInstanceVarsStack;
+    // Stack to track current instance variables with type information
+    std::vector<std::map<std::pair<std::string, std::string>, llvm::Value*>> currentInstanceVarsStack;
 
 public:
     /**
@@ -156,10 +166,10 @@ public:
      * @brief Creates a new instance of a type
      * @param varName Variable name for the instance
      * @param typeName Type name
-     * @param vars Map of attribute names to their values
+     * @param vars Map of attribute names and their types to their values
      */
     void createInstance(const std::string& varName, const std::string& typeName, 
-                       const std::map<std::string, llvm::Value*>& vars = {});
+                       const std::map<std::pair<std::string, std::string>, llvm::Value*>& vars = {});
 
     /**
      * @brief Gets the type name for an instance variable
@@ -171,33 +181,41 @@ public:
     /**
      * @brief Gets the attribute values for an instance
      * @param instanceName Instance name
-     * @return Map of attribute names to their values
+     * @return Map of attribute names and types to their values
      */
-    std::map<std::string, llvm::Value*>& getInstanceVars(const std::string& instanceName) {
-        return instanceVars[instanceName];
+    const std::map<std::pair<std::string, std::string>, llvm::Value*>& getInstanceVars(const std::string& instanceName) const {
+        auto it = instanceVars.find(instanceName);
+        if (it == instanceVars.end()) {
+            throw std::runtime_error("Instance '" + instanceName + "' not found");
+        }
+        return it->second;
     }
 
     /**
      * @brief Sets an attribute value for an instance
      * @param instanceName Instance name
      * @param attrName Attribute name
+     * @param attrType Attribute type
      * @param value Attribute value
      */
-    void setInstanceVar(const std::string& instanceName, const std::string& attrName, llvm::Value* value) {
-        instanceVars[instanceName][attrName] = value;
+    void setInstanceVar(const std::string& instanceName, const std::string& attrName, 
+                       const std::string& attrType, llvm::Value* value) {
+        instanceVars[instanceName][{attrName, attrType}] = value;
     }
 
     /**
      * @brief Gets an attribute value for an instance
      * @param instanceName Instance name
      * @param attrName Attribute name
+     * @param attrType Attribute type
      * @return Attribute value if found, nullptr otherwise
      */
-    llvm::Value* getInstanceVar(const std::string& instanceName, const std::string& attrName) {
+    llvm::Value* getInstanceVar(const std::string& instanceName, const std::string& attrName, 
+                               const std::string& attrType) const {
         auto it = instanceVars.find(instanceName);
         if (it == instanceVars.end()) return nullptr;
         
-        auto attrIt = it->second.find(attrName);
+        auto attrIt = it->second.find({attrName, attrType});
         return attrIt != it->second.end() ? attrIt->second : nullptr;
     }
 
@@ -239,32 +257,33 @@ public:
     }
 
     /**
-     * @brief Pushes a variable name onto the placeholder stack
+     * @brief Pushes a variable name and type onto the placeholder stack
      * @param varName Variable name to push
+     * @param varType Variable type to push
      */
-    void pushPlaceholder(const std::string& varName) {
-        placeholderStack.push_back(varName);
+    void pushPlaceholder(const std::string& varName, const std::string& varType) {
+        placeholderStack.push_back(PlaceholderEntry(varName, varType));
     }
 
     /**
-     * @brief Pops a variable name from the placeholder stack
-     * @return The popped variable name
+     * @brief Pops a variable name and type from the placeholder stack
+     * @return The popped PlaceholderEntry
      */
-    std::string popPlaceholder() {
+    PlaceholderEntry popPlaceholder() {
         if (placeholderStack.empty()) {
-            return "";
+            return PlaceholderEntry("", "");
         }
-        std::string varName = placeholderStack.back();
+        PlaceholderEntry entry = placeholderStack.back();
         placeholderStack.pop_back();
-        return varName;
+        return entry;
     }
 
     /**
-     * @brief Gets the current variable name being processed
-     * @return Current variable name, or empty string if stack is empty
+     * @brief Gets the current variable name and type being processed
+     * @return Current PlaceholderEntry, or empty entry if stack is empty
      */
-    std::string getCurrentPlaceholder() const {
-        return placeholderStack.empty() ? "" : placeholderStack.back();
+    PlaceholderEntry getCurrentPlaceholder() const {
+        return placeholderStack.empty() ? PlaceholderEntry("", "") : placeholderStack.back();
     }
 
     /**
@@ -279,7 +298,7 @@ public:
      * @brief Pushes a new instance variables map onto the stack
      * @param vars Map of instance variables to push
      */
-    void pushCurrentInstanceVars(const std::map<std::string, llvm::Value*>& vars) {
+    void pushCurrentInstanceVars(const std::map<std::pair<std::string, std::string>, llvm::Value*>& vars) {
         currentInstanceVarsStack.push_back(vars);
     }
 
@@ -293,28 +312,30 @@ public:
     }
 
     /**
+     * @brief Sets a value in the current instance variables map
+     * @param varName Variable name to set
+     * @param varType Variable type to set
+     * @param value Value to set
+     */
+    void setCurrentInstanceVar(const std::string& varName, const std::string& varType, llvm::Value* value) {
+        if (!currentInstanceVarsStack.empty()) {
+            currentInstanceVarsStack.back()[{varName, varType}] = value;
+        }
+    }
+
+    /**
      * @brief Gets a value from the current instance variables map
      * @param varName Variable name to look up
+     * @param varType Variable type to look up
      * @return Pointer to the value if found, nullptr otherwise
      */
-    llvm::Value* getCurrentInstanceVar(const std::string& varName) {
+    llvm::Value* getCurrentInstanceVar(const std::string& varName, const std::string& varType) const {
         if (currentInstanceVarsStack.empty()) {
             return nullptr;
         }
         auto& currentVars = currentInstanceVarsStack.back();
-        auto it = currentVars.find(varName);
+        auto it = currentVars.find({varName, varType});
         return it != currentVars.end() ? it->second : nullptr;
-    }
-
-    /**
-     * @brief Sets a value in the current instance variables map
-     * @param varName Variable name to set
-     * @param value Value to set
-     */
-    void setCurrentInstanceVar(const std::string& varName, llvm::Value* value) {
-        if (!currentInstanceVarsStack.empty()) {
-            currentInstanceVarsStack.back()[varName] = value;
-        }
     }
 
     /**

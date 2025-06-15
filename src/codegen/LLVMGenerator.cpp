@@ -520,9 +520,9 @@ void LLVMGenerator::visit(LetNode& node) {
 
     // 2. Process each declaration
     for (const LetDeclaration& decl : *node.declarations) {
-        // Push the variable name onto the placeholder stack before processing its value
-        context.typeSystem.pushPlaceholder(decl.name);
-        std::cout << "  📝 Added placeholder: " << decl.name << std::endl;
+        // Push the variable name and type onto the placeholder stack before processing its value
+        context.typeSystem.pushPlaceholder(decl.name, "var");
+        std::cout << "  📝 Added placeholder: " << decl.name << " of type var" << std::endl;
 
         // Process the initializer
         decl.initializer->accept(*this);
@@ -883,13 +883,13 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
     std::cout << "🔍 NewInstance: " << node.typeName << std::endl;
 
     // Check if we're inside a let declaration
-    std::string varName = context.typeSystem.getCurrentPlaceholder();
+    std::string varName = context.typeSystem.getCurrentPlaceholder().name;
     if (!varName.empty()) {
         std::cout << "  📝 Using placeholder variable: " << varName << std::endl;
     }
 
     // 1. Initialize instance variables map and set current type
-    std::map<std::string, llvm::Value*> instanceVars;
+    std::map<std::pair<std::string, std::string>, llvm::Value*> instanceVars;
     std::string currType = node.typeName;
     context.typeSystem.setCurrentType(currType);
 
@@ -952,9 +952,9 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
         for (const auto& [attrName, attr] : attrType) {
             if (attr.initializer) {
                 attr.initializer->accept(*this);
-                instanceVars[attrName] = context.valueStack.back();
+                instanceVars[{attrName, attr.TypeName}] = context.valueStack.back();
                 context.valueStack.pop_back();
-                std::cout << "    📝 Added attribute: " << attrName << std::endl;
+                std::cout << "    📝 Added attribute: " << attrName << " of type " << attr.TypeName << std::endl;
             }
         }
 
@@ -981,18 +981,22 @@ void LLVMGenerator::visit(MethodCallNode& node) {
     // 1. Get instance type and set currentType
     std::string typeName = context.typeSystem.getInstanceType(node.instanceName);
     if (typeName.empty()) {
-        throw std::runtime_error("Instance '" + node.instanceName + "' not found");
+        throw std::runtime_error("❌ Instance '" + node.instanceName + "' not found at line " + std::to_string(node.line()));
     }
     context.typeSystem.setCurrentType(typeName);
 
     // 2. Push instance variables onto the stack
-    context.typeSystem.pushCurrentInstanceVars(context.typeSystem.getInstanceVars(node.instanceName));
+    try {
+        context.typeSystem.pushCurrentInstanceVars(context.typeSystem.getInstanceVars(node.instanceName));
+    } catch (const std::runtime_error& e) {
+        throw std::runtime_error("❌ " + std::string(e.what()) + " at line " + std::to_string(node.line()));
+    }
 
     // 3. Create new varScope without inheritance
     context.pushVarScope(false);
 
     // 4. Set method name in placeholderStack
-    context.typeSystem.pushPlaceholder(node.methodName);
+    context.typeSystem.pushPlaceholder(node.methodName, "method");
 
     // 5. Find method in type hierarchy
     TypeMethod* method = nullptr;
@@ -1005,7 +1009,8 @@ void LLVMGenerator::visit(MethodCallNode& node) {
     }
 
     if (!method) {
-        throw std::runtime_error("Method '" + node.methodName + "' not found in type hierarchy starting from '" + typeName + "'");
+        throw std::runtime_error("❌ Method '" + node.methodName + "' not found in type hierarchy starting from '" + 
+                               typeName + "' at line " + std::to_string(node.line()));
     }
 
     // 6. Process method arguments and parameters
@@ -1039,12 +1044,19 @@ void LLVMGenerator::visit(MethodCallNode& node) {
 void LLVMGenerator::visit(SelfCallNode& node) {
     std::cout << "🔍 SelfCall: " << node.varName << std::endl;
 
+    // Get current type
+    std::string currentType = context.typeSystem.getCurrentType();
+    if (currentType.empty()) {
+        throw std::runtime_error("❌ 'self' access outside of type context at line " + std::to_string(node.line()));
+    }
+
     // Handle self variables
-    llvm::Value* val = context.typeSystem.getCurrentInstanceVar(node.varName);
+    llvm::Value* val = context.typeSystem.getCurrentInstanceVar(node.varName, currentType);
 
     if (!val) {
-        throw std::runtime_error("❌ Undefined variable '" + node.varName +
-                                 "' at line " + std::to_string(node.line()));
+        throw std::runtime_error("❌ Undefined variable '" + node.varName + 
+                               "' in type '" + currentType + 
+                               "' at line " + std::to_string(node.line()));
     }
 
     context.valueStack.push_back(val);

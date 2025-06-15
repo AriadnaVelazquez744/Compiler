@@ -1047,6 +1047,13 @@ void SemanticAnalyzer::visit(BlockNode& node) {
 
     // Analizar todas las expresiones
     for (auto* expr : node.expressions) {
+        // Verificar que no sea una declaración de tipo
+        if (dynamic_cast<TypeDeclarationNode*>(expr)) {
+            errors.emplace_back("No se pueden declarar tipos dentro de bloques", expr->line());
+            node._type = "Error";
+            symbolTable.exitScope();
+            return;
+        }
         expr->accept(*this);
     }
 

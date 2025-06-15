@@ -91,11 +91,16 @@ void LLVMGenerator::visit(LiteralNode& node) {
 }
 
 void LLVMGenerator::visit(BinaryOpNode& node) {
+    std::cout << "🔍 BinaryOp: " << node.op << " - Stack size before: " << context.valueStack.size() << std::endl;
+
     // 1. Generate left and right values recursively
     node.left->accept(*this);
     llvm::Value* left = context.valueStack.back(); context.valueStack.pop_back();
+    std::cout << "  📥 Left operand evaluated - Stack size: " << context.valueStack.size() << std::endl;
+
     node.right->accept(*this);
     llvm::Value* right = context.valueStack.back(); context.valueStack.pop_back();
+    std::cout << "  📥 Right operand evaluated - Stack size: " << context.valueStack.size() << std::endl;
 
     llvm::Value* result = nullptr;
     llvm::IRBuilder<>& builder = context.builder;
@@ -263,7 +268,8 @@ void LLVMGenerator::visit(BinaryOpNode& node) {
 
     // 6. Push the result onto the stack
     context.valueStack.push_back(result);
-    std::cout << "🔧 Binary op '" << op << "' emitted.\n";
+    std::cout << "  📤 Result pushed to stack - Final stack size: " << context.valueStack.size() << std::endl;
+    std::cout << "✅ Binary op '" << op << "' processed" << std::endl;
 }
 
 void LLVMGenerator::visit(UnaryOpNode& node) {
@@ -298,10 +304,13 @@ void LLVMGenerator::visit(BuiltInFunctionNode& node) {
     llvm::IRBuilder<>& builder = context.builder;
     std::vector<llvm::Value*> args;
 
+    std::cout << "🔍 BuiltInFunction: " << node.name << " - Stack size before args: " << context.valueStack.size() << std::endl;
+
     for (ASTNode* arg : node.args) {
         arg->accept(*this);
         args.push_back(context.valueStack.back());
         context.valueStack.pop_back();
+        std::cout << "  📥 Arg evaluated - Stack size: " << context.valueStack.size() << std::endl;
     }
 
     llvm::Value* result = nullptr;
@@ -321,7 +330,9 @@ void LLVMGenerator::visit(BuiltInFunctionNode& node) {
     };
 
     if (name == "print") {
+        std::cout << "  🖨️ Processing print statement" << std::endl;
         result = args[0];
+        std::cout << "  📤 Print value obtained - Stack size: " << context.valueStack.size() << std::endl;
     }
     else if (name == "sin" || name == "cos" || name == "sqrt" || name == "exp") {
         std::string fnName = "llvm." + name + ".f64";
@@ -379,6 +390,7 @@ void LLVMGenerator::visit(BuiltInFunctionNode& node) {
 
     if (result) {
         context.valueStack.push_back(result);
+        std::cout << "  📤 Result pushed to stack - Final stack size: " << context.valueStack.size() << std::endl;
     }
 
     std::cout << "🔧 Built-in function '" << name << "' emitted.\n";
@@ -526,6 +538,10 @@ void LLVMGenerator::visit(LetNode& node) {
 
         // Process the initializer
         decl.initializer->accept(*this);
+        if (auto* newInstance = dynamic_cast<NewInstanceNode*>(decl.initializer)) {
+            context.typeSystem.popPlaceholder();
+            continue;
+        }
         llvm::Value* initValue = context.valueStack.back();
         context.valueStack.pop_back();
 
@@ -845,6 +861,12 @@ void LLVMGenerator::visit(ForNode& node) {
 void LLVMGenerator::visit(TypeDeclarationNode& node) {
     std::cout << "🔍 TypeDeclaration: " << node.name << std::endl;
 
+    // Check if type is already registered
+    if (context.typeSystem.typeExists(node.name)) {
+        std::cout << "  ⚠️ Type " << node.name << " already registered, skipping" << std::endl;
+        return;
+    }
+
     // Register the type
     auto& typeDef = context.typeSystem.registerType(node.name, node.baseType);
 
@@ -864,7 +886,7 @@ void LLVMGenerator::visit(TypeDeclarationNode& node) {
     if (node.body->attributes) {
         for (const auto& attr : *node.body->attributes) {
             context.typeSystem.addAttribute(attr.name, node.name, attr.initializer);
-            std::cout << "  📝 Added attribute: " << attr.name << std::endl;
+            std::cout << "  📝 Added attribute: " << attr.name << " of type " << node.name << std::endl;
         }
     }
 
@@ -952,6 +974,9 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
         for (const auto& [attrName, attr] : attrType) {
             if (attr.initializer) {
                 attr.initializer->accept(*this);
+                if (context.valueStack.empty()) {
+                    break;
+                }
                 instanceVars[{attrName, attr.TypeName}] = context.valueStack.back();
                 context.valueStack.pop_back();
                 std::cout << "    📝 Added attribute: " << attrName << " of type " << attr.TypeName << std::endl;
@@ -962,6 +987,9 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
         if (father) {
             currType = *father;
             context.typeSystem.setCurrentType(currType);
+        }
+        else {
+            currType = "";
         }
     }
 
@@ -1042,7 +1070,7 @@ void LLVMGenerator::visit(MethodCallNode& node) {
 }
 
 void LLVMGenerator::visit(SelfCallNode& node) {
-    std::cout << "🔍 SelfCall: " << node.varName << std::endl;
+    std::cout << "🔍 SelfCall: " << node.varName << " - Stack size before: " << context.valueStack.size() << std::endl;
 
     // Get current type
     std::string currentType = context.typeSystem.getCurrentType();
@@ -1060,12 +1088,12 @@ void LLVMGenerator::visit(SelfCallNode& node) {
     }
 
     context.valueStack.push_back(val);
-
+    std::cout << "  📤 Self value pushed to stack - Final stack size: " << context.valueStack.size() << std::endl;
     std::cout << "✅ Self access processed" << std::endl;
 }
 
 void LLVMGenerator::visit(BaseCallNode& node) {
-    std::cout << "🔍 BaseCall" << std::endl;
+    std::cout << "🔍 BaseCall - Stack size before: " << context.valueStack.size() << std::endl;
 
     // 1. Get current placeholder and split into name and elemType
     PlaceholderEntry currentPlaceholder = context.typeSystem.getCurrentPlaceholder();
@@ -1097,12 +1125,14 @@ void LLVMGenerator::visit(BaseCallNode& node) {
                                    "' at line " + std::to_string(node.line()));
         }
         context.valueStack.push_back(val);
+        std::cout << "  📤 Base variable value pushed to stack - Final stack size: " << context.valueStack.size() << std::endl;
         std::cout << "✅ Base variable access processed" << std::endl;
         return;
     }
 
     // 4. Handle method call
     if (elemType == "method") {
+        std::cout << "  🔄 Processing base method call" << std::endl;
         // 4.1 Update current type to parent type
         context.typeSystem.setCurrentType(*parentType);
 
@@ -1151,6 +1181,7 @@ void LLVMGenerator::visit(BaseCallNode& node) {
         context.typeSystem.popPlaceholder();
         context.popVarScope();
 
+        std::cout << "  📤 Base method result pushed to stack - Final stack size: " << context.valueStack.size() << std::endl;
         std::cout << "✅ Base method call processed" << std::endl;
         return;
     }

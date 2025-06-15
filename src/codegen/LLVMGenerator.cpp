@@ -1063,3 +1063,98 @@ void LLVMGenerator::visit(SelfCallNode& node) {
 
     std::cout << "✅ Self access processed" << std::endl;
 }
+
+void LLVMGenerator::visit(BaseCallNode& node) {
+    std::cout << "🔍 BaseCall" << std::endl;
+
+    // 1. Get current placeholder and split into name and elemType
+    PlaceholderEntry currentPlaceholder = context.typeSystem.getCurrentPlaceholder();
+    std::string name = currentPlaceholder.name;
+    std::string elemType = currentPlaceholder.type;
+
+    if (name.empty() || elemType.empty()) {
+        throw std::runtime_error("❌ Invalid placeholder for base call at line " + std::to_string(node.line()));
+    }
+
+    // 2. Get current type and its parent
+    std::string currentType = context.typeSystem.getCurrentType();
+    if (currentType.empty()) {
+        throw std::runtime_error("❌ Base call outside of type context at line " + std::to_string(node.line()));
+    }
+
+    std::optional<std::string> parentType = context.typeSystem.getParentType(currentType);
+    if (!parentType) {
+        throw std::runtime_error("❌ No parent type found for type '" + currentType + 
+                               "' at line " + std::to_string(node.line()));
+    }
+
+    // 3. Handle variable access
+    if (elemType == "var") {
+        llvm::Value* val = context.typeSystem.getCurrentInstanceVar(name, *parentType);
+        if (!val) {
+            throw std::runtime_error("❌ Undefined variable '" + name + 
+                                   "' in parent type '" + *parentType + 
+                                   "' at line " + std::to_string(node.line()));
+        }
+        context.valueStack.push_back(val);
+        std::cout << "✅ Base variable access processed" << std::endl;
+        return;
+    }
+
+    // 4. Handle method call
+    if (elemType == "method") {
+        // 4.1 Update current type to parent type
+        context.typeSystem.setCurrentType(*parentType);
+
+        // 4.3 Create new varScope without inheritance
+        context.pushVarScope(false);
+
+        // 4.4 Set method name in placeholderStack
+        context.typeSystem.pushPlaceholder(name, "method");
+
+        // 4.5 Find method in type hierarchy
+        TypeMethod* method = nullptr;
+        std::string currType = *parentType;
+        while (!currType.empty() && !method) {
+            method = context.typeSystem.findMethod(currType, name);
+            if (!method) {
+                currType = context.typeSystem.getParentType(currType).value_or("");
+            }
+        }
+
+        if (!method) {
+            throw std::runtime_error("❌ Method '" + name + "' not found in type hierarchy starting from '" + 
+                                   *parentType + "' at line " + std::to_string(node.line()));
+        }
+
+        // 4.6 Process method arguments and parameters
+        std::vector<llvm::Value*> args;
+        for (ASTNode* arg : node.args) {
+            arg->accept(*this);
+            args.push_back(context.valueStack.back());
+            context.valueStack.pop_back();
+        }
+
+        // Associate parameters with argument values
+        if (method->params) {
+            for (size_t i = 0; i < method->params->size() && i < args.size(); ++i) {
+                context.addLocal((*method->params)[i].name, args[i]);
+                std::cout << "  📝 Bound param " << (*method->params)[i].name << std::endl;
+            }
+        }
+
+        // 4.7 Evaluate method body
+        method->body->accept(*this);
+
+        // 4.8 Clean up
+        context.typeSystem.setCurrentType(currentType); // Restore original type
+        context.typeSystem.popPlaceholder();
+        context.popVarScope();
+
+        std::cout << "✅ Base method call processed" << std::endl;
+        return;
+    }
+
+    throw std::runtime_error("❌ Invalid element type '" + elemType + 
+                           "' for base call at line " + std::to_string(node.line()));
+}

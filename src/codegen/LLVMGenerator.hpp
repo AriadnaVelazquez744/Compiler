@@ -27,15 +27,15 @@ public:
     void visit(class IfNode& node) override;
     void visit(class WhileNode& node) override;
     void visit(class ForNode& node) override;
+    void visit(class TypeDeclarationNode& node) override;
+    void visit(class NewInstanceNode& node) override;
+    void visit(class MethodCallNode& node) override;
+    void visit(class BaseCallNode& node) override;
+    void visit(class SelfCallNode& node) override;
     
     // Stubs for other nodes
     void visit(ASTNode&) override {}
     void visit(VariableDeclarationNode&) override {}
-    void visit(class TypeDeclarationNode& node) override;
-    void visit(class NewInstanceNode& node) override;
     void visit(AttributeDeclaration& node) override {}
     void visit(MethodDeclaration& node) override {}
-    void visit(class MethodCallNode& node) override;
-    void visit(BaseCallNode&) override {}
-    void visit(class SelfCallNode& node) override;
 };

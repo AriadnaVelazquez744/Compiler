@@ -1039,20 +1039,15 @@ void LLVMGenerator::visit(MethodCallNode& node) {
 void LLVMGenerator::visit(SelfCallNode& node) {
     std::cout << "🔍 SelfCall: " << node.varName << std::endl;
 
-    // Get current type
-    std::string typeName = context.typeSystem.getCurrentType();
-    if (typeName.empty()) {
-        throw std::runtime_error("No current type for self access");
+    // Handle self variables
+    llvm::Value* val = context.getCurrentInstanceVar(node.varName);
+
+    if (!val) {
+        throw std::runtime_error("❌ Undefined variable '" + node.varName +
+                                 "' at line " + std::to_string(node.line()));
     }
 
-    // Find the attribute
-    TypeAttribute* attr = context.typeSystem.findAttribute(typeName, node.varName);
-    if (!attr) {
-        throw std::runtime_error("Attribute '" + node.varName + "' not found in type '" + typeName + "'");
-    }
-
-    // TODO: Access the attribute value
-    std::cout << "  ⚠️ Self attribute access not yet implemented" << std::endl;
+    context.valueStack.push_back(val);
 
     std::cout << "✅ Self access processed" << std::endl;
 }

@@ -19,19 +19,23 @@ public:
     void visit(class UnaryOpNode& node) override;
     void visit(class BuiltInFunctionNode& node) override;
     void visit(class BlockNode& node) override;
-
+    void visit(class IdentifierNode& node) override;
+    void visit(class FunctionDeclarationNode& node) override;
+    void visit(class FunctionCallNode& node) override;
+    void visit(class LetNode& node) override;
+    void visit(class AssignmentNode& node) override;
+    void visit(class IfNode& node) override;
+    void visit(class WhileNode& node) override;
+    void visit(class ForNode& node) override;
+    void visit(class TypeDeclarationNode& node) override;
+    void visit(class NewInstanceNode& node) override;
+    void visit(class MethodCallNode& node) override;
+    void visit(class BaseCallNode& node) override;
+    void visit(class SelfCallNode& node) override;
+    
     // Stubs for other nodes
     void visit(ASTNode&) override {}
-    void visit(FunctionCallNode&) override {}
     void visit(VariableDeclarationNode&) override {}
-    void visit(IdentifierNode&) override {}
-    void visit(FunctionDeclarationNode&) override {}
-    void visit(LetNode&) override {}
-    void visit(AssignmentNode&) override {}
-    void visit(IfNode&) override {}
-    void visit(WhileNode&) override {}
-    void visit(ForNode&) override {}
-    void visit(TypeDeclarationNode&) override {}
-    void visit(NewInstanceNode&) override {}
-    void visit(MethodCallNode&) override {}
+    void visit(AttributeDeclaration& node) override {}
+    void visit(MethodDeclaration& node) override {}
 };

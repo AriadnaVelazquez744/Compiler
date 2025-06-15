@@ -228,12 +228,12 @@ public:
 
 class AssignmentNode : public ASTNode {
 public:
-    std::string name;
+    std::shared_ptr<ASTNode> name;
     std::shared_ptr<ASTNode> rhs;
     int _line;
     std::string _type;
 
-    AssignmentNode(std::string name, std::shared_ptr<ASTNode> rhs, int ln)
+    AssignmentNode(std::shared_ptr<ASTNode> name, std::shared_ptr<ASTNode> rhs, int ln)
         : name(name), rhs(rhs), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {
@@ -251,7 +251,7 @@ struct IfBranch {
 
 class IfNode : public ASTNode {
 public:
-    std::shared_ptr<std::vector<IfBranch>> branches; // if + elifs
+    std::shared_ptr<std::vector<IfBranch>> branches; // if + elif
     std::shared_ptr<ASTNode> elseBody;
     int _line;
     std::string _type;
@@ -306,25 +306,30 @@ public:
     std::string type() const override { return _type; }
 };
 
+struct TypeBody {
+    std::vector<AttributeDeclaration>* attributes;
+    std::vector<MethodDeclaration>* methods;
+
+    TypeBody( std::vector<AttributeDeclaration>* attributes, std::vector<MethodDeclaration>* methods)
+        : attributes(attributes), methods(methods) {}
+};
 class TypeDeclarationNode : public ASTNode {
 public:
     std::string name;
-    std::shared_ptr<std::vector<Parameter>> constructorParams;
-    std::shared_ptr<std::vector<AttributeDeclaration>> attributes;
-    std::shared_ptr<std::vector<MethodDeclaration>> methods;
+    std::vector<Parameter>* constructorParams;
+    TypeBody* body;
     std::optional<std::string> baseType;            // Si hay herencia
     std::vector<std::shared_ptr<ASTNode>> baseArgs;                 // Argumentos para el padre
     int _line;
 
     TypeDeclarationNode(std::string name,
-                        std::shared_ptr<std::vector<Parameter>> params,
-                        std::shared_ptr<std::vector<AttributeDeclaration>> attrs,
-                        std::shared_ptr<std::vector<MethodDeclaration>> methods,
+                        std::vector<Parameter>* params,
+                        TypeBody* body,
                         std::optional<std::string> baseType,
                         std::vector<std::shared_ptr<ASTNode>> baseArgs,
                         int line)
         : name(std::move(name)), constructorParams(params),
-          attributes(attrs), methods(methods),
+          body(body),
           baseType(std::move(baseType)), baseArgs(std::move(baseArgs)),
           _line(line) {}
 
@@ -335,8 +340,8 @@ public:
 
 class NewInstanceNode : public ASTNode {
 public:
-    std::string typeName;
-    std::vector<std::shared_ptr<ASTNode>> args;
+    std::string typeName;  // Name of the type being instantiated
+    std::vector<std::shared_ptr<ASTNode>> args;  // Arguments for the constructor
     int _line;
     std::string _type;
 
@@ -374,7 +379,7 @@ public:
     int _line;
     std::string _type;
 
-    MethodCallNode(std::shared_ptr<ASTNode> obj, std::string methodName, std::vector<std::shared_ptr<ASTNode>> args, int line)
+    MethodCallNode(std::shared_ptr<ASTNode> obj, std::string methodName, std::vector<ASTNode*> args, int line)
         : object(obj), methodName(std::move(methodName)), args(std::move(args)), _line(line), _type("") {}
 
     void accept(ASTVisitor& v) override { v.visit(*this); }
@@ -382,3 +387,35 @@ public:
     std::string type() const override { return _type; }
 };
 
+class BaseCallNode : public ASTNode {
+public:
+    std::vector<ASTNode*> args;
+    int _line;
+    std::string _type;
+
+    BaseCallNode(std::vector<ASTNode*> args, int line)
+        : args(std::move(args)), _line(line), _type("") {}
+
+    void accept(ASTVisitor& v) override { v.visit(*this); }
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
+class SelfCallNode : public ASTNode {
+public:
+    std::string varName;  // Name of the variable being accessed through self
+    int _line;
+    std::string _type;
+
+    SelfCallNode(const std::string& varName, int line)
+        : varName(varName), _line(line), _type("") {}
+
+    void accept(ASTVisitor& v) override { v.visit(*this); }
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
+    
+
+
+    

@@ -16,6 +16,7 @@
         "nonassoc",
         "nounput",
         "noyywrap",
+        "nullopt",
         "nullptr",
         "Parseado",
         "RPAREN",

@@ -22,6 +22,7 @@
         }
     },
     "files.associations": {
+        ".fantomasignore": "ignore",
         "*.tex": "bibtex",
         "any": "cpp",
         "array": "cpp",
@@ -100,6 +101,7 @@
         "stacktrace": "cpp",
         "strstream": "cpp",
         "barrier": "cpp",
+        "*.tcc": "cpp",
         "bitset": "cpp",
         "cfenv": "cpp",
         "coroutine": "cpp",
@@ -121,6 +123,7 @@
         "syncstream": "cpp",
         "typeindex": "cpp",
         "valarray": "cpp"
+
     },
     "C_Cpp.errorSquiggles": "disabled"
 

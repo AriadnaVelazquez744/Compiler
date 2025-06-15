@@ -48,7 +48,8 @@ void TypeSystem::addMethod(const std::string& typeName, const std::string& metho
     it->second.methods.emplace(methodName, TypeMethod(params, body, returnType));
 }
 
-void TypeSystem::createInstance(const std::string& varName, const std::string& typeName) {
+void TypeSystem::createInstance(const std::string& varName, const std::string& typeName, 
+                              const std::map<std::string, llvm::Value*>& vars) {
     if (!typeExists(typeName)) {
         throw std::runtime_error("Type '" + typeName + "' not found");
     }
@@ -59,6 +60,7 @@ void TypeSystem::createInstance(const std::string& varName, const std::string& t
     }
 
     instanceTable[varName] = typeName;
+    instanceVars[varName] = vars;
 }
 
 std::string TypeSystem::getInstanceType(const std::string& varName) const {

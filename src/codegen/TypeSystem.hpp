@@ -7,6 +7,7 @@
 #include <optional>
 #include <stdexcept>
 #include "../ast/AST.hpp"
+#include <llvm/IR/Value.h>
 
 /**
  * @brief Represents a type's method with its parameters and body
@@ -62,8 +63,14 @@ private:
     // Maps instance variable names to their type names
     std::map<std::string, std::string> instanceTable;
     
+    // Maps instance names to their attribute values
+    std::map<std::string, std::map<std::string, llvm::Value*>> instanceVars;
+    
     // Current type being processed (for self and base calls)
     std::string currentType;
+
+    // Stack to track variables being processed
+    std::vector<std::string> placeholderStack;
 
 public:
     /**
@@ -73,6 +80,55 @@ public:
      * @return Reference to the created type definition
      */
     TypeDefinition& registerType(const std::string& name, std::optional<std::string> parent = std::nullopt);
+
+    /**
+     * @brief Gets a type definition by name
+     * @param typeName Type name
+     * @return Reference to the type definition
+     */
+    TypeDefinition& getTypeDefinition(const std::string& typeName) {
+        auto it = typeTable.find(typeName);
+        if (it == typeTable.end()) {
+            throw std::runtime_error("Type '" + typeName + "' not found");
+        }
+        return it->second;
+    }
+
+    /**
+     * @brief Gets the constructor parameters for a type
+     * @param typeName Type name
+     * @return Vector of constructor parameter names
+     */
+    const std::vector<std::string>& getConstructorParams(const std::string& typeName) {
+        return getTypeDefinition(typeName).constructorParams;
+    }
+
+    /**
+     * @brief Gets the base arguments for a type
+     * @param typeName Type name
+     * @return Vector of base argument AST nodes
+     */
+    const std::vector<ASTNode*>& getBaseArgs(const std::string& typeName) {
+        return getTypeDefinition(typeName).baseArgs;
+    }
+
+    /**
+     * @brief Gets the attributes for a type
+     * @param typeName Type name
+     * @return Map of attribute names to their definitions
+     */
+    const std::map<std::string, TypeAttribute>& getAttributes(const std::string& typeName) {
+        return getTypeDefinition(typeName).attributes;
+    }
+
+    /**
+     * @brief Gets the parent type name for a type
+     * @param typeName Type name
+     * @return Optional parent type name
+     */
+    std::optional<std::string> getParentType(const std::string& typeName) {
+        return getTypeDefinition(typeName).parentType;
+    }
 
     /**
      * @brief Adds an attribute to a type
@@ -97,8 +153,10 @@ public:
      * @brief Creates a new instance of a type
      * @param varName Variable name for the instance
      * @param typeName Type name
+     * @param vars Map of attribute names to their values
      */
-    void createInstance(const std::string& varName, const std::string& typeName);
+    void createInstance(const std::string& varName, const std::string& typeName, 
+                       const std::map<std::string, llvm::Value*>& vars = {});
 
     /**
      * @brief Gets the type name for an instance variable
@@ -106,6 +164,39 @@ public:
      * @return Type name if found, empty string otherwise
      */
     std::string getInstanceType(const std::string& varName) const;
+
+    /**
+     * @brief Gets the attribute values for an instance
+     * @param instanceName Instance name
+     * @return Map of attribute names to their values
+     */
+    std::map<std::string, llvm::Value*>& getInstanceVars(const std::string& instanceName) {
+        return instanceVars[instanceName];
+    }
+
+    /**
+     * @brief Sets an attribute value for an instance
+     * @param instanceName Instance name
+     * @param attrName Attribute name
+     * @param value Attribute value
+     */
+    void setInstanceVar(const std::string& instanceName, const std::string& attrName, llvm::Value* value) {
+        instanceVars[instanceName][attrName] = value;
+    }
+
+    /**
+     * @brief Gets an attribute value for an instance
+     * @param instanceName Instance name
+     * @param attrName Attribute name
+     * @return Attribute value if found, nullptr otherwise
+     */
+    llvm::Value* getInstanceVar(const std::string& instanceName, const std::string& attrName) {
+        auto it = instanceVars.find(instanceName);
+        if (it == instanceVars.end()) return nullptr;
+        
+        auto attrIt = it->second.find(attrName);
+        return attrIt != it->second.end() ? attrIt->second : nullptr;
+    }
 
     /**
      * @brief Sets the current type being processed
@@ -142,5 +233,42 @@ public:
      */
     bool typeExists(const std::string& typeName) const {
         return typeTable.find(typeName) != typeTable.end();
+    }
+
+    /**
+     * @brief Pushes a variable name onto the placeholder stack
+     * @param varName Variable name to push
+     */
+    void pushPlaceholder(const std::string& varName) {
+        placeholderStack.push_back(varName);
+    }
+
+    /**
+     * @brief Pops a variable name from the placeholder stack
+     * @return The popped variable name
+     */
+    std::string popPlaceholder() {
+        if (placeholderStack.empty()) {
+            return "";
+        }
+        std::string varName = placeholderStack.back();
+        placeholderStack.pop_back();
+        return varName;
+    }
+
+    /**
+     * @brief Gets the current variable name being processed
+     * @return Current variable name, or empty string if stack is empty
+     */
+    std::string getCurrentPlaceholder() const {
+        return placeholderStack.empty() ? "" : placeholderStack.back();
+    }
+
+    /**
+     * @brief Checks if the placeholder stack is empty
+     * @return true if stack is empty, false otherwise
+     */
+    bool isPlaceholderStackEmpty() const {
+        return placeholderStack.empty();
     }
 }; 

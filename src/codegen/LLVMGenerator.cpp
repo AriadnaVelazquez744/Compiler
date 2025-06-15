@@ -520,7 +520,11 @@ void LLVMGenerator::visit(LetNode& node) {
 
     // 2. Process each declaration
     for (const LetDeclaration& decl : *node.declarations) {
-        // Process the initializer first
+        // Push the variable name onto the placeholder stack before processing its value
+        context.typeSystem.pushPlaceholder(decl.name);
+        std::cout << "  📝 Added placeholder: " << decl.name << std::endl;
+
+        // Process the initializer
         decl.initializer->accept(*this);
         llvm::Value* initValue = context.valueStack.back();
         context.valueStack.pop_back();
@@ -528,6 +532,9 @@ void LLVMGenerator::visit(LetNode& node) {
         // Add the variable to the current scope
         context.addLocal(decl.name, initValue);
         std::cout << "  📝 Added variable '" << decl.name << "' to scope" << std::endl;
+
+        // Pop the placeholder after processing
+        context.typeSystem.popPlaceholder();
     }
 
     // 3. Process the body
@@ -875,30 +882,97 @@ void LLVMGenerator::visit(TypeDeclarationNode& node) {
 void LLVMGenerator::visit(NewInstanceNode& node) {
     std::cout << "🔍 NewInstance: " << node.typeName << std::endl;
 
-    // Check if type exists
-    if (!context.typeSystem.typeExists(node.typeName)) {
-        throw std::runtime_error("Type '" + node.typeName + "' not found");
+    // Check if we're inside a let declaration
+    std::string varName = context.typeSystem.getCurrentPlaceholder();
+    if (!varName.empty()) {
+        std::cout << "  📝 Using placeholder variable: " << varName << std::endl;
     }
 
-    // Generate a unique instance name if not provided
-    std::string instanceName = "instance_" + node.typeName + "_" + std::to_string(context.valueStack.size());
+    // 1. Initialize instance variables map and set current type
+    std::map<std::string, llvm::Value*> instanceVars;
+    std::string currType = node.typeName;
+    context.typeSystem.setCurrentType(currType);
 
-    // Create the instance
-    context.typeSystem.createInstance(instanceName, node.typeName);
+    // 2. Start a new variable scope without inheritance
+    context.pushVarScope(false);
 
-    // Process constructor arguments if any
+    // Process constructor arguments first
+    std::vector<llvm::Value*> args;
     for (ASTNode* arg : node.args) {
         arg->accept(*this);
+        args.push_back(context.valueStack.back());
+        context.valueStack.pop_back();
     }
 
-    // TODO: Initialize instance attributes
-    std::cout << "  ⚠️ Instance initialization not yet implemented" << std::endl;
+    // Process type hierarchy
+    while (!currType.empty()) {
+        std::cout << "  🔄 Processing type: " << currType << std::endl;
+        
+        // Get type information
+        const auto& typeConst = context.typeSystem.getConstructorParams(currType);
+        const auto& fatherArgs = context.typeSystem.getBaseArgs(currType);
+        const auto& attrType = context.typeSystem.getAttributes(currType);
+        const auto& father = context.typeSystem.getParentType(currType);
 
-    // Push the instance name onto the stack
-    llvm::Value* instancePtr = context.builder.CreateGlobalStringPtr(instanceName);
-    context.valueStack.push_back(instancePtr);
+        // Process constructor parameters
+        if (!typeConst.empty()) {
+            for (size_t i = 0; i < typeConst.size() && i < args.size(); ++i) {
+                context.addLocal(typeConst[i], args[i]);
+                std::cout << "    📝 Added constructor param: " << typeConst[i] << std::endl;
+            }
+            // Remove processed args
+            args.erase(args.begin(), args.begin() + std::min(typeConst.size(), args.size()));
+        }
 
-    std::cout << "✅ Instance created: " << instanceName << std::endl;
+        // Process parent constructor parameters
+        if (father) {
+            const auto& fatherConst = context.typeSystem.getConstructorParams(*father);
+            
+            // Process base args first
+            if (!fatherArgs.empty()) {
+                for (size_t i = 0; i < fatherArgs.size() && i < fatherConst.size(); ++i) {
+                    fatherArgs[i]->accept(*this);
+                    context.addLocal(fatherConst[i], context.valueStack.back());
+                    context.valueStack.pop_back();
+                    std::cout << "    📝 Added base arg: " << fatherConst[i] << std::endl;
+                }
+            }
+
+            // Process remaining args with remaining parent constructor params
+            size_t startIdx = fatherArgs.size();
+            for (size_t i = 0; i < fatherConst.size() - startIdx && i < args.size(); ++i) {
+                context.addLocal(fatherConst[startIdx + i], args[i]);
+                std::cout << "    📝 Added remaining parent param: " << fatherConst[startIdx + i] << std::endl;
+            }
+            // Remove processed args
+            args.erase(args.begin(), args.begin() + std::min(fatherConst.size() - startIdx, args.size()));
+        }
+
+        // Process attributes
+        for (const auto& [attrName, attr] : attrType) {
+            if (attr.initializer) {
+                attr.initializer->accept(*this);
+                instanceVars[attrName] = context.valueStack.back();
+                context.valueStack.pop_back();
+                std::cout << "    📝 Added attribute: " << attrName << std::endl;
+            }
+        }
+
+        // Move to parent type
+        if (father) {
+            currType = *father;
+            context.typeSystem.setCurrentType(currType);
+        }
+    }
+
+    // Clean up
+    context.popVarScope();
+    context.typeSystem.setCurrentType("");
+
+    // Create the instance with its variables
+    context.typeSystem.createInstance(varName, node.typeName, instanceVars);
+
+    std::cout << "✅ Instance created: " << varName << std::endl;
 }
 
 void LLVMGenerator::visit(MethodCallNode& node) {

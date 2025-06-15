@@ -162,6 +162,7 @@ std::shared_ptr<Token> Lexer::matchOperator() {
         case ')': return match(")", TokenType::RPAREN);
         case '{': return match("{", TokenType::LBRACE);
         case '}': return match("}", TokenType::RBRACE);
+        case ':': return match(":", TokenType::DEFINE);
         default: break;
     }
 

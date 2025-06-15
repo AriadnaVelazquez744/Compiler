@@ -36,6 +36,7 @@ enum class TokenType {
     LPAREN, RPAREN,
     LBRACE, RBRACE,
     ASSIGN, REASSIGN, LAMBDA,
+    DEFINE,
     
     // Special
     END_OF_FILE,

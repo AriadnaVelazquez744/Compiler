@@ -841,6 +841,15 @@ void LLVMGenerator::visit(TypeDeclarationNode& node) {
     // Register the type
     auto& typeDef = context.typeSystem.registerType(node.name, node.baseType);
 
+    // Set constructor parameters and base args
+    typeDef.constructorParams.clear();
+    if (node.constructorParams) {
+        for (const auto& param : *node.constructorParams) {
+            typeDef.constructorParams.push_back(param.name);
+        }
+    }
+    typeDef.baseArgs = node.baseArgs;
+
     // Set current type for processing attributes and methods
     context.typeSystem.setCurrentType(node.name);
 
@@ -858,12 +867,6 @@ void LLVMGenerator::visit(TypeDeclarationNode& node) {
             context.typeSystem.addMethod(node.name, method.name, method.params, method.body, method.returnType);
             std::cout << "  📝 Added method: " << method.name << std::endl;
         }
-    }
-
-    // Process base constructor arguments if any
-    if (!node.baseArgs.empty() && node.baseType) {
-        // TODO: Handle base constructor arguments
-        std::cout << "  ⚠️ Base constructor arguments not yet implemented" << std::endl;
     }
 
     std::cout << "✅ Type " << node.name << " processed" << std::endl;

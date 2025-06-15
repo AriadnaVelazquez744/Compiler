@@ -42,9 +42,13 @@ struct TypeDefinition {
     std::optional<std::string> parentType;
     std::map<std::string, TypeAttribute> attributes;
     std::map<std::string, TypeMethod> methods;
+    std::vector<std::string> constructorParams;  // List of parameter names
+    std::vector<ASTNode*> baseArgs;            // Arguments for base constructor
 
     TypeDefinition(std::string n, std::optional<std::string> parent = std::nullopt)
-        : name(std::move(n)), parentType(std::move(parent)) {}
+        : name(std::move(n)), parentType(std::move(parent)), 
+          constructorParams(), 
+          baseArgs() {}
 };
 
 /**

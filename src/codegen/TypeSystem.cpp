@@ -11,6 +11,11 @@ TypeDefinition& TypeSystem::registerType(const std::string& name, std::optional<
     if (!inserted) {
         throw std::runtime_error("Type '" + name + "' already exists");
     }
+
+    // Initialize constructor parameters and base args
+    it->second.constructorParams = std::vector<std::string>();
+    it->second.baseArgs = std::vector<ASTNode*>();
+
     return it->second;
 }
 

@@ -622,8 +622,31 @@ void LLVMGenerator::visit(AssignmentNode& node) {
         context.valueStack.push_back(newValue);
         std::cout << "  ✅ Variable '" << varName << "' assigned in all relevant scopes - Stack size: " << context.valueStack.size() << std::endl;
     } else {
-        throw std::runtime_error("❌ Left-hand side of assignment must be an identifier at line " + 
-                               std::to_string(node.line()));
+        // Handle instance variable assignment
+        std::string varName;
+        
+        // 1. Get the variable name
+        if (auto* idNode = dynamic_cast<IdentifierNode*>(node.name)) {
+            varName = idNode->name;
+        } else if (auto* selfNode = dynamic_cast<SelfCallNode*>(node.name)) {
+            varName = selfNode->varName;
+        } else {
+            throw std::runtime_error("❌ Left-hand side of assignment must be an identifier or self access at line " + 
+                                   std::to_string(node.line()));
+        }
+
+        // 2. Look for the variable in currentInstanceVars
+        if (!context.typeSystem.isInstanceVarsStackEmpty()) {
+            // 3. Change its value for newValue
+            context.typeSystem.setCurrentInstanceVar(varName, "var", newValue);
+            std::cout << "  ✅ Instance variable '" << varName << "' assigned - Stack size: " << context.valueStack.size() << std::endl;
+        } else {
+            throw std::runtime_error("❌ Cannot assign to instance variable outside of type context at line " + 
+                                   std::to_string(node.line()));
+        }
+
+        // Push the assigned value onto the stack
+        context.valueStack.push_back(newValue);
     }
 }
 

@@ -4,6 +4,9 @@
 #include <algorithm>
 #include <vector>
 
+// Initialize the static member
+std::vector<std::shared_ptr<ASTNode>> SemanticActionDispatcher::rootNodes;
+
 SemanticActionDispatcher::SemanticActionDispatcher() {
     initializeRules();
 }
@@ -12,21 +15,27 @@ void SemanticActionDispatcher::initializeRules() {
     // Define production metadata: index → {lhs, rhs length}
     // Index must match the order in your parser's production list!
     ruleInfo[0] = {"S`", 1};                 // S' : program
-    ruleInfo[1] = {"program", 1, true};      // program : stm (pass-through)
-    ruleInfo[2] = {"alt_gen_0", 1};          // alt_gen_0 : NUMBER
-    ruleInfo[3] = {"alt_gen_0", 1};          // alt_gen_0 : ID
-    ruleInfo[4] = {"alt_gen_0", 1};          // alt_gen_0 : STRING
-    ruleInfo[5] = {"alt_gen_0", 1};          // alt_gen_0 : BOOLEAN
-    ruleInfo[6] = {"alt_gen_0", 1};          // alt_gen_0 : NULL_VAL
-    ruleInfo[7] = {"alt_gen_0", 1, true};    // alt_gen_0 : elem_expr (pass-through)
-    ruleInfo[8] = {"expr", 1, true};         // expr : alt_gen_0 (pass-through)
-    ruleInfo[12] = {"stm", 2, true};
+    ruleInfo[1] = {"program", 1};            // program : stmt
+    ruleInfo[2] = {"expr", 1};               // expr : NUMBER
+    ruleInfo[3] = {"expr", 3};               // expr : expr ADD expr
+    ruleInfo[4] = {"program", 1};            // program : stmt
+    ruleInfo[5] = {"program", 2};            // program : program stmt
+    ruleInfo[6] = {"stmt", 1};               // stmt : expr
 
-    // Binary operator productions: elem_expr : expr ADD expr, etc.
-    binaryOpProds = {9, 10, 11}; // Add indices for binary operator productions here
-    for (int idx : binaryOpProds) {
-        ruleInfo[idx] = {"elem_expr", 3}; // elem_expr : expr ADD expr (and similar for other ops)
+    // Binary operator productions
+    binaryOpProds = {3}; // Add indices for binary operator productions here
+
+    std::cout << "\n=== Production Rules ===" << std::endl;
+    for (const auto& [index, info] : ruleInfo) {
+        std::cout << "Rule " << index << ": " << info.lhs << " ::= ";
+        if (info.rhsLength == 0) {
+            std::cout << "ε";
+        } else {
+            std::cout << "RHS[" << info.rhsLength << "]";
+        }
+        std::cout << std::endl;
     }
+    std::cout << "=== End Production Rules ===\n" << std::endl;
 }
 
 int SemanticActionDispatcher::getRHSLength(int prodNumber) const {
@@ -40,46 +49,120 @@ std::string SemanticActionDispatcher::getLHS(int prodNumber) const {
 }
 
 std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
-        const std::vector<std::shared_ptr<ASTNode>>& children,
+        const std::vector<ParserValue>& children,
         const SourceLocation& location) {
 
-    // Don't reduce the augmented rule S' → program
-    if (prodNumber == 0) return nullptr;
-
-    // Fast path: pass-through productions like alt_gen_1 : ADD
-    auto ruleIt = ruleInfo.find(prodNumber);
-    if (ruleIt != ruleInfo.end() && ruleIt->second.isPassThrough) {
-        return children[0];
-    }
-
-    // Generalized binary operator handling
-    if (std::find(binaryOpProds.begin(), binaryOpProds.end(), prodNumber) != binaryOpProds.end()) {
-        return std::make_shared<BinaryOpNode>(
-            children[1]->type(), // op
-            children[0],
-            children[2],
-            location.line
-        );
-    }
+    std::shared_ptr<ASTNode> result;
+    std::cout << "\n=== Semantic Action ===" << std::endl;
+    std::cout << "Production: " << prodNumber << std::endl;
+    std::cout << "Number of children: " << children.size() << std::endl;
     
     switch (prodNumber) {
-        case 2: // alt_gen_0 : NUMBER
-            return std::make_shared<LiteralNode>(children[0]->type(), "number", location.line);
+        case 0: // S' : program
+            std::cout << "S' reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0])) {
+                result = std::get<std::shared_ptr<ASTNode>>(children[0]);
+                std::cout << "S' reduction: Got program node" << std::endl;
+            } else {
+                std::cout << "S' reduction: Invalid child type" << std::endl;
+            }
+            break;
 
-        case 3: // alt_gen_0 : ID
-            return std::make_shared<IdentifierNode>(children[0]->type(), location.line);
+        case 1: // program : stmt
+        case 4: // program : stmt (duplicate)
+            std::cout << "Program from stmt reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0])) {
+                result = std::get<std::shared_ptr<ASTNode>>(children[0]);
+                if (result != nullptr) {
+                    rootNodes.push_back(result);
+                    std::cout << "Added stmt to root nodes" << std::endl;
+                } else {
+                    std::cout << "Null stmt node" << std::endl;
+                }
+            } else {
+                std::cout << "Invalid child type in program reduction" << std::endl;
+            }
+            break;
 
-        case 4: // alt_gen_0 : STRING
-            return std::make_shared<LiteralNode>(children[0]->type(), "string", location.line);
+        case 2: { // expr : NUMBER
+            std::cout << "Expression from NUMBER reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<Token>>(children[0])) {
+                auto token = std::get<std::shared_ptr<Token>>(children[0]);
+                result = std::make_shared<LiteralNode>(
+                    token->lexeme,
+                    "Number",
+                    location.line
+                );
+                std::cout << "Created number literal node: " << token->lexeme << std::endl;
+            } else {
+                std::cout << "Invalid child type in number reduction" << std::endl;
+            }
+            break;
+        }
 
-        case 5: // alt_gen_0 : BOOLEAN
-            return std::make_shared<LiteralNode>(children[0]->type(), "bool", location.line);
+        case 3: { // expr : expr ADD expr
+            std::cout << "Binary expression reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0]) &&
+                std::holds_alternative<std::shared_ptr<ASTNode>>(children[2])) {
+                auto left = std::get<std::shared_ptr<ASTNode>>(children[0]);
+                auto right = std::get<std::shared_ptr<ASTNode>>(children[2]);
+                result = std::make_shared<BinaryOpNode>(
+                    "+",
+                    left,
+                    right,
+                    location.line
+                );
+                std::cout << "Created binary operation node" << std::endl;
+            } else {
+                std::cout << "Invalid child types in binary expression reduction" << std::endl;
+            }
+            break;
+        }
 
-        case 6: // alt_gen_0 : NULL_VAL
-            return std::make_shared<LiteralNode>("null", "null", location.line);
+        case 5: { // program : program stmt
+            std::cout << "Program from program stmt reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0]) &&
+                std::holds_alternative<std::shared_ptr<ASTNode>>(children[1])) {
+                auto stmt = std::get<std::shared_ptr<ASTNode>>(children[1]);
+                if (stmt != nullptr) {
+                    rootNodes.push_back(stmt);
+                    std::cout << "Added stmt to root nodes in program stmt reduction" << std::endl;
+                    result = stmt;
+                } else {
+                    result = std::get<std::shared_ptr<ASTNode>>(children[0]);
+                    std::cout << "Using existing program node" << std::endl;
+                }
+            } else {
+                std::cout << "Invalid child types in program stmt reduction" << std::endl;
+            }
+            break;
+        }
+
+        case 6: // stmt : expr
+            std::cout << "Statement from expr reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0])) {
+                result = std::get<std::shared_ptr<ASTNode>>(children[0]);
+                std::cout << "Created statement node from expression" << std::endl;
+            } else {
+                std::cout << "Invalid child type in statement reduction" << std::endl;
+            }
+            break;
 
         default:
             std::cerr << "Unhandled production: " << prodNumber << std::endl;
             return nullptr;
     }
+
+    std::cout << "=== End Semantic Action ===" << std::endl;
+    return result;
+}
+
+// Add method to get root nodes
+const std::vector<std::shared_ptr<ASTNode>>& SemanticActionDispatcher::getRootNodes() const {
+    return rootNodes;
+}
+
+// Add method to clear root nodes
+void SemanticActionDispatcher::clearRootNodes() {
+    rootNodes.clear();
 }

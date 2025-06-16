@@ -24,7 +24,7 @@ public:
 
 int main() {
     GrammarAugment grammar;
-    grammar.readGrammar("src/parser/BNFGrammar.bnf");
+    grammar.readGrammar("src/parser/grammar/BNFGrammar.bnf");
     grammar.computeFirstSets();
     grammar.computeFollowSets();
 

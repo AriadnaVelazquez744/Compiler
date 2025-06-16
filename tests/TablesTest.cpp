@@ -6,20 +6,20 @@
 
 int main() {
     GrammarAugment grammar;
-    grammar.readGrammar("src/parser/BNFGrammar.bnf");
+    grammar.readGrammar("src/parser/grammar/BNFGrammar.bnf");
     grammar.computeFirstSets();
     grammar.computeFollowSets();
 
     std::cout << "\n Construcción de conjuntos FIRST y FALLOW" << std::endl;
     // std::cout << "=== FIRST Sets ===" << std::endl;
-    // grammar.printFirstSets();
+    grammar.printFirstSets();
 
     // std::cout << "\n=== FOLLOW Sets ===" << std::endl;
-    // grammar.printFollowSets();
+    grammar.printFollowSets();
 
     LR1ItemSetBuilder builder(grammar);
     builder.constructItemSets();
-    // builder.printItemSets();
+    builder.printItemSets();
     std::cout << "\n Construcción de los conjuntos LR1" << std::endl;
 
     LR1ParsingTableGenerator tableBuilder(grammar, builder);
@@ -27,7 +27,9 @@ int main() {
     
     setupPrecedence(tableBuilder); // External config
     tableBuilder.generateParsingTables();
-    // tableBuilder.printActionTable();
+    tableBuilder.printActionTable();
+    tableBuilder.printGotoTable();
+    tableBuilder.printExpectedTokens();
     std::cout << "\n Se generaron las tablas ACTION y GOTO" << std::endl;
 
     return 0;

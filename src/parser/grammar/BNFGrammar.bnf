@@ -6,4 +6,9 @@ program : program stmt
 stmt : expr 
 
 expr : NUMBER
+expr : STRING
+expr : BOOL
+expr : ID
+expr : E
+expr : PI
 expr : expr ADD expr

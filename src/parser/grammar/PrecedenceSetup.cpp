@@ -34,6 +34,11 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
     const std::vector<ProductionInfo> productions = {
         // Basic expressions (highest precedence)
         {"expr", {"NUMBER"}, 25},                    // NUMBER -> expr
+        {"expr", {"STRING"}, 25},                    // STRING -> expr
+        {"expr", {"BOOL"}, 25},                   // BOOLEAN -> expr
+        {"expr", {"ID"}, 25},                        // ID -> expr
+        {"expr", {"E"}, 25},                         // E -> expr
+        {"expr", {"PI"}, 25},                        // PI -> expr
         {"expr", {"expr", "ADD", "expr"}, 20},       // expr ADD expr -> expr
         
         // Statements

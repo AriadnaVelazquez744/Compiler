@@ -17,13 +17,18 @@ void SemanticActionDispatcher::initializeRules() {
     ruleInfo[0] = {"S`", 1};                 // S' : program
     ruleInfo[1] = {"program", 1};            // program : stmt
     ruleInfo[2] = {"expr", 1};               // expr : NUMBER
-    ruleInfo[3] = {"expr", 3};               // expr : expr ADD expr
-    ruleInfo[4] = {"program", 1};            // program : stmt
-    ruleInfo[5] = {"program", 2};            // program : program stmt
-    ruleInfo[6] = {"stmt", 1};               // stmt : expr
+    ruleInfo[3] = {"expr", 1};               // expr : STRING
+    ruleInfo[4] = {"expr", 1};               // expr : BOOLEAN
+    ruleInfo[5] = {"expr", 1};               // expr : ID
+    ruleInfo[6] = {"expr", 1};               // expr : E
+    ruleInfo[7] = {"expr", 1};               // expr : PI
+    ruleInfo[8] = {"expr", 3};               // expr : expr ADD expr
+    ruleInfo[9] = {"program", 1};            // program : stmt
+    ruleInfo[10] = {"program", 2};           // program : program stmt
+    ruleInfo[11] = {"stmt", 1};              // stmt : expr
 
     // Binary operator productions
-    binaryOpProds = {3}; // Add indices for binary operator productions here
+    binaryOpProds = {8}; // Add indices for binary operator productions here
 
     std::cout << "\n=== Production Rules ===" << std::endl;
     for (const auto& [index, info] : ruleInfo) {
@@ -69,7 +74,7 @@ std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
             break;
 
         case 1: // program : stmt
-        case 4: // program : stmt (duplicate)
+        case 9: // program : stmt (duplicate)
             std::cout << "Program from stmt reduction" << std::endl;
             if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0])) {
                 result = std::get<std::shared_ptr<ASTNode>>(children[0]);
@@ -100,26 +105,95 @@ std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
             break;
         }
 
-        case 3: { // expr : expr ADD expr
+        case 3: { // expr : STRING
+            std::cout << "Expression from STRING reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<Token>>(children[0])) {
+                auto token = std::get<std::shared_ptr<Token>>(children[0]);
+                result = std::make_shared<LiteralNode>(
+                    token->lexeme,
+                    "String",
+                    location.line
+                );
+                std::cout << "Created string literal node: " << token->lexeme << std::endl;
+            }
+            break;
+        }
+
+        case 4: { // expr : BOOLEAN
+            std::cout << "Expression from BOOLEAN reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<Token>>(children[0])) {
+                auto token = std::get<std::shared_ptr<Token>>(children[0]);
+                result = std::make_shared<LiteralNode>(
+                    token->lexeme,
+                    "Boolean",
+                    location.line
+                );
+                std::cout << "Created boolean literal node: " << token->lexeme << std::endl;
+            }
+            break;
+        }
+
+        case 5: { // expr : ID
+            std::cout << "Expression from ID reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<Token>>(children[0])) {
+                auto token = std::get<std::shared_ptr<Token>>(children[0]);
+                result = std::make_shared<IdentifierNode>(
+                    token->lexeme,
+                    location.line
+                );
+                std::cout << "Created identifier node: " << token->lexeme << std::endl;
+            }
+            break;
+        }
+
+        case 6: { // expr : E
+            std::cout << "Expression from E reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<Token>>(children[0])) {
+                auto token = std::get<std::shared_ptr<Token>>(children[0]);
+                result = std::make_shared<IdentifierNode>(
+                    "e",
+                    location.line
+                );
+                std::cout << "Created identifier node for E" << std::endl;
+            }
+            break;
+        }
+
+        case 7: { // expr : PI
+            std::cout << "Expression from PI reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<Token>>(children[0])) {
+                auto token = std::get<std::shared_ptr<Token>>(children[0]);
+                result = std::make_shared<IdentifierNode>(
+                    "pi",
+                    location.line
+                );
+                std::cout << "Created identifier node for PI" << std::endl;
+            }
+            break;
+        }
+
+        case 8: { // expr : expr ADD expr
             std::cout << "Binary expression reduction" << std::endl;
             if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0]) &&
+                std::holds_alternative<std::shared_ptr<Token>>(children[1]) &&
                 std::holds_alternative<std::shared_ptr<ASTNode>>(children[2])) {
                 auto left = std::get<std::shared_ptr<ASTNode>>(children[0]);
+                auto op = std::get<std::shared_ptr<Token>>(children[1]);
                 auto right = std::get<std::shared_ptr<ASTNode>>(children[2]);
                 result = std::make_shared<BinaryOpNode>(
-                    "+",
+                    op->lexeme,
                     left,
                     right,
                     location.line
                 );
-                std::cout << "Created binary operation node" << std::endl;
+                std::cout << "Created binary operation node: " << op->lexeme << std::endl;
             } else {
                 std::cout << "Invalid child types in binary expression reduction" << std::endl;
             }
             break;
         }
 
-        case 5: { // program : program stmt
+        case 10: { // program : program stmt
             std::cout << "Program from program stmt reduction" << std::endl;
             if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0]) &&
                 std::holds_alternative<std::shared_ptr<ASTNode>>(children[1])) {
@@ -138,7 +212,7 @@ std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
             break;
         }
 
-        case 6: // stmt : expr
+        case 11: // stmt : expr
             std::cout << "Statement from expr reduction" << std::endl;
             if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0])) {
                 result = std::get<std::shared_ptr<ASTNode>>(children[0]);

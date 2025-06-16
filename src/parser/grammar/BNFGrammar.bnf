@@ -12,3 +12,18 @@ expr : ID
 expr : E
 expr : PI
 expr : expr ADD expr
+expr : expr SUB expr
+expr : expr MUL expr
+expr : expr DIV expr
+expr : expr MOD expr
+expr : expr POW expr
+expr : expr CONCAT expr
+expr : expr CONCAT_SPACE expr
+expr : expr LT expr
+expr : expr GT expr
+expr : expr LE expr
+expr : expr GE expr
+expr : expr EQ expr
+expr : expr NE expr
+expr : expr AND expr
+expr : expr OR expr

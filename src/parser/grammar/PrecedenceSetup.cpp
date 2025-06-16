@@ -14,9 +14,24 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
     
     // Define precedences for terminals
     const PrecInfo ops[] = {
-        // Highest precedence first
-        {"ADD", 20, A::Left},  // Binary operators have higher precedence than productions
-        {"SEMICOLON", 5, A::Left}  // Lowest precedence
+        // Lowest number = highest precedence
+        {"POW", 1, A::Right},   // Highest precedence, right associative
+        {"MUL", 2, A::Left},    // Multiplication and division
+        {"DIV", 2, A::Left},
+        {"MOD", 2, A::Left},
+        {"ADD", 3, A::Left},    // Addition and subtraction
+        {"SUB", 3, A::Left},
+        {"CONCAT", 4, A::Left}, // String concatenation
+        {"CONCAT_SPACE", 4, A::Left},
+        {"LT", 5, A::Left},     // Comparison operators
+        {"GT", 5, A::Left},
+        {"LE", 5, A::Left},
+        {"GE", 5, A::Left},
+        {"EQ", 5, A::Left},
+        {"NE", 5, A::Left},
+        {"AND", 6, A::Left},    // Logical operators
+        {"OR", 6, A::Left},
+        {"SEMICOLON", 7, A::Left}  // Lowest precedence
     };
 
     // Set terminal precedence for operators
@@ -33,23 +48,40 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
 
     const std::vector<ProductionInfo> productions = {
         // Basic expressions (highest precedence)
-        {"expr", {"NUMBER"}, 25},                    // NUMBER -> expr
-        {"expr", {"STRING"}, 25},                    // STRING -> expr
-        {"expr", {"BOOL"}, 25},                   // BOOLEAN -> expr
-        {"expr", {"ID"}, 25},                        // ID -> expr
-        {"expr", {"E"}, 25},                         // E -> expr
-        {"expr", {"PI"}, 25},                        // PI -> expr
-        {"expr", {"expr", "ADD", "expr"}, 20},       // expr ADD expr -> expr
+        {"expr", {"NUMBER"}, 0},                     // NUMBER -> expr
+        {"expr", {"STRING"}, 0},                     // STRING -> expr
+        {"expr", {"BOOL"}, 0},                       // BOOLEAN -> expr
+        {"expr", {"ID"}, 0},                         // ID -> expr
+        {"expr", {"E"}, 0},                          // E -> expr
+        {"expr", {"PI"}, 0},                         // PI -> expr
+        
+        // Binary operators (ordered by precedence)
+        {"expr", {"expr", "POW", "expr"}, 1},        // expr POW expr -> expr
+        {"expr", {"expr", "MUL", "expr"}, 3},        // expr MUL expr -> expr
+        {"expr", {"expr", "DIV", "expr"}, 3},        // expr DIV expr -> expr
+        {"expr", {"expr", "MOD", "expr"}, 3},        // expr MOD expr -> expr
+        {"expr", {"expr", "ADD", "expr"}, 2},        // expr ADD expr -> expr
+        {"expr", {"expr", "SUB", "expr"}, 2},        // expr SUB expr -> expr
+        {"expr", {"expr", "CONCAT", "expr"}, 4},     // expr CONCAT expr -> expr
+        {"expr", {"expr", "CONCAT_SPACE", "expr"}, 4}, // expr CONCAT_SPACE expr -> expr
+        {"expr", {"expr", "LT", "expr"}, 5},         // expr LT expr -> expr
+        {"expr", {"expr", "GT", "expr"}, 5},         // expr GT expr -> expr
+        {"expr", {"expr", "LE", "expr"}, 5},         // expr LE expr -> expr
+        {"expr", {"expr", "GE", "expr"}, 5},         // expr GE expr -> expr
+        {"expr", {"expr", "EQ", "expr"}, 5},         // expr EQ expr -> expr
+        {"expr", {"expr", "NE", "expr"}, 5},         // expr NE expr -> expr
+        {"expr", {"expr", "AND", "expr"}, 6},        // expr AND expr -> expr
+        {"expr", {"expr", "OR", "expr"}, 6},         // expr OR expr -> expr
         
         // Statements
-        {"stmt", {"expr"}, 15},                      // expr -> stmt
+        {"stmt", {"expr"}, 8},                       // expr -> stmt
         
         // Program
-        {"program", {"stmt"}, 10},                    // stmt -> program
-        {"program", {"program", "stmt"}, 10},         // program stmt -> program
+        {"program", {"stmt"}, 9},                     // stmt -> program
+        {"program", {"program", "stmt"}, 9},          // program stmt -> program
         
         // Start symbol
-        {"S`", {"program"}, 5}                       // program -> S' (lowest precedence)
+        {"S`", {"program"}, 10}                      // program -> S' (lowest precedence)
     };
 
     // Set precedence for each production

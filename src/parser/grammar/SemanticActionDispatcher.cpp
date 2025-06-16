@@ -23,12 +23,27 @@ void SemanticActionDispatcher::initializeRules() {
     ruleInfo[6] = {"expr", 1};               // expr : E
     ruleInfo[7] = {"expr", 1};               // expr : PI
     ruleInfo[8] = {"expr", 3};               // expr : expr ADD expr
-    ruleInfo[9] = {"program", 1};            // program : stmt
-    ruleInfo[10] = {"program", 2};           // program : program stmt
-    ruleInfo[11] = {"stmt", 1};              // stmt : expr
+    ruleInfo[9] = {"expr", 3};               // expr : expr SUB expr
+    ruleInfo[10] = {"expr", 3};              // expr : expr MUL expr
+    ruleInfo[11] = {"expr", 3};              // expr : expr DIV expr
+    ruleInfo[12] = {"expr", 3};              // expr : expr MOD expr
+    ruleInfo[13] = {"expr", 3};              // expr : expr POW expr
+    ruleInfo[14] = {"expr", 3};              // expr : expr CONCAT expr
+    ruleInfo[15] = {"expr", 3};              // expr : expr CONCAT_SPACE expr
+    ruleInfo[16] = {"expr", 3};              // expr : expr LT expr
+    ruleInfo[17] = {"expr", 3};              // expr : expr GT expr
+    ruleInfo[18] = {"expr", 3};              // expr : expr LE expr
+    ruleInfo[19] = {"expr", 3};              // expr : expr GE expr
+    ruleInfo[20] = {"expr", 3};              // expr : expr EQ expr
+    ruleInfo[21] = {"expr", 3};              // expr : expr NE expr
+    ruleInfo[22] = {"expr", 3};              // expr : expr AND expr
+    ruleInfo[23] = {"expr", 3};              // expr : expr OR expr
+    ruleInfo[24] = {"program", 1};           // program : stmt
+    ruleInfo[25] = {"program", 2};           // program : program stmt
+    ruleInfo[26] = {"stmt", 1};              // stmt : expr
 
     // Binary operator productions
-    binaryOpProds = {8}; // Add indices for binary operator productions here
+    binaryOpProds = {8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23};
 
     std::cout << "\n=== Production Rules ===" << std::endl;
     for (const auto& [index, info] : ruleInfo) {
@@ -74,7 +89,7 @@ std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
             break;
 
         case 1: // program : stmt
-        case 9: // program : stmt (duplicate)
+        case 24: // program : stmt
             std::cout << "Program from stmt reduction" << std::endl;
             if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0])) {
                 result = std::get<std::shared_ptr<ASTNode>>(children[0]);
@@ -193,7 +208,41 @@ std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
             break;
         }
 
-        case 10: { // program : program stmt
+        case 9: // expr : expr SUB expr
+        case 10: // expr : expr MULT expr
+        case 11: // expr : expr DIV expr
+        case 12: // expr : expr MOD expr
+        case 13: // expr : expr POW expr
+        case 14: // expr : expr CONCAT expr
+        case 15: // expr : expr CONCAT_SPACE expr
+        case 16: // expr : expr LT expr
+        case 17: // expr : expr GT expr
+        case 18: // expr : expr LE expr
+        case 19: // expr : expr GE expr
+        case 20: // expr : expr EQ expr
+        case 21: // expr : expr NE expr
+        case 22: // expr : expr AND expr
+        case 23: // expr : expr OR expr
+            std::cout << "Binary expression reduction" << std::endl;
+            if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0]) &&
+                std::holds_alternative<std::shared_ptr<Token>>(children[1]) &&
+                std::holds_alternative<std::shared_ptr<ASTNode>>(children[2])) {
+                auto left = std::get<std::shared_ptr<ASTNode>>(children[0]);
+                auto op = std::get<std::shared_ptr<Token>>(children[1]);
+                auto right = std::get<std::shared_ptr<ASTNode>>(children[2]);
+                result = std::make_shared<BinaryOpNode>(
+                    op->lexeme,
+                    left,
+                    right,
+                    location.line
+                );
+                std::cout << "Created binary operation node: " << op->lexeme << std::endl;
+            } else {
+                std::cout << "Invalid child types in binary expression reduction" << std::endl;
+            }
+            break;
+
+        case 25: { // program : program stmt
             std::cout << "Program from program stmt reduction" << std::endl;
             if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0]) &&
                 std::holds_alternative<std::shared_ptr<ASTNode>>(children[1])) {
@@ -212,7 +261,7 @@ std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
             break;
         }
 
-        case 11: // stmt : expr
+        case 26: // stmt : expr
             std::cout << "Statement from expr reduction" << std::endl;
             if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0])) {
                 result = std::get<std::shared_ptr<ASTNode>>(children[0]);

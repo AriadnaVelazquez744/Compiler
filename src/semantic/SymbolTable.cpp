@@ -5,7 +5,7 @@ SymbolTable::SymbolTable() {
     enterScope(); // Scope global
     // Registrar constantes matemáticas
     addSymbol("pi", "Number", true);
-    addSymbol("E", "Number", true);
+    addSymbol("e", "Number", true);
     addType("Object", "");
     addType("Number", "Object");
     addType("String", "Object");
@@ -56,7 +56,7 @@ bool SymbolTable::addFunction(
     auto& current = scopes.back();
     if (current.find(name) != current.end()) return false;
 
-    current[name] = Symbol{"function", returnType, false, params, body}; // incluye cuerpo
+    current[name] = Symbol{"function", returnType, false, params, body}; 
     return true;
 }
 
@@ -70,8 +70,8 @@ bool SymbolTable::addType(
         name,                  // std::string name
         parentType,            // std::string parentType
         typeParams,            // std::vector<std::string> typeParams
-        {},                    // Atributos (inicialmente vacío)
-        {}                     // Métodos (inicialmente vacío)
+        {},                    // Atributos 
+        {}                     // Métodos 
     };
     return true;
 }
@@ -150,19 +150,18 @@ std::string SymbolTable::lowestCommonAncestor(const std::vector<std::string>& ty
     if (types.empty()) return "Object";
     if (types.size() == 1) return types[0];
 
-    // Tomamos el primero como base y comparamos contra los otros
+    
     std::string candidate = types[0];
 
     for (size_t i = 1; i < types.size(); ++i) {
         std::string other = types[i];
 
         if (isSubtype(candidate, other)) {
-            // nada, candidate es más específico o igual
+            
         } else if (isSubtype(other, candidate)) {
-            candidate = other; // más específico
+            candidate = other; 
         } else {
-            // No son compatibles, subir por la jerarquía
-            // hasta encontrar un ancestro común
+            
             TypeSymbol* type = lookupType(candidate);
             while (type && type->name != "Object") {
                 type = lookupType(type->parentType);
@@ -172,7 +171,7 @@ std::string SymbolTable::lowestCommonAncestor(const std::vector<std::string>& ty
                 }
             }
 
-            // Si no se encontró común, terminamos en Object
+            
             if (!type) return "Object";
         }
     }

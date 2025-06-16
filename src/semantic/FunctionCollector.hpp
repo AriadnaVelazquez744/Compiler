@@ -15,8 +15,8 @@ class FunctionCollector : public ASTVisitor {
 
         void addBuiltins();
     
-        // Implementar TODOS los métodos de ASTVisitor
-        void visit(ASTNode& node) override {} // <--- Añadir esta línea
+        
+        void visit(ASTNode& node) override {} 
         void visit(FunctionDeclarationNode& node) override;
         void visit(BinaryOpNode& node) override {}
         void visit(FunctionCallNode& node) override {}

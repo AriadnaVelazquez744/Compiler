@@ -15,7 +15,7 @@ const std::set<std::string> BUILTIN_TYPES = {"Object", "Number", "String", "Bool
 struct Symbol {
     std::string kind;       // "variable", "function", "type"
     std::string type;       // Tipo del símbolo (para variables) o tipo de retorno (funciones)
-    bool is_const;          // ¿Es constante? (solo aplica a variables)
+    bool is_const;          // ¿Es constante? 
     std::vector<std::string> params; // Parámetros (funciones) o tipoParams (tipos)
     ASTNode* body = nullptr;
 
@@ -23,7 +23,7 @@ struct Symbol {
     Symbol(std::string kind, std::string type, bool is_const, std::vector<std::string> params, ASTNode* body = nullptr)
         : kind(std::move(kind)), type(std::move(type)), is_const(is_const), params(std::move(params)), body(body) {}
 
-    // Constructor mínimo útil
+    // Constructor mínimo 
     Symbol(std::string type, bool is_const, std::vector<std::string> params = {}, ASTNode* body = nullptr)
         : kind("variable"), type(std::move(type)), is_const(is_const), params(std::move(params)), body(body) {}
 
@@ -34,17 +34,17 @@ struct Symbol {
 struct TypeSymbol {
     std::string name; 
     std::string parentType;                 // Tipo padre (si hereda)
-    std::vector<std::string> typeParams;    // Parámetros genéricos (ej: Point<T>)
-    std::unordered_map<std::string, Symbol> attributes; // Atributos (nombre: tipo)
-    std::unordered_map<std::string, Symbol> methods;    // Métodos (nombre: firma)
+    std::vector<std::string> typeParams;    // Parámetros genéricos 
+    std::unordered_map<std::string, Symbol> attributes; // Atributos
+    std::unordered_map<std::string, Symbol> methods;    // Métodos
 };
 
 class SymbolTable {
 private:
-    // Ámbitos para variables/funciones (pila de tablas)
+    // Ámbitos para variables/funciones 
     std::vector<std::unordered_map<std::string, Symbol>> scopes;
     
-    // Tabla global de tipos (nombre: TypeSymbol)
+    // Tabla global de tipos 
     std::unordered_map<std::string, TypeSymbol> types;
 
 
@@ -64,7 +64,7 @@ public:
     const std::string& name,
     const std::string& returnType,
     const std::vector<std::string>& params,
-    ASTNode* body = nullptr // <-- nuevo
+    ASTNode* body = nullptr 
 );
 
     // Métodos para tipos

@@ -27,7 +27,6 @@ std::string SemanticAnalyzer::inferParamUsageType(const std::string& paramName, 
     // Si hay múltiples tipos, necesitamos encontrar el más específico común
     std::vector<std::string> types(usageTypes.begin(), usageTypes.end());
     
-    // Si todos los tipos son Unknown, asumimos Number
     bool allUnknown = true;
     for (const auto& type : types) {
         if (type != "Unknown") {
@@ -46,7 +45,6 @@ std::string SemanticAnalyzer::inferParamUsageType(const std::string& paramName, 
         types.end()
     );
 
-    // Si después de filtrar Unknown no quedan tipos, asumimos Number
     if (types.empty()) {
         return "Number";
     }
@@ -233,12 +231,12 @@ void SemanticAnalyzer::collectParamUsages(ASTNode* node, const std::string& para
             collectParamUsages(arg, paramName, types);
         }
 
-        // Obtener el tipo del objeto (instanceName se refiere al nombre de la instancia)
+        // Obtener el tipo del objeto 
         std::string objType;
 
         // Buscamos el símbolo de la instancia para obtener su tipo
         Symbol* instanceSym = symbolTable.lookup(method->instanceName);
-        if (!instanceSym) return; // si no se encuentra, abortamos esta rama
+        if (!instanceSym) return; 
 
         objType = instanceSym->type;
         TypeSymbol* typeSym = symbolTable.lookupType(objType);
@@ -401,7 +399,6 @@ void SemanticAnalyzer::collectParamUsages(ASTNode* node, const std::string& para
 
     // Otro nodo no manejado explícitamente
     else {
-        // Opcional: log de depuración
         // std::cerr << "Nodo no manejado en collectParamUsages: " << typeid(*node).name() << "\n";
     }
 }
@@ -566,7 +563,7 @@ void SemanticAnalyzer::visit(UnaryOpNode& node) {
         }
         node._type = "Number";
     } else if (node.op == "!") {
-        // Para negación lógica, si el operando es Unknown, asumimos Boolean
+        
         if (operandType == "Unknown") operandType = "Boolean";
         
         if (operandType != "Boolean") {
@@ -608,7 +605,6 @@ void SemanticAnalyzer::visit(BuiltInFunctionNode& node) {
         
         }
         if (node.args[0]->type() == "Unknown"){
-            std::cout << "Entra en DDD" << std::endl;
             node.args[0]->type() = "Number";
         } 
          
@@ -962,12 +958,12 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
     }
     else if (arithmeticOps.count(node.op)) {
         // Si alguno de los operandos es Unknown, asumimos que es Number
-        if (node.op == "+")
-        {
-            std::cout << leftType << std::endl;
-            std::cout << "Hola" << std::endl;
-            std::cout << rightType << std::endl;
-        }
+        // if (node.op == "+")
+        // {
+        //     std::cout << leftType << std::endl;
+        //     std::cout << "Hola" << std::endl;
+        //     std::cout << rightType << std::endl;
+        // }
         
         if (leftType == "Unknown" || leftType == "") leftType = "Number";
         if (rightType == "Unknown"|| rightType == "") rightType = "Number";
@@ -993,12 +989,12 @@ void SemanticAnalyzer::visit(BinaryOpNode& node) {
     }
     else if (node.op == "@" || node.op == "@@") {
         // Si alguno de los operandos es Unknown, permitimos tanto String como Number
-        if (node.op == "@")
-        {
-            std::cout << leftType << std::endl;
-            std::cout << "Ho" << std::endl;
-            std::cout << rightType << std::endl;
-        }
+        // if (node.op == "@")
+        // {
+        //     std::cout << leftType << std::endl;
+        //     std::cout << "Ho" << std::endl;
+        //     std::cout << rightType << std::endl;
+        // }
         
         if (leftType == "Unknown" || leftType == "") {
             if (rightType == "String" || rightType == "Number") {
@@ -1047,6 +1043,13 @@ void SemanticAnalyzer::visit(BlockNode& node) {
 
     // Analizar todas las expresiones
     for (auto* expr : node.expressions) {
+        // Verificar que no sea una declaración de tipo
+        if (dynamic_cast<TypeDeclarationNode*>(expr)) {
+            errors.emplace_back("No se pueden declarar tipos dentro de bloques", expr->line());
+            node._type = "Error";
+            symbolTable.exitScope();
+            return;
+        }
         expr->accept(*this);
     }
 
@@ -1245,8 +1248,8 @@ void SemanticAnalyzer::visit(IfNode& node) {
         if (t != commonType) {
             errors.emplace_back("Tipos incompatibles en ramas del 'if'", node.line());
             node._type = "Error";
-            std::cout << t << std::endl;
-            std::cout << commonType << std::endl;
+            // std::cout << t << std::endl;
+            // std::cout << commonType << std::endl;
             return;
 
         }
@@ -1400,7 +1403,7 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
         symbolTable.enterScope();
         symbolTable.addSymbol("self", node.name, true);
 
-        currentMethodContext = method.name;  // ⭐ guardar el nombre actual del método
+        currentMethodContext = method.name;  
 
         for (const auto& param : *method.params) {
             symbolTable.addSymbol(param.name, param.type, false);
@@ -1422,7 +1425,7 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
 
         symbolTable.addTypeMethod(node.name, method.name, method.returnType, paramTypes);
 
-        // 🔍 Verificación de firma heredada si aplica
+        // Verificación de firma heredada si aplica
         if (!typeSym->parentType.empty()) {
             TypeSymbol* parentSym = symbolTable.lookupType(typeSym->parentType);
             if (parentSym) {
@@ -1437,7 +1440,7 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
             }
         }
 
-        currentMethodContext.clear(); // 🧼 Limpiar al salir del método
+        currentMethodContext.clear(); 
         symbolTable.exitScope();
     }
 
@@ -1524,15 +1527,13 @@ void SemanticAnalyzer::visit(MethodCallNode& node) {
 
 
 void SemanticAnalyzer::visit(AttributeDeclaration& node) {
-    // Analyze the initializer expression
+    
     node.initializer->accept(*this);
-    // The type of the attribute will be the type of its initializer
-    // This is handled in TypeDeclarationNode visit method
+   
 }
 
 void SemanticAnalyzer::visit(MethodDeclaration& node) {
-    // The method body and parameters are analyzed in TypeDeclarationNode visit method
-    // This is just a placeholder to satisfy the interface
+    
 }
 
 void SemanticAnalyzer::visit(BaseCallNode& node) {

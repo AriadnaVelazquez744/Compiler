@@ -38,31 +38,23 @@ bool LR1ParsingTableGenerator::resolveConflict(int state, const Action& existing
     bool hasTermPrec = terminalPrecedence.count(terminal);
     bool hasProdPrec = productionPrecedence.count(reduceAction.target);
     
-    // 1. HIGH-PRECEDENCE EXPRESSION HANDLING
-    if (hasProdPrec && productionPrecedence[reduceAction.target] >= 15) {
-        // Always prefer shift after high-precedence expressions
-        if (existing.type == ActionType::Shift) {
-            return false; // Keep shift
-        }
-        return true; // Prefer reduce otherwise
-    }
-    
-    // 2. STANDARD PRECEDENCE RESOLUTION
     if (hasTermPrec && hasProdPrec) {
         int termPrec = terminalPrecedence[terminal].first;
         int prodPrec = productionPrecedence[reduceAction.target];
         Associativity assoc = terminalPrecedence[terminal].second;
 
-        if (prodPrec > termPrec) return true;
-        if (termPrec > prodPrec) return false;
+        if (prodPrec > termPrec) return true;  // Reduce if production has higher precedence
+        if (termPrec > prodPrec) return false; // Shift if terminal has higher precedence
         
-        if (assoc == Associativity::Left) return true;
-        if (assoc == Associativity::Right) return false;
-        
-        throw std::runtime_error("Non-associative operator conflict: " + terminal);
+        // If equal precedence, use associativity
+        if (assoc == Associativity::Left) return true;  // Reduce for left associativity
+        if (assoc == Associativity::Right) return false; // Shift for right associativity
+        if (assoc == Associativity::NonAssoc) {
+            throw std::runtime_error("Non-associative operator conflict: " + terminal);
+        }
     }
     
-    // 3. OPERATOR FALLBACK HANDLING
+    // For operators without defined precedence, prefer shift
     static const std::set<std::string> OPERATORS = {
         "ADD", "SUB", "MULT", "DIV", "MOD", "POW",
         "CONCAT", "CONCAT_SPACE", "LT", "GT", "LE", "GE",
@@ -70,7 +62,6 @@ bool LR1ParsingTableGenerator::resolveConflict(int state, const Action& existing
     };
     
     if (OPERATORS.find(terminal) != OPERATORS.end()) {
-        // Always prefer shift for operators when precedence not defined
         if (existing.type == ActionType::Shift) {
             std::cerr << "Resolved operator conflict in state " << state
                       << " on symbol " << terminal << " - keeping shift\n";
@@ -78,7 +69,7 @@ bool LR1ParsingTableGenerator::resolveConflict(int state, const Action& existing
         }
     }
     
-    // 4. DEFAULT BEHAVIOR
+    // Default behavior: prefer shift
     if (existing.type == ActionType::Shift) {
         std::cerr << "Warning: Unresolved conflict in state " << state
                   << " on symbol " << terminal << " - keeping shift\n";
@@ -86,7 +77,6 @@ bool LR1ParsingTableGenerator::resolveConflict(int state, const Action& existing
     }
     return true;
 }
-
 
 void LR1ParsingTableGenerator::generateParsingTables() {
     const auto& itemSets = itemSetBuilder.getItemSets();
@@ -102,6 +92,7 @@ void LR1ParsingTableGenerator::generateParsingTables() {
         // Process each item in the current state
         for (const auto& item : items) {
             if (item.dotPos < item.rhs.size()) {
+                // Handle shift actions
                 const std::string& symbol = item.rhs[item.dotPos];
                 if (grammar.isTerminal(symbol)) {
                     auto it = transitions[state].find(symbol);
@@ -112,7 +103,6 @@ void LR1ParsingTableGenerator::generateParsingTables() {
                         auto existingIt = actionTable[state].find(symbol);
                         if (existingIt != actionTable[state].end()) {
                             if (!resolveConflict(static_cast<int>(state), existingIt->second, newAction, symbol)) {
-                                // Keep existing action if resolution favors it
                                 continue;
                             }
                         }
@@ -121,24 +111,25 @@ void LR1ParsingTableGenerator::generateParsingTables() {
                     }
                 }
             } else {
+                // Handle reduce actions (only for complete items)
                 if (item.lhs == grammar.getStartSymbol() + "'") {
                     actionTable[state]["$"] = {ActionType::Accept, -1};
                     expectedTokensPerState[state].insert("$");
                 } else {
                     int prodNum = getProductionNumber(item.lhs, item.rhs);
-                    const std::string& lookahead = item.lookahead;
-                    
-                    // Check for existing action
-                    auto existingIt = actionTable[state].find(lookahead);
-                    if (existingIt != actionTable[state].end()) {
+                    if (prodNum != -1) {
                         Action newAction{ActionType::Reduce, prodNum};
-                        if (!resolveConflict(static_cast<int>(state), existingIt->second, newAction, lookahead)) {
-                            // Keep existing action if resolution favors it
-                            continue;
+                        
+                        // Check for existing action
+                        auto existingIt = actionTable[state].find(item.lookahead);
+                        if (existingIt != actionTable[state].end()) {
+                            if (!resolveConflict(static_cast<int>(state), existingIt->second, newAction, item.lookahead)) {
+                                continue;
+                            }
                         }
+                        actionTable[state][item.lookahead] = newAction;
+                        expectedTokensPerState[state].insert(item.lookahead);
                     }
-                    actionTable[state][lookahead] = {ActionType::Reduce, prodNum};
-                    expectedTokensPerState[state].insert(lookahead);
                 }
             }
         }

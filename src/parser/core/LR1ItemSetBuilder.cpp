@@ -3,12 +3,14 @@
 #include <iostream>
 #include <algorithm>
 
-LR1ItemSetBuilder::LR1ItemSetBuilder(const GrammarAugment& g) : grammar(g) {}
+LR1ItemSetBuilder::LR1ItemSetBuilder(const GrammarAugment& g) : grammar(g) {
+    // Ensure grammar is augmented before constructing item sets
+    const_cast<GrammarAugment&>(grammar).augmentGrammar();
+}
 
 void LR1ItemSetBuilder::constructItemSets() {
     std::string start = grammar.getStartSymbol();
-    std::string augmented = start + "'";
-    std::set<LR1Item> startItemSet = closure({{augmented, {start}, 0, "$"}});
+    std::set<LR1Item> startItemSet = closure({{start, {grammar.getStartSymbol()}, 0, "$"}});
 
     itemSets.push_back(startItemSet);
     transitions.push_back({});
@@ -62,18 +64,14 @@ std::set<LR1Item> LR1ItemSetBuilder::closure(const std::set<LR1Item>& items) con
         const std::string& B = item.rhs[item.dotPos];
         if (!grammar.isNonTerminal(B)) continue;
 
+        // Compute FIRST(βa) where β is the sequence after B and a is the lookahead
         std::vector<std::string> beta(item.rhs.begin() + item.dotPos + 1, item.rhs.end());
-        beta.push_back(item.lookahead);
-
-        // Cache FIRST(βa)
-        static std::unordered_map<std::vector<std::string>, std::set<std::string>> firstCache;
-        auto itFirst = firstCache.find(beta);
-        std::set<std::string> lookaheads;
-        if (itFirst != firstCache.end()) {
-            lookaheads = itFirst->second;
-        } else {
-            lookaheads = firstOfSequence(beta);
-            firstCache[beta] = lookaheads;
+        std::set<std::string> lookaheads = firstOfSequence(beta);
+        
+        // If β can derive ε, include the original lookahead
+        if (lookaheads.find("ε") != lookaheads.end()) {
+            lookaheads.erase("ε");  // Remove ε from lookaheads
+            lookaheads.insert(item.lookahead);
         }
 
         const auto& Bprods = grammar.getProductions().at(B);
@@ -81,7 +79,7 @@ std::set<LR1Item> LR1ItemSetBuilder::closure(const std::set<LR1Item>& items) con
             for (const auto& la : lookaheads) {
                 LR1Item newItem{B, rhs, 0, la};
                 if (closureSet.insert(newItem).second) {
-                    worklist.push_back(newItem); // new item added
+                    worklist.push_back(newItem);
                 }
             }
         }

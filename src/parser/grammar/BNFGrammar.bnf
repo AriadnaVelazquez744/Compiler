@@ -11,6 +11,7 @@ expr : BOOL
 expr : ID
 expr : E
 expr : PI
+expr : LPAREN expr RPAREN
 expr : expr ADD expr
 expr : expr SUB expr
 expr : expr MUL expr

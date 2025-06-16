@@ -15,6 +15,8 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
     // Define precedences for terminals
     const PrecInfo ops[] = {
         // Lowest number = highest precedence
+        {"LPAREN", 0, A::Left},  // Highest precedence for left parenthesis
+        {"RPAREN", 0, A::Left},  // Highest precedence for right parenthesis
         {"POW", 1, A::Right},   // Highest precedence, right associative
         {"MUL", 2, A::Left},    // Multiplication and division
         {"DIV", 2, A::Left},
@@ -54,14 +56,15 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
         {"expr", {"ID"}, 0},                         // ID -> expr
         {"expr", {"E"}, 0},                          // E -> expr
         {"expr", {"PI"}, 0},                         // PI -> expr
+        {"expr", {"LPAREN", "expr", "RPAREN"}, 0},  // (expr) -> expr (highest precedence)
         
         // Binary operators (ordered by precedence)
         {"expr", {"expr", "POW", "expr"}, 1},        // expr POW expr -> expr
-        {"expr", {"expr", "MUL", "expr"}, 3},        // expr MUL expr -> expr
-        {"expr", {"expr", "DIV", "expr"}, 3},        // expr DIV expr -> expr
-        {"expr", {"expr", "MOD", "expr"}, 3},        // expr MOD expr -> expr
-        {"expr", {"expr", "ADD", "expr"}, 2},        // expr ADD expr -> expr
-        {"expr", {"expr", "SUB", "expr"}, 2},        // expr SUB expr -> expr
+        {"expr", {"expr", "MUL", "expr"}, 2},        // expr MUL expr -> expr
+        {"expr", {"expr", "DIV", "expr"}, 2},        // expr DIV expr -> expr
+        {"expr", {"expr", "MOD", "expr"}, 2},        // expr MOD expr -> expr
+        {"expr", {"expr", "ADD", "expr"}, 3},        // expr ADD expr -> expr
+        {"expr", {"expr", "SUB", "expr"}, 3},        // expr SUB expr -> expr
         {"expr", {"expr", "CONCAT", "expr"}, 4},     // expr CONCAT expr -> expr
         {"expr", {"expr", "CONCAT_SPACE", "expr"}, 4}, // expr CONCAT_SPACE expr -> expr
         {"expr", {"expr", "LT", "expr"}, 5},         // expr LT expr -> expr
@@ -74,14 +77,14 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
         {"expr", {"expr", "OR", "expr"}, 6},         // expr OR expr -> expr
         
         // Statements
-        {"stmt", {"expr"}, 8},                       // expr -> stmt
+        {"stmt", {"expr"}, 7},                       // expr -> stmt
         
         // Program
-        {"program", {"stmt"}, 9},                     // stmt -> program
-        {"program", {"program", "stmt"}, 9},          // program stmt -> program
+        {"program", {"stmt"}, 8},                     // stmt -> program
+        {"program", {"program", "stmt"}, 8},          // program stmt -> program
         
         // Start symbol
-        {"S`", {"program"}, 10}                      // program -> S' (lowest precedence)
+        {"S`", {"program"}, 9}                      // program -> S' (lowest precedence)
     };
 
     // Set precedence for each production

@@ -13,6 +13,7 @@
 #include "parser/grammar/PrecedenceSetup.hpp"
 #include "parser/TokenTypeStringMap.hpp"
 #include "ast/AST.hpp"
+#include "ast/ASTPrinter.hpp"
 // #include "semantic/SemanticAnalyzer.hpp"
 // #include "codegen/CodeGenContext.hpp"
 
@@ -85,7 +86,7 @@ int main(int argc, char** argv) {
 
     // std::string grammarPath = std::filesystem::current_path().string() + "parser/BNFGrammar.bnf";
     try {
-        grammar.readGrammar("src/parser/BNFGrammar.bnf");
+        grammar.readGrammar("src/parser/grammar/BNFGrammar.bnf");
 
     } catch (const std::exception& e) {
         std::cerr << "Error al cargar la gramática: " << e.what() << std::endl;
@@ -129,11 +130,13 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::cout << "AST generado exitosamente.\n";
+    std::cout << "\n=== AST Structure ===\n";
+    ASTPrinter printer;
     for (const auto& node : result.ast) {
-        std::cout << "Tipo de nodo raíz: " << node->type() 
-                  << " | Línea: " << node->line() << "\n";
+        std::cout << "\nRoot Node:\n";
+        node->accept(printer);
     }
+    std::cout << "\n=== End AST Structure ===\n";
 
     // // 4. SEMANTIC ANALYSIS (future)
     // SemanticAnalyzer analyzer;

@@ -174,3 +174,27 @@ void GrammarAugment::printFollowSets() const {
         std::cout << "}\n";
     }
 }
+
+void GrammarAugment::augmentGrammar() {
+    // Check if grammar is already augmented
+    std::string potentialAugmented = startSymbol + "'";
+    if (nonTerminals.find(potentialAugmented) != nonTerminals.end()) {
+        // Grammar is already augmented, no need to do anything
+        return;
+    }
+
+    // If not augmented, proceed with augmentation
+    std::string augmentedStart = startSymbol + "'";
+    productions[augmentedStart] = {{startSymbol}};
+    nonTerminals.insert(augmentedStart);
+    startSymbol = augmentedStart;
+    
+    // Update production indices
+    int prodIndex = 0;
+    productionToIndex.clear();
+    for (const auto& [lhs, prodList] : productions) {
+        for (const auto& rhs : prodList) {
+            productionToIndex[{lhs, rhs}] = prodIndex++;
+        }
+    }
+}

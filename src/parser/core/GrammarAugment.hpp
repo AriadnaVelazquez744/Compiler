@@ -21,6 +21,9 @@ public:
     bool isNonTerminal(const std::string& sym) const { return nonTerminals.count(sym); }
     bool isTerminal(const std::string& sym) const { return terminals.count(sym); }
 
+    // Add method to augment grammar
+    void augmentGrammar();
+
 private:
 
     std::map<std::string, std::vector<std::vector<std::string>>> productions;

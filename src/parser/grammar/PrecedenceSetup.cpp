@@ -33,6 +33,7 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
         {"NE", 5, A::Left},
         {"AND", 6, A::Left},    // Logical operators
         {"OR", 6, A::Left},
+        {"NOT", 1, A::Right},   // Unary NOT operator (right associative)
         {"SEMICOLON", 7, A::Left}  // Lowest precedence
     };
 
@@ -57,6 +58,10 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
         {"expr", {"E"}, 0},                          // E -> expr
         {"expr", {"PI"}, 0},                         // PI -> expr
         {"expr", {"LPAREN", "expr", "RPAREN"}, 0},  // (expr) -> expr (highest precedence)
+        
+        // Unary operators
+        {"expr", {"SUB", "expr"}, 1},               // -expr -> expr
+        {"expr", {"NOT", "expr"}, 1},               // !expr -> expr
         
         // Binary operators (ordered by precedence)
         {"expr", {"expr", "POW", "expr"}, 1},        // expr POW expr -> expr

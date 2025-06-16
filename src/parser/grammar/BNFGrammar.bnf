@@ -12,6 +12,8 @@ expr : ID
 expr : E
 expr : PI
 expr : LPAREN expr RPAREN
+expr : SUB expr
+expr : NOT expr
 expr : expr ADD expr
 expr : expr SUB expr
 expr : expr MUL expr

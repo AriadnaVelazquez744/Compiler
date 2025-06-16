@@ -1,12 +1,14 @@
 #pragma once
 
-#include "../ast/AST.hpp"
-#include "../lexer/Lexer.hpp"
 #include "core/LR1ParsingTables.hpp"
 #include "grammar/SemanticActionDispatcher.hpp"
+#include "../lexer/Lexer.hpp"
+#include "../ast/AST.hpp"
 #include <vector>
+#include <stack>
 #include <memory>
 #include <string>
+#include <variant>
 
 struct ParseResult {
     std::vector<std::shared_ptr<ASTNode>> ast;
@@ -15,21 +17,22 @@ struct ParseResult {
 
 class ParserDriver {
 public:
-    ParserDriver(const LR1ParsingTableGenerator& tables,
-                 SemanticActionDispatcher& dispatcher);
-
+    ParserDriver(const LR1ParsingTableGenerator& tableGen, SemanticActionDispatcher& dispatcher);
     ParseResult parse(const std::vector<std::shared_ptr<Token>>& tokens);
 
 private:
-    const LR1ParsingTableGenerator& parsingTables;
-    SemanticActionDispatcher& semanticDispatcher;
+    const LR1ParsingTableGenerator& tableGen;
+    SemanticActionDispatcher& dispatcher;
+    std::stack<ParserValue> valueStack;  // Can hold both Token and ASTNode
+    std::stack<int> stateStack;
+    std::vector<std::string> errors;
+    size_t currentTokenIndex;
 
-    struct StackEntry {
-        int state;
-        std::shared_ptr<ASTNode> node;
-        SourceLocation location;
-    };
-
-    void reportError(int state, const std::shared_ptr<Token>& token,
-                     std::vector<std::string>& errors);
+    void reportError(const std::shared_ptr<Token>& token, const std::set<std::string>& expected);
+    void skipToNextSemicolon(const std::vector<std::shared_ptr<Token>>& tokens);
+    bool isRBRACE(const std::shared_ptr<Token>& token) const;
+    bool isSEMICOLON(const std::shared_ptr<Token>& token) const;
+    void handleStatementReduction(const std::vector<std::shared_ptr<Token>>& tokens);
+    ParseResult handleAccept();
+    void handleError(const std::vector<std::shared_ptr<Token>>& tokens);
 };

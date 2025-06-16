@@ -29,7 +29,6 @@ void FunctionCollector::visit(FunctionDeclarationNode& node) {
             paramTypes.push_back(param.type);
         }
 
-        // 💡 Pasar también el cuerpo
         symbolTable.addFunction(node.name, node.returnType, paramTypes, node.body);
     }
 }

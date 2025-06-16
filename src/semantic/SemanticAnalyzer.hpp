@@ -25,7 +25,6 @@ public:
     //     : symbolTable(table), errors(errs) {}
     // void resolveFunctionTypes();
     std::string inferParamUsageType(const std::string& paramName, ASTNode* body);
-   // CORRECTO:
     void collectParamUsages(ASTNode* node, const std::string& paramName, std::set<std::string>& types);
 
     Symbol* lookupMethodInHierarchy(const std::string& typeName, const std::string& methodName);

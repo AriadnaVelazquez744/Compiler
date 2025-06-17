@@ -327,7 +327,13 @@ void ParserDriver::handleStatementReduction(const std::vector<std::shared_ptr<To
 
     // 1. Check if current token is a semicolon
     bool hasSemicolon = isSEMICOLON(tokens[currentTokenIndex]);
-    
+    if (currentTokenIndex > 0 && isSEMICOLON(tokens[currentTokenIndex - 1])) {
+        hasSemicolon = true;
+    }
+    if (currentTokenIndex < tokens.size() - 1 && isSEMICOLON(tokens[currentTokenIndex + 1])) {
+        hasSemicolon = true;
+    }
+
     if (hasSemicolon) {
         // 2. Skip all consecutive semicolons
         while (currentTokenIndex < tokens.size() && isSEMICOLON(tokens[currentTokenIndex])) {

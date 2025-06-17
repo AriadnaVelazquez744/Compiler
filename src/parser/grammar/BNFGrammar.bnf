@@ -14,6 +14,9 @@ params : params COMMA ID
 params : params COMMA ID DEFINE ID
 
 stmt : expr 
+stmt : print_ord
+
+print_ord : PRINT LPAREN expr RPAREN
 
 expr : NUMBER
 expr : STRING

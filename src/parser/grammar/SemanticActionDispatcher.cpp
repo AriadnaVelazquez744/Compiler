@@ -61,6 +61,8 @@ void SemanticActionDispatcher::initializeRules() {
         {"expr", {"EXP", "LPAREN", "expr", "RPAREN"}}, // expr : EXP LPAREN expr RPAREN
         {"expr", {"RANDOM", "LPAREN", "RPAREN"}}, // expr : RANDOM LPAREN RPAREN
         {"stmt", {"expr"}},                   // stmt : expr
+        {"stmt", {"print_ord"}},              // stmt : print_ord
+        {"print_ord", {"PRINT", "LPAREN", "expr", "RPAREN"}}, // print_ord : PRINT LPAREN expr RPAREN
         {"params", {}},
         {"params", {"ID"}},
         {"params", {"ID", "DEFINE", "ID"}},
@@ -155,6 +157,8 @@ ParserValue SemanticActionDispatcher::reduce(int prodNumber,
     int expr_and_prod = tableGen.getProductionNumber("expr", {"expr", "AND", "expr"});
     int expr_or_prod = tableGen.getProductionNumber("expr", {"expr", "OR", "expr"});
     int stmt_expr_prod = tableGen.getProductionNumber("stmt", {"expr"});
+    int stmt_print_ord_prod = tableGen.getProductionNumber("stmt", {"print_ord"});
+    int print_ord_prod = tableGen.getProductionNumber("print_ord", {"PRINT", "LPAREN", "expr", "RPAREN"});
     int expr_sin_prod = tableGen.getProductionNumber("expr", {"SIN", "LPAREN", "expr", "RPAREN"});
     int expr_cos_prod = tableGen.getProductionNumber("expr", {"COS", "LPAREN", "expr", "RPAREN"});
     int expr_min_prod = tableGen.getProductionNumber("expr", {"MIN", "LPAREN", "expr", "COMMA", "expr", "RPAREN"});
@@ -384,6 +388,32 @@ ParserValue SemanticActionDispatcher::reduce(int prodNumber,
             std::cout << "Created statement node from expression" << std::endl;
         } else {
             std::cout << "Invalid child type in statement reduction" << std::endl;
+            result = nullptr;
+        }
+    }
+    else if (prodNumber == stmt_print_ord_prod) { // stmt : print_ord
+        std::cout << "Statement from print_ord reduction" << std::endl;
+        if (isASTNode(children[0])) {
+            result = getASTNode(children[0]);
+            std::cout << "Created statement node from print_ord" << std::endl;
+        } else {
+            std::cout << "Invalid child type in print_ord statement reduction" << std::endl;
+            result = nullptr;
+        }
+    }
+    else if (prodNumber == print_ord_prod) { // print_ord : PRINT LPAREN expr RPAREN
+        std::cout << "Print statement reduction" << std::endl;
+        if (isASTNode(children[2])) {
+            auto expr = getASTNode(children[2]);
+            if (expr != nullptr) {
+                std::vector<std::shared_ptr<ASTNode>> args = {expr};
+                result = std::make_shared<BuiltInFunctionNode>("print", args, location.line);
+                std::cout << "Created print function node" << std::endl;
+            } else {
+                result = nullptr;
+            }
+        } else {
+            std::cout << "Invalid child type in print statement reduction" << std::endl;
             result = nullptr;
         }
     }

@@ -42,7 +42,8 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
         {"AND", 7, A::Left},    // Logical operators
         {"OR", 7, A::Left},
         {"NOT", 1, A::Right},   // Unary NOT operator (right associative)
-        {"SEMICOLON", 8, A::Left}  // Lowest precedence
+        {"SEMICOLON", 8, A::Left},  // Lowest precedence
+        {"PRINT", 8, A::Left}     // Added for the new print statement
     };
 
     // Set terminal precedence for operators
@@ -66,6 +67,9 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
         {"expr", {"E"}, 0},                          // E -> expr
         {"expr", {"PI"}, 0},                         // PI -> expr
         {"expr", {"LPAREN", "expr", "RPAREN"}, 0},  // (expr) -> expr (highest precedence)
+        
+        // Print statement (same precedence as stmt)
+        {"print_ord", {"PRINT", "LPAREN", "expr", "RPAREN"}, 8}, // PRINT(expr) -> print_ord
         
         // Args rules (between basic expressions and unary operators)
         {"args", {}, 11},                            // ε -> args
@@ -114,6 +118,7 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
         
         // Statements
         {"stmt", {"expr"}, 8},                       // expr -> stmt
+        {"stmt", {"print_ord"}, 8},
         
         // Program
         {"program", {"stmt"}, 9},                     // stmt -> program

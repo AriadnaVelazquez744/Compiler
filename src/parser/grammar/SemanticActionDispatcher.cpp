@@ -23,6 +23,10 @@ void SemanticActionDispatcher::initializeRules() {
     const std::vector<ProductionInfo> productions = {
         {"S`", {"program"}},                 // S' : program
         {"program", {"stmt"}},               // program : stmt
+        {"program", {"program", "stmt"}},    // program : program stmt
+        {"args", {}},                        // args : ε
+        {"args", {"expr"}},                  // args : expr
+        {"args", {"args", "COMMA", "expr"}}, // args : args COMMA expr
         {"expr", {"NUMBER"}},                // expr : NUMBER
         {"expr", {"STRING"}},                // expr : STRING
         {"expr", {"BOOL"}},                  // expr : BOOLEAN
@@ -56,8 +60,6 @@ void SemanticActionDispatcher::initializeRules() {
         {"expr", {"LOG", "LPAREN", "expr", "COMMA", "expr", "RPAREN"}}, // expr : LOG LPAREN expr COMMA expr RPAREN
         {"expr", {"EXP", "LPAREN", "expr", "RPAREN"}}, // expr : EXP LPAREN expr RPAREN
         {"expr", {"RANDOM", "LPAREN", "RPAREN"}}, // expr : RANDOM LPAREN RPAREN
-        {"program", {"stmt"}},               // program : stmt
-        {"program", {"program", "stmt"}},    // program : program stmt
         {"stmt", {"expr"}}                   // stmt : expr
     };
 
@@ -106,11 +108,11 @@ std::string SemanticActionDispatcher::getLHS(int prodNumber) const {
     return (it != ruleInfo.end()) ? it->second.lhs : "";
 }
 
-std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
+ParserValue SemanticActionDispatcher::reduce(int prodNumber,
         const std::vector<ParserValue>& children,
         const SourceLocation& location) {
 
-    std::shared_ptr<ASTNode> result;
+    ParserValue result;
     std::cout << "\n=== Semantic Action ===" << std::endl;
     std::cout << "Production: " << prodNumber << std::endl;
     std::cout << "Number of children: " << children.size() << std::endl;
@@ -119,6 +121,9 @@ std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
     int s_prime_prod = tableGen.getProductionNumber("S'", {"program"});
     int program_stmt_prod = tableGen.getProductionNumber("program", {"stmt"});
     int program_program_stmt_prod = tableGen.getProductionNumber("program", {"program", "stmt"});
+    int args_empty_prod = tableGen.getProductionNumber("args", {});
+    int args_expr_prod = tableGen.getProductionNumber("args", {"expr"});
+    int args_args_comma_expr_prod = tableGen.getProductionNumber("args", {"args", "COMMA", "expr"});
     int expr_number_prod = tableGen.getProductionNumber("expr", {"NUMBER"});
     int expr_string_prod = tableGen.getProductionNumber("expr", {"STRING"});
     int expr_bool_prod = tableGen.getProductionNumber("expr", {"BOOL"});
@@ -168,33 +173,36 @@ std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
     }
     else if (prodNumber == program_stmt_prod) { // program : stmt
         std::cout << "Program from stmt reduction" << std::endl;
-        if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0])) {
-            result = std::get<std::shared_ptr<ASTNode>>(children[0]);
-            if (result != nullptr) {
-                rootNodes.push_back(result);
+        if (isASTNode(children[0])) {
+            auto node = getASTNode(children[0]);
+            if (node != nullptr) {
+                rootNodes.push_back(node);
+                result = node;
                 std::cout << "Added stmt to root nodes" << std::endl;
             } else {
                 std::cout << "Null stmt node" << std::endl;
+                result = nullptr;
             }
         } else {
             std::cout << "Invalid child type in program reduction" << std::endl;
+            result = nullptr;
         }
     }
     else if (prodNumber == program_program_stmt_prod) { // program : program stmt
         std::cout << "Program from program stmt reduction" << std::endl;
-        if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0]) &&
-            std::holds_alternative<std::shared_ptr<ASTNode>>(children[1])) {
-            auto stmt = std::get<std::shared_ptr<ASTNode>>(children[1]);
+        if (isASTNode(children[0]) && isASTNode(children[1])) {
+            auto stmt = getASTNode(children[1]);
             if (stmt != nullptr) {
                 rootNodes.push_back(stmt);
                 std::cout << "Added stmt to root nodes in program stmt reduction" << std::endl;
                 result = stmt;
             } else {
-                result = std::get<std::shared_ptr<ASTNode>>(children[0]);
+                result = getASTNode(children[0]);
                 std::cout << "Using existing program node" << std::endl;
             }
         } else {
             std::cout << "Invalid child types in program stmt reduction" << std::endl;
+            result = nullptr;
         }
     }
     else if (prodNumber == expr_number_prod) { // expr : NUMBER
@@ -270,43 +278,52 @@ std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
     }
     else if (prodNumber == expr_paren_prod) { // expr : LPAREN expr RPAREN
         std::cout << "Parenthesized expression reduction" << std::endl;
-        if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[1])) {
-            result = std::get<std::shared_ptr<ASTNode>>(children[1]);
+        if (isASTNode(children[1])) {
+            result = getASTNode(children[1]);
             std::cout << "Created parenthesized expression node" << std::endl;
         } else {
             std::cout << "Invalid child type in parenthesized expression reduction" << std::endl;
+            result = nullptr;
         }
     }
     else if (prodNumber == expr_sub_prod) { // expr : SUB expr
         std::cout << "Unary SUB expression reduction" << std::endl;
-        if (std::holds_alternative<std::shared_ptr<Token>>(children[0]) &&
-            std::holds_alternative<std::shared_ptr<ASTNode>>(children[1])) {
+        if (std::holds_alternative<std::shared_ptr<Token>>(children[0]) && isASTNode(children[1])) {
             auto op = std::get<std::shared_ptr<Token>>(children[0]);
-            auto expr = std::get<std::shared_ptr<ASTNode>>(children[1]);
-            result = std::make_shared<UnaryOpNode>(
-                "-",
-                expr,
-                location.line
-            );
-            std::cout << "Created unary operation node: -" << std::endl;
+            auto expr = getASTNode(children[1]);
+            if (expr != nullptr) {
+                result = std::make_shared<UnaryOpNode>(
+                    "-",
+                    expr,
+                    location.line
+                );
+                std::cout << "Created unary operation node: -" << std::endl;
+            } else {
+                result = nullptr;
+            }
         } else {
             std::cout << "Invalid child types in unary SUB expression reduction" << std::endl;
+            result = nullptr;
         }
     }
     else if (prodNumber == expr_not_prod) { // expr : NOT expr
         std::cout << "Unary NOT expression reduction" << std::endl;
-        if (std::holds_alternative<std::shared_ptr<Token>>(children[0]) &&
-            std::holds_alternative<std::shared_ptr<ASTNode>>(children[1])) {
+        if (std::holds_alternative<std::shared_ptr<Token>>(children[0]) && isASTNode(children[1])) {
             auto op = std::get<std::shared_ptr<Token>>(children[0]);
-            auto expr = std::get<std::shared_ptr<ASTNode>>(children[1]);
-            result = std::make_shared<UnaryOpNode>(
-                "!",
-                expr,
-                location.line
-            );
-            std::cout << "Created unary operation node: !" << std::endl;
+            auto expr = getASTNode(children[1]);
+            if (expr != nullptr) {
+                result = std::make_shared<UnaryOpNode>(
+                    "!",
+                    expr,
+                    location.line
+                );
+                std::cout << "Created unary operation node: !" << std::endl;
+            } else {
+                result = nullptr;
+            }
         } else {
             std::cout << "Invalid child types in unary NOT expression reduction" << std::endl;
+            result = nullptr;
         }
     }
     else if (prodNumber == expr_add_prod || // Binary operations
@@ -326,37 +343,49 @@ std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
              prodNumber == expr_and_prod ||
              prodNumber == expr_or_prod) {
         std::cout << "Binary expression reduction" << std::endl;
-        if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0]) &&
+        if (isASTNode(children[0]) &&
             std::holds_alternative<std::shared_ptr<Token>>(children[1]) &&
-            std::holds_alternative<std::shared_ptr<ASTNode>>(children[2])) {
-            auto left = std::get<std::shared_ptr<ASTNode>>(children[0]);
+            isASTNode(children[2])) {
+            auto left = getASTNode(children[0]);
             auto op = std::get<std::shared_ptr<Token>>(children[1]);
-            auto right = std::get<std::shared_ptr<ASTNode>>(children[2]);
-            result = std::make_shared<BinaryOpNode>(
-                op->lexeme,
-                left,
-                right,
-                location.line
-            );
-            std::cout << "Created binary operation node: " << op->lexeme << std::endl;
+            auto right = getASTNode(children[2]);
+            if (left != nullptr && right != nullptr) {
+                result = std::make_shared<BinaryOpNode>(
+                    op->lexeme,
+                    left,
+                    right,
+                    location.line
+                );
+                std::cout << "Created binary operation node: " << op->lexeme << std::endl;
+            } else {
+                result = nullptr;
+            }
         } else {
             std::cout << "Invalid child types in binary expression reduction" << std::endl;
+            result = nullptr;
         }
     }
     else if (prodNumber == stmt_expr_prod) { // stmt : expr
         std::cout << "Statement from expr reduction" << std::endl;
-        if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0])) {
-            result = std::get<std::shared_ptr<ASTNode>>(children[0]);
+        if (isASTNode(children[0])) {
+            result = getASTNode(children[0]);
             std::cout << "Created statement node from expression" << std::endl;
         } else {
             std::cout << "Invalid child type in statement reduction" << std::endl;
+            result = nullptr;
         }
     }
     else if (prodNumber == expr_sin_prod) { // expr : SIN LPAREN expr RPAREN
-        if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[2])) {
-            auto expr = std::get<std::shared_ptr<ASTNode>>(children[2]);
-            std::vector<std::shared_ptr<ASTNode>> args = {expr};
-            result = std::make_shared<BuiltInFunctionNode>("sin", args, location.line);
+        if (isASTNode(children[2])) {
+            auto expr = getASTNode(children[2]);
+            if (expr != nullptr) {
+                std::vector<std::shared_ptr<ASTNode>> args = {expr};
+                result = std::make_shared<BuiltInFunctionNode>("sin", args, location.line);
+            } else {
+                result = nullptr;
+            }
+        } else {
+            result = nullptr;
         }
     }
     else if (prodNumber == expr_cos_prod) { // expr : COS LPAREN expr RPAREN
@@ -410,6 +439,32 @@ std::shared_ptr<ASTNode> SemanticActionDispatcher::reduce(int prodNumber,
     else if (prodNumber == expr_random_prod) { // expr : RANDOM LPAREN RPAREN
         std::vector<std::shared_ptr<ASTNode>> args;
         result = std::make_shared<BuiltInFunctionNode>("rand", args, location.line);
+    }
+    else if (prodNumber == args_empty_prod) { // args : ε
+        std::cout << "Empty args reduction" << std::endl;
+        result = std::make_shared<std::vector<std::shared_ptr<ASTNode>>>();
+        std::cout << "Created empty args vector" << std::endl;
+    }
+    else if (prodNumber == args_expr_prod) { // args : expr
+        std::cout << "Single expr args reduction" << std::endl;
+        if (std::holds_alternative<std::shared_ptr<ASTNode>>(children[0])) {
+            auto expr = std::get<std::shared_ptr<ASTNode>>(children[0]);
+            auto args = std::make_shared<std::vector<std::shared_ptr<ASTNode>>>();
+            args->push_back(expr);
+            result = args;
+            std::cout << "Created args vector with single expression" << std::endl;
+        }
+    }
+    else if (prodNumber == args_args_comma_expr_prod) { // args : args COMMA expr
+        std::cout << "Multiple args reduction" << std::endl;
+        if (std::holds_alternative<std::shared_ptr<std::vector<std::shared_ptr<ASTNode>>>>(children[0]) &&
+            std::holds_alternative<std::shared_ptr<ASTNode>>(children[2])) {
+            auto existing_args = std::get<std::shared_ptr<std::vector<std::shared_ptr<ASTNode>>>>(children[0]);
+            auto new_expr = std::get<std::shared_ptr<ASTNode>>(children[2]);
+            existing_args->push_back(new_expr);
+            result = existing_args;
+            std::cout << "Added expression to existing args vector" << std::endl;
+        }
     }
     else {
         std::cerr << "Unhandled production: " << prodNumber << std::endl;

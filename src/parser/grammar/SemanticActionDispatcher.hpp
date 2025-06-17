@@ -4,13 +4,14 @@
 #include "../../lexer/Lexer.hpp"
 #include "../core/LR1ParsingTables.hpp"
 #include "../core/GrammarAugment.hpp"
+#include "ParserValue.hpp"
 #include <memory>
 #include <string>
 #include <vector>
 #include <unordered_map>
 #include <map>
 #include <set>
-#include <variant>
+#include <iostream>
 
 // Structure to store info per production rule
 struct RuleInfo {
@@ -18,28 +19,15 @@ struct RuleInfo {
     int rhsLength;
 };
 
-// Define a variant type that can hold any AST-related value
-using ParserValue = std::variant<
-    std::shared_ptr<Token>,
-    std::shared_ptr<ASTNode>,
-    std::shared_ptr<std::vector<std::shared_ptr<ASTNode>>>,
-    std::shared_ptr<std::vector<Parameter>>,
-    std::shared_ptr<std::vector<IfBranch>>,
-    std::shared_ptr<std::vector<LetDeclaration>>,
-    std::shared_ptr<std::vector<AttributeDeclaration>>,
-    std::shared_ptr<std::vector<MethodDeclaration>>,
-    std::shared_ptr<TypeBody>
->;
-
 class SemanticActionDispatcher {
 public:
     // Modified constructor to take LR1ParsingTableGenerator
     SemanticActionDispatcher(const LR1ParsingTableGenerator& tableGen);
 
     // Called by the parser during a reduce step
-    std::shared_ptr<ASTNode> reduce(int prodNumber,
-                                    const std::vector<ParserValue>& children,
-                                    const SourceLocation& location);
+    ParserValue reduce(int prodNumber,
+                        const std::vector<ParserValue>& children,
+                        const SourceLocation& location);
 
     int getRHSLength(int prodNumber) const;
     std::string getLHS(int prodNumber) const;
@@ -58,4 +46,20 @@ private:
     static std::vector<std::shared_ptr<ASTNode>> rootNodes;
 
     void initializeRules(); // Fills ruleInfo map
+
+    // Helper functions for ParserValue handling
+    bool isNull(const ParserValue& value) const {
+        return std::holds_alternative<std::nullptr_t>(value);
+    }
+
+    std::shared_ptr<ASTNode> getASTNode(const ParserValue& value) const {
+        if (std::holds_alternative<std::shared_ptr<ASTNode>>(value)) {
+            return std::get<std::shared_ptr<ASTNode>>(value);
+        }
+        return nullptr;
+    }
+
+    bool isASTNode(const ParserValue& value) const {
+        return std::holds_alternative<std::shared_ptr<ASTNode>>(value);
+    }
 };

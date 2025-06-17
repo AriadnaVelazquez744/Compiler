@@ -2,6 +2,7 @@
 
 #include "core/LR1ParsingTables.hpp"
 #include "grammar/SemanticActionDispatcher.hpp"
+#include "grammar/ParserValue.hpp"
 #include "../lexer/Lexer.hpp"
 #include "../ast/AST.hpp"
 #include <vector>
@@ -9,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <variant>
+#include <set>
 
 struct ParseResult {
     std::vector<std::shared_ptr<ASTNode>> ast;
@@ -35,4 +37,16 @@ private:
     void handleStatementReduction(const std::vector<std::shared_ptr<Token>>& tokens);
     ParseResult handleAccept();
     void handleError(const std::vector<std::shared_ptr<Token>>& tokens);
+
+    // Helper functions for ParserValue handling
+    bool isNull(const ParserValue& value) const {
+        return std::holds_alternative<std::nullptr_t>(value);
+    }
+
+    std::string getResultString(const ParserValue& value) const {
+        if (isNull(value)) {
+            return "null";
+        }
+        return "Node created";
+    }
 };

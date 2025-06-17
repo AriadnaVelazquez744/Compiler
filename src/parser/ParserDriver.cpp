@@ -67,10 +67,10 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 
                 // Perform reduction
                 auto result = dispatcher.reduce(prodNum, children, loc);
-                if (!result) {
+                if (isNull(result)) {
                     return {dispatcher.getRootNodes(), errors};
                 }
-                std::cout << "Reduction result: " << (result ? "Node created" : "null") << std::endl;
+                std::cout << "Reduction result: " << getResultString(result) << std::endl;
                 
                 // Handle statement reduction if this is a statement
                 if (lhs == "stmt") {
@@ -148,10 +148,10 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 
                 // Perform reduction
                 auto result = dispatcher.reduce(prodNum, children, loc);
-                if (!result) {
+                if (isNull(result)) {
                     return {dispatcher.getRootNodes(), errors};
                 }
-                std::cout << "Reduction result: " << (result ? "Node created" : "null") << std::endl;
+                std::cout << "Reduction result: " << getResultString(result) << std::endl;
                 
                 // Handle statement reduction if this is a statement
                 if (lhs == "stmt") {
@@ -244,10 +244,10 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 }
                 
                 auto result = dispatcher.reduce(prodNum, children, loc);
-                if (!result) {
+                if (isNull(result)) {
                     return {dispatcher.getRootNodes(), errors};
                 }
-                std::cout << "Reduction result: " << (result ? "Node created" : "null") << std::endl;
+                std::cout << "Reduction result: " << getResultString(result) << std::endl;
                 
                 // Handle statement reduction if this is a statement
                 if (lhs == "stmt") {
@@ -327,7 +327,7 @@ void ParserDriver::handleStatementReduction(const std::vector<std::shared_ptr<To
 
     // 1. Check if current token is a semicolon
     bool hasSemicolon = isSEMICOLON(tokens[currentTokenIndex]);
-
+    
     if (hasSemicolon) {
         // 2. Skip all consecutive semicolons
         while (currentTokenIndex < tokens.size() && isSEMICOLON(tokens[currentTokenIndex])) {

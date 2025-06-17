@@ -67,6 +67,11 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
         {"expr", {"PI"}, 0},                         // PI -> expr
         {"expr", {"LPAREN", "expr", "RPAREN"}, 0},  // (expr) -> expr (highest precedence)
         
+        // Args rules (between basic expressions and unary operators)
+        {"args", {}, 11},                            // ε -> args
+        {"args", {"expr"}, 10},                      // expr -> args
+        {"args", {"args", "COMMA", "expr"}, 10},     // args COMMA expr -> args
+        
         // Unary operators
         {"expr", {"SUB", "expr"}, 1},               // -expr -> expr
         {"expr", {"NOT", "expr"}, 1},               // !expr -> expr

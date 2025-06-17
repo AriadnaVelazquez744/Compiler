@@ -3,6 +3,10 @@ S' : program
 program : stmt
 program : program stmt 
 
+args : 
+args : expr
+args : args COMMA expr
+
 stmt : expr 
 
 expr : NUMBER

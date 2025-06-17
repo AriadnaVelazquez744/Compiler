@@ -30,6 +30,11 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 int prodNum = action.target;
                 int rhsLength = dispatcher.getRHSLength(prodNum);
                 std::string lhs = dispatcher.getLHS(prodNum);
+
+                if (lhs == "S'") {
+                    std::cout << "Accepting program" << std::endl;
+                    return {dispatcher.getRootNodes(), errors};
+                }
                 
                 std::cout << "Final reduction by production " << prodNum << ": " << lhs << " ::= ";
                 for (int i = 0; i < rhsLength; i++) {
@@ -99,6 +104,11 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 int prodNum = action.target;
                 int rhsLength = dispatcher.getRHSLength(prodNum);
                 std::string lhs = dispatcher.getLHS(prodNum);
+
+                if (lhs == "S'") {
+                    std::cout << "Accepting program" << std::endl;
+                    return {dispatcher.getRootNodes(), errors};
+                }
                 
                 std::cout << "Reducing by production " << prodNum << ": " << lhs << " ::= ";
                 for (int i = 0; i < rhsLength; i++) {
@@ -131,6 +141,9 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 
                 // Perform reduction
                 auto result = dispatcher.reduce(prodNum, children, loc);
+                if (!result) {
+                    return {dispatcher.getRootNodes(), errors};
+                }
                 std::cout << "Reduction result: " << (result ? "Node created" : "null") << std::endl;
                 
                 // Push result and new state
@@ -152,6 +165,10 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
         // Normal token processing
         const auto& actionMap = tableGen.getActionTable(currentState);
         std::string tokenType = tokenTypeToString(currentToken->type);
+        if ((currentTokenIndex >= tokens.size()) && tokenType == "$") {
+            std::cout << "Accepting program" << std::endl;
+            return {dispatcher.getRootNodes(), errors};
+        }
         std::cout << "\nCurrent State: " << currentState << std::endl;
         std::cout << "Current Token: " << tokenType << " => " << currentToken->lexeme << std::endl;
         
@@ -182,6 +199,11 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 int prodNum = action.target;
                 int rhsLength = dispatcher.getRHSLength(prodNum);
                 std::string lhs = dispatcher.getLHS(prodNum);
+
+                if (lhs == "S'") {
+                    std::cout << "Accepting program" << std::endl;
+                    return {dispatcher.getRootNodes(), errors};
+                }
                 
                 std::cout << "Reducing by production " << prodNum << ": " << lhs << " ::= ";
                 for (int i = 0; i < rhsLength; i++) {
@@ -211,12 +233,10 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 }
                 
                 auto result = dispatcher.reduce(prodNum, children, loc);
-                std::cout << "Reduction result: " << (result ? "Node created" : "null") << std::endl;
-                
-                if (lhs == "S`") {
-                    std::cout << "Accepting program" << std::endl;
+                if (!result) {
                     return {dispatcher.getRootNodes(), errors};
                 }
+                std::cout << "Reduction result: " << (result ? "Node created" : "null") << std::endl;
                 
                 valueStack.push(result);
                 const auto& gotoTable = tableGen.getGotoTable(stateStack.top());
@@ -310,6 +330,10 @@ void ParserDriver::handleStatementReduction(const std::vector<std::shared_ptr<To
             int rhsLength = dispatcher.getRHSLength(prodNum);
             std::string lhs = dispatcher.getLHS(prodNum);
             
+            if (lhs == "S'") {
+                return;
+            }
+
             std::cout << "Reducing statement by production " << prodNum << ": " << lhs << " ::= ";
             for (int i = 0; i < rhsLength; i++) {
                 std::cout << "RHS[" << i << "] ";

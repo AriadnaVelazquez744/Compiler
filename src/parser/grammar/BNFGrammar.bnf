@@ -30,3 +30,11 @@ expr : expr EQ expr
 expr : expr NE expr
 expr : expr AND expr
 expr : expr OR expr
+expr : SIN LPAREN expr RPAREN
+expr : COS LPAREN expr RPAREN
+expr : MIN LPAREN expr COMMA expr RPAREN
+expr : MAX LPAREN expr COMMA expr RPAREN
+expr : SQRT LPAREN expr RPAREN
+expr : LOG LPAREN expr COMMA expr RPAREN
+expr : EXP LPAREN expr RPAREN
+expr : RANDOM LPAREN RPAREN

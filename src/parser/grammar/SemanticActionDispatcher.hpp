@@ -2,6 +2,8 @@
 
 #include "../../ast/AST.hpp"
 #include "../../lexer/Lexer.hpp"
+#include "../core/LR1ParsingTables.hpp"
+#include "../core/GrammarAugment.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -31,7 +33,8 @@ using ParserValue = std::variant<
 
 class SemanticActionDispatcher {
 public:
-    SemanticActionDispatcher();
+    // Modified constructor to take LR1ParsingTableGenerator
+    SemanticActionDispatcher(const LR1ParsingTableGenerator& tableGen);
 
     // Called by the parser during a reduce step
     std::shared_ptr<ASTNode> reduce(int prodNumber,
@@ -47,6 +50,7 @@ public:
     void clearRootNodes();
 
 private:
+    const LR1ParsingTableGenerator& tableGen;  // Added member
     std::unordered_map<int, RuleInfo> ruleInfo;
     std::vector<int> binaryOpProds;
 

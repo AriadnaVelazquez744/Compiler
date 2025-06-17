@@ -60,7 +60,12 @@ void SemanticActionDispatcher::initializeRules() {
         {"expr", {"LOG", "LPAREN", "expr", "COMMA", "expr", "RPAREN"}}, // expr : LOG LPAREN expr COMMA expr RPAREN
         {"expr", {"EXP", "LPAREN", "expr", "RPAREN"}}, // expr : EXP LPAREN expr RPAREN
         {"expr", {"RANDOM", "LPAREN", "RPAREN"}}, // expr : RANDOM LPAREN RPAREN
-        {"stmt", {"expr"}}                   // stmt : expr
+        {"stmt", {"expr"}},                   // stmt : expr
+        {"params", {}},
+        {"params", {"ID"}},
+        {"params", {"ID", "DEFINE", "ID"}},
+        {"params", {"params", "COMMA", "ID"}},
+        {"params", {"params", "COMMA", "ID", "DEFINE", "ID"}}
     };
 
     // Initialize ruleInfo using tableBuilder.getProductionNumber
@@ -158,6 +163,13 @@ ParserValue SemanticActionDispatcher::reduce(int prodNumber,
     int expr_log_prod = tableGen.getProductionNumber("expr", {"LOG", "LPAREN", "expr", "COMMA", "expr", "RPAREN"});
     int expr_exp_prod = tableGen.getProductionNumber("expr", {"EXP", "LPAREN", "expr", "RPAREN"});
     int expr_random_prod = tableGen.getProductionNumber("expr", {"RANDOM", "LPAREN", "RPAREN"});
+
+    // Add parameter production numbers
+    int params_empty_prod = tableGen.getProductionNumber("params", {});
+    int params_id_prod = tableGen.getProductionNumber("params", {"ID"});
+    int params_id_define_id_prod = tableGen.getProductionNumber("params", {"ID", "DEFINE", "ID"});
+    int params_params_comma_id_prod = tableGen.getProductionNumber("params", {"params", "COMMA", "ID"});
+    int params_params_comma_id_define_id_prod = tableGen.getProductionNumber("params", {"params", "COMMA", "ID", "DEFINE", "ID"});
 
     if (prodNumber == s_prime_prod) { // S' : program
         std::cout << "S' reduction" << std::endl;
@@ -464,6 +476,66 @@ ParserValue SemanticActionDispatcher::reduce(int prodNumber,
             existing_args->push_back(new_expr);
             result = existing_args;
             std::cout << "Added expression to existing args vector" << std::endl;
+        }
+    }
+    else if (prodNumber == params_empty_prod) { // params : ε
+        std::cout << "Empty params reduction" << std::endl;
+        auto params = std::make_shared<std::vector<Parameter>>();
+        result = params;
+        std::cout << "Created empty params vector" << std::endl;
+    }
+    else if (prodNumber == params_id_prod) { // params : ID
+        std::cout << "Single ID params reduction" << std::endl;
+        if (std::holds_alternative<std::shared_ptr<Token>>(children[0])) {
+            auto token = std::get<std::shared_ptr<Token>>(children[0]);
+            auto params = std::make_shared<std::vector<Parameter>>();
+            Parameter param;
+            param.name = token->lexeme;
+            params->push_back(param);
+            result = params;
+            std::cout << "Created params vector with single ID: " << token->lexeme << std::endl;
+        }
+    }
+    else if (prodNumber == params_id_define_id_prod) { // params : ID DEFINE ID
+        std::cout << "ID DEFINE ID params reduction" << std::endl;
+        if (std::holds_alternative<std::shared_ptr<Token>>(children[0]) && 
+            std::holds_alternative<std::shared_ptr<Token>>(children[2])) {
+            auto idToken = std::get<std::shared_ptr<Token>>(children[0]);
+            auto typeToken = std::get<std::shared_ptr<Token>>(children[2]);
+            auto params = std::make_shared<std::vector<Parameter>>();
+            Parameter param;
+            param.name = idToken->lexeme + " : " + typeToken->lexeme;
+            params->push_back(param);
+            result = params;
+            std::cout << "Created params vector with typed ID: " << param.name << std::endl;
+        }
+    }
+    else if (prodNumber == params_params_comma_id_prod) { // params : params COMMA ID
+        std::cout << "Multiple ID params reduction" << std::endl;
+        if (std::holds_alternative<std::shared_ptr<std::vector<Parameter>>>(children[0]) &&
+            std::holds_alternative<std::shared_ptr<Token>>(children[2])) {
+            auto existing_params = std::get<std::shared_ptr<std::vector<Parameter>>>(children[0]);
+            auto token = std::get<std::shared_ptr<Token>>(children[2]);
+            Parameter param;
+            param.name = token->lexeme;
+            existing_params->push_back(param);
+            result = existing_params;
+            std::cout << "Added ID to existing params vector: " << token->lexeme << std::endl;
+        }
+    }
+    else if (prodNumber == params_params_comma_id_define_id_prod) { // params : params COMMA ID DEFINE ID
+        std::cout << "Multiple typed ID params reduction" << std::endl;
+        if (std::holds_alternative<std::shared_ptr<std::vector<Parameter>>>(children[0]) &&
+            std::holds_alternative<std::shared_ptr<Token>>(children[2]) &&
+            std::holds_alternative<std::shared_ptr<Token>>(children[4])) {
+            auto existing_params = std::get<std::shared_ptr<std::vector<Parameter>>>(children[0]);
+            auto idToken = std::get<std::shared_ptr<Token>>(children[2]);
+            auto typeToken = std::get<std::shared_ptr<Token>>(children[4]);
+            Parameter param;
+            param.name = idToken->lexeme + " : " + typeToken->lexeme;
+            existing_params->push_back(param);
+            result = existing_params;
+            std::cout << "Added typed ID to existing params vector: " << param.name << std::endl;
         }
     }
     else {

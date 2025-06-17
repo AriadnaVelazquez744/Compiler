@@ -72,6 +72,13 @@ void setupPrecedence(LR1ParsingTableGenerator& tableBuilder) {
         {"args", {"expr"}, 10},                      // expr -> args
         {"args", {"args", "COMMA", "expr"}, 10},     // args COMMA expr -> args
         
+        // Parameter rules (between args and expr)
+        {"params", {}, 12},                           // ε -> params (lowest precedence)
+        {"params", {"ID"}, 11},                       // ID -> params
+        {"params", {"ID", "DEFINE", "ID"}, 10},      // ID DEFINE ID -> params (higher precedence)
+        {"params", {"params", "COMMA", "ID"}, 11},   // params COMMA ID -> params
+        {"params", {"params", "COMMA", "ID", "DEFINE", "ID"}, 10}, // params COMMA ID DEFINE ID -> params
+        
         // Unary operators
         {"expr", {"SUB", "expr"}, 1},               // -expr -> expr
         {"expr", {"NOT", "expr"}, 1},               // !expr -> expr

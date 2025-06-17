@@ -7,6 +7,12 @@ args :
 args : expr
 args : args COMMA expr
 
+params : 
+params : ID
+params : ID DEFINE ID
+params : params COMMA ID 
+params : params COMMA ID DEFINE ID
+
 stmt : expr 
 
 expr : NUMBER

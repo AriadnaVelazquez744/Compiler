@@ -67,9 +67,16 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 
                 // Perform reduction
                 auto result = dispatcher.reduce(prodNum, children, loc);
-                std::cout << "Final reduction result: " << (result ? "Node created" : "null") << std::endl;
+                if (!result) {
+                    return {dispatcher.getRootNodes(), errors};
+                }
+                std::cout << "Reduction result: " << (result ? "Node created" : "null") << std::endl;
                 
-                // Push result and new state
+                // Handle statement reduction if this is a statement
+                if (lhs == "stmt") {
+                    handleStatementReduction(tokens);
+                }
+                
                 valueStack.push(result);
                 const auto& gotoTable = tableGen.getGotoTable(stateStack.top());
                 auto gotoIt = gotoTable.find(lhs);
@@ -146,7 +153,11 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 }
                 std::cout << "Reduction result: " << (result ? "Node created" : "null") << std::endl;
                 
-                // Push result and new state
+                // Handle statement reduction if this is a statement
+                if (lhs == "stmt") {
+                    handleStatementReduction(tokens);
+                }
+                
                 valueStack.push(result);
                 const auto& gotoTable = tableGen.getGotoTable(stateStack.top());
                 auto gotoIt = gotoTable.find(lhs);
@@ -238,6 +249,11 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 }
                 std::cout << "Reduction result: " << (result ? "Node created" : "null") << std::endl;
                 
+                // Handle statement reduction if this is a statement
+                if (lhs == "stmt") {
+                    handleStatementReduction(tokens);
+                }
+                
                 valueStack.push(result);
                 const auto& gotoTable = tableGen.getGotoTable(stateStack.top());
                 auto gotoIt = gotoTable.find(lhs);
@@ -309,79 +325,35 @@ void ParserDriver::handleStatementReduction(const std::vector<std::shared_ptr<To
         return;
     }
 
-    // Check if current token is a semicolon
+    // 1. Check if current token is a semicolon
     bool hasSemicolon = isSEMICOLON(tokens[currentTokenIndex]);
 
     if (hasSemicolon) {
-        // Skip semicolon and any following semicolons
-        currentTokenIndex++;
+        // 2. Skip all consecutive semicolons
         while (currentTokenIndex < tokens.size() && isSEMICOLON(tokens[currentTokenIndex])) {
             currentTokenIndex++;
         }
-
-        // After skipping semicolons, try to reduce the statement
-        int currentState = stateStack.top();
-        const auto& actionMap = tableGen.getActionTable(currentState);
-        auto actionIt = actionMap.find("$");
-        
-        if (actionIt != actionMap.end() && actionIt->second.type == ActionType::Reduce) {
-            const auto& action = actionIt->second;
-            int prodNum = action.target;
-            int rhsLength = dispatcher.getRHSLength(prodNum);
-            std::string lhs = dispatcher.getLHS(prodNum);
-            
-            if (lhs == "S'") {
-                return;
-            }
-
-            std::cout << "Reducing statement by production " << prodNum << ": " << lhs << " ::= ";
-            for (int i = 0; i < rhsLength; i++) {
-                std::cout << "RHS[" << i << "] ";
-            }
-            std::cout << std::endl;
-            
-            // Pop RHS elements from stacks
-            std::vector<ParserValue> children;
-            for (int i = 0; i < rhsLength; i++) {
-                if (valueStack.empty()) {
-                    std::cout << "ERROR: Value stack empty during reduction" << std::endl;
-                    errors.push_back("Internal parser error: Stack underflow during reduction");
-                    return;
-                }
-                children.insert(children.begin(), valueStack.top());
-                valueStack.pop();
-                stateStack.pop();
-            }
-            
-            // Get source location from first child
-            SourceLocation loc;
-            if (!children.empty()) {
-                if (auto token = std::get_if<std::shared_ptr<Token>>(&children[0])) {
-                    loc = (*token)->location;
-                } else if (auto node = std::get_if<std::shared_ptr<ASTNode>>(&children[0])) {
-                    loc = SourceLocation{(*node)->line(), 0};
-                }
-            }
-            
-            // Perform reduction
-            auto result = dispatcher.reduce(prodNum, children, loc);
-            std::cout << "Statement reduction result: " << (result ? "Node created" : "null") << std::endl;
-            
-            // Push result and new state
-            valueStack.push(result);
-            const auto& gotoTable = tableGen.getGotoTable(stateStack.top());
-            auto gotoIt = gotoTable.find(lhs);
-            if (gotoIt != gotoTable.end()) {
-                int newState = gotoIt->second;
-                std::cout << "Goto state " << newState << " for " << lhs << std::endl;
-                stateStack.push(newState);
-            }
-        }
-    } else {
-        // Report missing semicolon error
-        errors.push_back("Error en línea " + std::to_string(tokens[currentTokenIndex]->location.line) + 
-                        ": Se esperaba ';' después de la declaración");
+        // Move back one position to keep currentToken at the last semicolon
+        currentTokenIndex--;
+        return;
     }
+
+    // 3. Check if previous or next token is RBRACE
+    bool hasRBrace = false;
+    if (currentTokenIndex > 0 && isRBRACE(tokens[currentTokenIndex - 1])) {
+        hasRBrace = true;
+    }
+    if (currentTokenIndex < tokens.size() - 1 && isRBRACE(tokens[currentTokenIndex + 1])) {
+        hasRBrace = true;
+    }
+
+    if (hasRBrace) {
+        return;
+    }
+
+    // 4. If not semicolon and no RBRACE, report error
+    errors.push_back("Error en línea " + std::to_string(tokens[currentTokenIndex]->location.line) + 
+                    ": Se esperaba ';' después de la declaración");
 }
 
 ParseResult ParserDriver::handleAccept() {

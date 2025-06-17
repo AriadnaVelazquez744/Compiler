@@ -106,10 +106,10 @@ int main(int argc, char** argv) {
     tableGen.generateParsingTables();
     std::cerr << "tablas action and gotoc y precedencia establecida \n";
 
-    tableGen.printGotoTable();
+    // tableGen.printGotoTable();
 
     // 3. PARSE TOKENS → AST
-    SemanticActionDispatcher dispatcher;
+    SemanticActionDispatcher dispatcher(tableGen);
     std::cerr << "action dispatcher inicialyze \n";
 
     ParserDriver driver(tableGen, dispatcher);

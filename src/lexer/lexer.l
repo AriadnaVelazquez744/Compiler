@@ -4,6 +4,7 @@
 
 // Variables para seguimiento de columnas
 int yycolumn = 1;
+int lex_error = 0;
 
 // Macro que se ejecuta ANTES de cada token
 #define YY_USER_ACTION \
@@ -20,8 +21,8 @@ int yycolumn = 1;
 
 %%
 
-[_]+[a-zA-Z0-9_]+       { fprintf(stderr, "Error léxico. Variable inválida: '%s' en %d:%d\n", yytext, yylineno, yylloc.first_column); }
-[0-9]+[a-zA-Z_]+        { fprintf(stderr, "Error léxico. Variable inválida: '%s' en %d:%d\n", yytext, yylineno, yylloc.first_column); }
+[_]+[a-zA-Z0-9_]+       { lex_error = 1; fprintf(stderr, "Error léxico. Variable inválida: '%s' en %d:%d\n", yytext, yylineno, yylloc.first_column); }
+[0-9]+[a-zA-Z_]+        { lex_error = 1; fprintf(stderr, "Error léxico. Variable inválida: '%s' en %d:%d\n", yytext, yylineno, yylloc.first_column); }
 
 
 [0-9]+(\.[0-9]+)?       { 
@@ -137,6 +138,7 @@ int yycolumn = 1;
 [ \t]+                  { /* Whitespace handled by YY_USER_ACTION */ }  // Ignorar espacios
 \n                      { yycolumn = 1; }        // Resetear columna al salto de línea
 .                       { 
+                            lex_error = 1;
                             fprintf(stderr, "Error léxico: '%s' en %d:%d\n", yytext, yylineno, yylloc.first_column); 
                         }
 

@@ -481,10 +481,10 @@ bool SemanticAnalyzer::conformsTo(const std::string& subtype, const std::string&
     if (subtype == "Error" || supertype == "Error") return false;
     if (subtype == supertype) return true;
     if (supertype == "Object") return true;
-    if (supertype == "")
-    {
-        return true;
-    }
+    // if (supertype == "")
+    // {
+    //     return true;
+    // }
     
     
 
@@ -756,7 +756,7 @@ void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
                         param.type = otherLit->type();
                     } else {
                         // Si no podemos inferir el tipo del otro operando,
-                        // permitir tanto String como Number
+                        // permitimos tanto String como Number
                         param.type = "String";
                     }
                     symbolTable.updateSymbolType(param.name, param.type);
@@ -858,8 +858,13 @@ void SemanticAnalyzer::visit(FunctionCallNode& node) {
         std::string argType = node.args[i]->type();
         std::string expectedType = symbol->params[i];
 
+        if (expectedType == "")
+        {
+            expectedType = "Unknown";
+        }
+
         // Si el tipo esperado es Unknown, intentar inferirlo del cuerpo de la función
-        if (expectedType == "Unknown" && symbol->body) {
+        if ((expectedType == "Unknown" || expectedType == "") && symbol->body) {
             std::set<std::string> paramTypes;
             collectParamUsages(symbol->body, symbol->params[i], paramTypes);
             if (!paramTypes.empty()) {
@@ -886,10 +891,13 @@ void SemanticAnalyzer::visit(FunctionCallNode& node) {
             }
         }
 
+        std::cout << "DEBUG: argType=" << argType << ", expectedType=" << expectedType << std::endl;
+
         // Verificar compatibilidad de tipos
         if (!conformsTo(argType, expectedType)) {
+            std::cout << "DEBUUG: argType=" << argType << ", expectedType=" << expectedType << std::endl;
             // Si el tipo esperado es Unknown, intentar inferir del argumento
-            if (expectedType == "Unknown" && argType != "Unknown") {
+            if ((expectedType == "Unknown" || expectedType == "") && argType != "Unknown") {
                 symbol->params[i] = argType;
             } else {
                 errors.emplace_back("Tipo incorrecto para argumento " + std::to_string(i + 1) +

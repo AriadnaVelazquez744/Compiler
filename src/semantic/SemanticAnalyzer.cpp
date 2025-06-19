@@ -804,6 +804,14 @@ void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
         funcSym->type = node._type;
     }
 
+    // Al final del análisis de la función, después de inferir todos los tipos de parámetros:
+    if (funcSym && funcSym->kind == "function") {
+        funcSym->params.clear();
+        for (const auto& param : *node.params) {
+            funcSym->params.push_back(param.type.empty() ? "Unknown" : param.type);
+        }
+    }
+
     std::cout << "=== Fin del análisis de función ===\n\n";
 
     symbolTable.exitScope();
@@ -891,7 +899,7 @@ void SemanticAnalyzer::visit(FunctionCallNode& node) {
             }
         }
 
-        std::cout << "DEBUG: argType=" << argType << ", expectedType=" << expectedType << std::endl;
+    
 
         // Verificar compatibilidad de tipos
         if (!conformsTo(argType, expectedType)) {

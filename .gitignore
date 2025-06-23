@@ -33,3 +33,10 @@
 
 # Generados en compilación
 /.build
+
+#text file
+*.aux
+*.fdb_latexmk
+*.fls 
+*.log
+*.gz

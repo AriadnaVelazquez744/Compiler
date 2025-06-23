@@ -139,259 +139,203 @@ utilizando como lenguaje base C++.
 El compilador está diseñado siguiendo una arquitectura modular que divide el proceso de compilación en etapas bien definidas, cada una con responsabilidades específicas y mecanismos de manejo de errores robustos.
 
 \subsection{Flujo del Programa}
-El flujo del programa sigue una secuencia clara y estructurada de etapas de compilación. El punto de entrada es la función \texttt{main()} en \texttt{main.cpp}, que coordina todo el proceso:
+El flujo del programa sigue una secuencia modular y estructurada de etapas de compilación, coordinadas desde la función principal en \texttt{main.cpp}. Cada etapa utiliza componentes propios implementados en C++ puro, sin herramientas externas. El procedimiento real es el siguiente:
 
 \begin{enumerate}
     \item \textbf{Inicialización}:
     \begin{itemize}
-        \item Procesamiento de argumentos de línea de comandos para determinar el archivo fuente
-        \item Apertura y validación del archivo \texttt{.hulk} especificado
-        \item Configuración del entorno de compilación
+        \item Procesamiento de argumentos de línea de comandos para determinar el archivo fuente (por defecto, \texttt{script.hulk})
+        \item Lectura y validación del archivo fuente mediante la función \texttt{readFile()}
     \end{itemize}
 
-    \item \textbf{Análisis Léxico y Sintáctico}:
+    \item \textbf{Análisis Léxico}:
     \begin{itemize}
-        \item Ejecución del análisis léxico mediante \texttt{yylex()}
-        \item Verificación de errores léxicos mediante \texttt{lex\_error}
-        \item Ejecución del análisis sintáctico con \texttt{yyparse()}
-        \item Construcción del AST durante el proceso
+        \item Instanciación de la clase \texttt{Lexer} con el código fuente
+        \item Generación secuencial de tokens usando \texttt{nextToken()}, almacenando cada token en un vector
+        \item Reporte inmediato de errores léxicos mediante \texttt{getErrors()}; si existen, el programa termina
     \end{itemize}
 
-    \item \textbf{Validación del AST}:
+    \item \textbf{Carga y Construcción de la Gramática}:
     \begin{itemize}
-        \item Verificación de la validez del árbol mediante \texttt{is\_valid\_ast()}
-        \item Comprobación de nodos nulos y estructura correcta
-        \item Impresión de información de diagnóstico sobre los nodos raíz
+        \item Instanciación de \texttt{GrammarAugment} y carga de la gramática BNF desde archivo
+        \item Cálculo de conjuntos \texttt{FIRST} y \texttt{FOLLOW}
+        \item Construcción de conjuntos de items LR(1) con \texttt{LR1ItemSetBuilder}
+        \item Generación de tablas de parsing (\texttt{ACTION} y \texttt{GOTO}) con \texttt{LR1ParsingTableGenerator}, configurando precedencias
+    \end{itemize}
+
+    \item \textbf{Parsing y Construcción del AST}:
+    \begin{itemize}
+        \item Instanciación de \texttt{SemanticActionDispatcher} para asociar acciones semánticas
+        \item Instanciación de \texttt{ParserDriver} y ejecución del ciclo de parsing LR(1) sobre la lista de tokens
+        \item Construcción del AST y acumulación de errores sintácticos
+        \item Validación del AST generado (no vacío, sin nodos nulos)
+        \item Reporte de errores sintácticos; si existen, el programa termina
+    \end{itemize}
+
+    \item \textbf{Impresión del AST}:
+    \begin{itemize}
+        \item Impresión de la estructura del AST usando \texttt{ASTPrinter} para diagnóstico
     \end{itemize}
 
     \item \textbf{Análisis Semántico}:
     \begin{itemize}
-        \item Creación del analizador semántico (\texttt{SemanticAnalyzer})
-        \item Ejecución del análisis sobre el AST
-        \item Verificación de tipos y reglas semánticas
+        \item Instanciación de \texttt{SemanticAnalyzer} y análisis del AST
+        \item Gestión de ámbitos, variables, funciones y tipos mediante \texttt{SymbolTable}
+        \item Reporte de errores semánticos si existen
     \end{itemize}
 
-    \item \textbf{Generación de Código}:
+    \item \textbf{Generación de Código LLVM}:
     \begin{itemize}
-        \item Inicialización del contexto de generación (\texttt{CodeGenContext})
-        \item Generación de código LLVM IR
-        \item Escritura del código generado en \texttt{hulk-low-code.ll}
+        \item Instanciación de \texttt{CodeGenContext}, que encapsula el contexto de generación y el sistema de tipos
+        \item Generación de código LLVM IR recorriendo el AST
+        \item Volcado del IR generado en el archivo \texttt{hulk-low-code.ll}
     \end{itemize}
 
     \item \textbf{Finalización}:
     \begin{itemize}
-        \item Liberación de recursos mediante \texttt{delete\_ast()}
-        \item Cierre de archivos y limpieza de memoria
-        \item Retorno del estado de la compilación
+        \item El programa termina exitosamente si no hubo errores fatales en ninguna etapa
     \end{itemize}
 \end{enumerate}
 
 En cada etapa, el compilador implementa un manejo de errores robusto que permite:
 \begin{itemize}
-    \item Detección temprana de problemas
-    \item Mensajes de error descriptivos con información de ubicación
+    \item Detección temprana y reporte inmediato de problemas léxicos, sintácticos y semánticos
+    \item Mensajes de error descriptivos con información de ubicación precisa
     \item Limpieza apropiada de recursos en caso de fallo
     \item Códigos de retorno específicos para diferentes tipos de error
 \end{itemize}
 
 
-\section{An\'alisis L\'exico: Lexer}
+\section{Análisis Léxico: Lexer}
 
-El analizador léxico del compilador \textbf{HULK} está implementado utilizando \textbf{Flex}, con un diseño que prioriza la precisión en el seguimiento de posición y el manejo de errores. La implementación incluye características avanzadas para el seguimiento de ubicación y la detección temprana de errores.
+El analizador léxico del compilador \textbf{HULK} está implementado completamente en C++ mediante una clase propia \texttt{Lexer}, sin utilizar Flex ni generadores automáticos. El diseño se basa en un autómata manual que recorre el texto fuente carácter por carácter, identificando tokens y gestionando errores de manera precisa y eficiente.
 
-\subsection{Configuración y Características}
+\subsection{Estructura e Interfaz}
 
-El lexer está configurado con las siguientes características principales:
+El lexer se encapsula en la clase \texttt{Lexer}, que recibe el código fuente como una cadena y expone el método principal \texttt{nextToken()}, encargado de devolver el siguiente token del flujo. Cada token se representa mediante la estructura \texttt{Token}, que almacena el tipo (\texttt{TokenType}), el lexema y la ubicación exacta (línea y columna) en el código fuente. Los errores léxicos se encapsulan en la estructura \texttt{LexerError}, que incluye mensaje, ubicación y el lexema problemático.
+
+\subsection{Lógica de Tokenización y Autómata}
+
+El proceso de análisis léxico se realiza mediante un autómata implementado manualmente, con funciones especializadas para cada tipo de patrón:
 
 \begin{itemize}
-    \item \textbf{Opciones de Flex}:
-    \begin{itemize}
-        \item \texttt{noyywrap}: Desactiva el procesamiento de múltiples archivos
-        \item \texttt{yylineno}: Habilita el seguimiento automático de líneas
-        \item \texttt{nounput}: Optimiza el lexer eliminando funciones no utilizadas
-    \end{itemize}
-    
-    \item \textbf{Seguimiento de Posición}:
-    \begin{itemize}
-        \item Variable \texttt{yycolumn} para seguimiento preciso de columnas
-        \item Macro \texttt{YY\_USER\_ACTION} que actualiza automáticamente:
-        \begin{itemize}
-            \item Línea inicial y final (\texttt{first\_line}, \texttt{last\_line})
-            \item Columna inicial y final (\texttt{first\_column}, \texttt{last\_column})
-        \end{itemize}
-    \end{itemize}
+    \item \textbf{Identificadores y Palabras Clave}: Reconocidos por el método \texttt{identifierOrKeyword()}, que detecta patrones del tipo \texttt{[a-zA-Z\_][a-zA-Z0-9\_]*} y los compara contra un mapa de palabras clave para distinguirlos de identificadores.
+    \item \textbf{Números}: El método \texttt{number()} reconoce literales numéricos enteros y decimales, permitiendo la presencia de un punto decimal.
+    \item \textbf{Cadenas}: El método \texttt{stringLiteral()} reconoce literales de cadena delimitadas por comillas dobles, preservando secuencias de escape y reportando errores en caso de cadenas sin cerrar.
+    \item \textbf{Operadores y Puntuación}: El método \texttt{matchOperator()} detecta operadores de uno o dos caracteres (como \texttt{==}, \texttt{!=}, \texttt{@@}, etc.) y signos de puntuación mediante análisis por adelantado y un switch eficiente.
+    \item \textbf{Espacios en Blanco}: El método \texttt{skipWhitespace()} omite espacios, tabulaciones y saltos de línea antes de analizar el siguiente token.
 \end{itemize}
 
-\subsection{Tokens y Patrones}
+\subsection{Tipos de Tokens y Estructura}
 
-El lexer reconoce los siguientes tipos de tokens:
-
+El enum \texttt{TokenType} define todos los tipos de tokens reconocidos, incluyendo:
 \begin{itemize}
-    \item \textbf{Literales}:
-    \begin{itemize}
-        \item \textbf{Números}: Enteros y decimales (\texttt{[0-9]+(\textbackslash.[0-9]+)?})
-        \item \textbf{Cadenas}: Con soporte para caracteres de escape (\texttt{"(?:\textbackslash\textbackslash.|[]\^{}")*"})
-        \item \textbf{Booleanos}: \texttt{True} y \texttt{False}
-        \item \textbf{Null}: Valor nulo
-    \end{itemize}
-
-    \item \textbf{Operadores}:
-    \begin{itemize}
-        \item \textbf{Aritméticos}: \texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{\%}, \texttt{\textasciicircum}
-        \item \textbf{Comparación}: \texttt{<}, \texttt{>}, \texttt{<=}, \texttt{>=}, \texttt{==}, \texttt{!=}
-        \item \textbf{Lógicos}: \texttt{\&}, \texttt{|}, \texttt{!}
-        \item \textbf{Concatenación}: \texttt{@}, \texttt{@@}
-    \end{itemize}
-
-    \item \textbf{Palabras Clave}:
-    \begin{itemize}
-        \item \textbf{Control de Flujo}: \texttt{if}, \texttt{else}, \texttt{elif}, \texttt{while}, \texttt{for}
-        \item \textbf{Declaraciones}: \texttt{function}, \texttt{let}, \texttt{in}, \texttt{type}
-        \item \textbf{POO}: \texttt{new}, \texttt{self}, \texttt{inherits}, \texttt{base}
-        \item \textbf{Funciones Matemáticas}: \texttt{sin}, \texttt{cos}, \texttt{max}, \texttt{min}, \texttt{sqrt}, \texttt{exp}, \texttt{log}, \texttt{rand}
-    \end{itemize}
-
-    \item \textbf{Identificadores}: Patrón \texttt{[a-zA-Z\_][a-zA-Z0-9\_]*} con validación específica
+    \item Literales: números, cadenas, booleanos, nulo, identificadores
+    \item Operadores aritméticos, lógicos, de comparación y concatenación
+    \item Palabras clave del lenguaje (control de flujo, declaración, POO, funciones matemáticas, constantes)
+    \item Signos de puntuación y operadores especiales
+    \item Token especial para fin de archivo y para símbolos desconocidos
 \end{itemize}
 
-\subsection{Características Especiales}
+Cada token almacena su lexema y la ubicación exacta (línea y columna) donde fue encontrado, facilitando el diagnóstico y reporte de errores.
 
-La implementación incluye funcionalidades adicionales:
+\subsection{Manejo de Errores}
+
+El lexer implementa un sistema robusto de manejo de errores léxicos:
+\begin{itemize}
+    \item \textbf{Reporte Inmediato}: Ante símbolos no reconocidos, cadenas sin cerrar o tokens malformados, se genera un \texttt{LexerError} con mensaje descriptivo, ubicación y el lexema problemático.
+    \item \textbf{Acumulación de Errores}: Todos los errores detectados se almacenan y pueden ser consultados tras el análisis mediante \texttt{getErrors()}.
+    \item \textbf{Precisión}: Cada error incluye la línea y columna exacta, permitiendo mensajes claros y útiles para el usuario.
+\end{itemize}
+
+\subsection{Características Especiales y Extensibilidad}
 
 \begin{itemize}
-    \item \textbf{Gestión de Strings}:
-    \begin{itemize}
-        \item Eliminación automática de comillas delimitadoras
-        \item Preservación de caracteres de escape
-    \end{itemize}
-
-    \item \textbf{Depuración}:
-    \begin{itemize}
-        \item Mensajes informativos para cada token reconocido
-        \item Información de posición para facilitar el desarrollo
-    \end{itemize}
-
-    \item \textbf{Integración con el Parser}:
-    \begin{itemize}
-        \item Comunicación mediante \texttt{yylval} para pasar valores
-        \item Sincronización de posición mediante \texttt{yylloc}
-    \end{itemize}
+    \item \textbf{Seguimiento de Ubicación}: El lexer actualiza línea y columna en cada avance, asegurando precisión en la localización de tokens y errores.
+    \item \textbf{Gestión de Strings}: Las cadenas preservan los caracteres de escape y eliminan automáticamente las comillas delimitadoras.
+    \item \textbf{Modularidad}: La implementación en C++ puro facilita la extensión para nuevos tipos de tokens o reglas léxicas.
+    \item \textbf{Integración}: El lexer está diseñado para integrarse fácilmente con el parser y el resto del compilador, proporcionando tokens y errores con toda la información contextual necesaria.
 \end{itemize}
 
 \section{An\'alisis Sint\'actico: Parser}
 
-El analizador sintáctico del compilador \textbf{HULK} está implementado utilizando \textbf{Bison}, con un diseño que prioriza la construcción precisa del AST y el manejo de expresiones complejas. La implementación sigue una estructura clara y modular que facilita la extensión del lenguaje.
+El analizador sintáctico del compilador \textbf{HULK} está implementado como un generador LR(1) propio en C++, que abarca desde la normalización de la gramática hasta la ejecución del autómata y la construcción del AST. El sistema es completamente modular y extensible, y no depende de herramientas externas como Bison.
 
-\subsection{Estructura del Parser}
+\subsection{Flujo de Generación del Parser}
 
-El parser está organizado en secciones bien definidas:
+El proceso de generación y ejecución del parser se compone de varias etapas bien diferenciadas:
+
+\begin{enumerate}
+    \item \textbf{Normalización de Gramática (EBNF a BNF):}
+    \begin{itemize}
+        \item El archivo de gramática fuente se escribe en EBNF para mayor expresividad.
+        \item El módulo \texttt{GrammarNormalizer} convierte automáticamente la EBNF a BNF, generando reglas auxiliares para secuencias, alternativas, repeticiones y opcionales.
+        \item El resultado es una lista de reglas BNF listas para la construcción del autómata.
+    \end{itemize}
+
+    \item \textbf{Construcción y Augmentación de la Gramática:}
+    \begin{itemize}
+        \item El objeto \texttt{GrammarAugment} lee la gramática BNF, identifica terminales y no terminales, y realiza la augmentación necesaria para LR(1).
+        \item Calcula los conjuntos \texttt{FIRST} y \texttt{FOLLOW} para todos los símbolos, fundamentales para la predicción y la construcción de items LR(1).
+    \end{itemize}
+
+    \item \textbf{Construcción del Autómata LR(1):}
+    \begin{itemize}
+        \item El \texttt{LR1ItemSetBuilder} genera el conjunto de estados del autómata LR(1) a partir de la gramática augmentada.
+        \item Cada estado es un conjunto de items LR(1), definidos por la posición del punto y el lookahead.
+        \item Se implementa el algoritmo de \textbf{closure} para expandir los items y el de \textbf{goto} para construir las transiciones entre estados.
+        \item Se utiliza una caché para optimizar la computación de closures.
+    \end{itemize}
+
+    \item \textbf{Generación de Tablas de Parsing:}
+    \begin{itemize}
+        \item El \texttt{LR1ParsingTableGenerator} recorre los estados del autómata y genera las tablas \texttt{ACTION} y \texttt{GOTO}.
+        \item Se resuelven automáticamente los conflictos shift/reduce y reduce/reduce usando precedencia y asociatividad, configuradas explícitamente en el código.
+        \item Se almacena, para cada estado, el conjunto de tokens esperados, facilitando la recuperación y reporte de errores.
+    \end{itemize}
+
+    \item \textbf{Ejecución del Parser:}
+    \begin{itemize}
+        \item El \texttt{ParserDriver} implementa el ciclo de parsing LR(1) clásico: mantiene una pila de estados y una pila de valores semánticos.
+        \item Para cada token, consulta la tabla \texttt{ACTION} para decidir entre shift, reduce, accept o error.
+        \item Las reducciones invocan acciones semánticas a través del \texttt{SemanticActionDispatcher}, que construye el AST de manera incremental.
+        \item El parser soporta recuperación de errores y sincronización mediante tokens especiales (como punto y coma).
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Automatización y Manipulación de Autómatas}
 
 \begin{itemize}
-    \item \textbf{Declaraciones Iniciales}:
-    \begin{itemize}
-        \item Estructura \texttt{YYLTYPE} para seguimiento de ubicación
-        \item Vector \texttt{root} para almacenar el AST
-        \item Funciones auxiliares como \texttt{vectorize} para manejo de argumentos
-    \end{itemize}
-
-    \item \textbf{Tipos Semánticos}:
-    \begin{itemize}
-        \item Tipos básicos: \texttt{num}, \texttt{str}, \texttt{boolean}
-        \item Tipos compuestos: \texttt{node}, \texttt{list}, \texttt{param}
-        \item Tipos específicos: \texttt{if\_branch}, \texttt{let\_decl}, \texttt{type\_body}
-    \end{itemize}
+    \item \textbf{Items LR(1):} Cada item se representa como una tupla \texttt{(lhs, rhs, dot, lookahead)}. El closure expande los items considerando los lookaheads, siguiendo el algoritmo estándar de LR(1).
+    \item \textbf{Closure y Goto:} El closure se implementa de forma iterativa y eficiente, utilizando caché para evitar recomputaciones. El goto genera nuevos kernels y expande el autómata.
+    \item \textbf{Transiciones:} Las transiciones entre estados se almacenan en una tabla de mapeo, permitiendo la navegación eficiente durante el parsing.
 \end{itemize}
 
-\subsection{Tokens y Precedencia}
-
-La gramática define una jerarquía clara de operadores:
+\subsection{Tablas y Resolución de Conflictos}
 
 \begin{itemize}
-    \item \textbf{Operadores de Mayor Precedencia}:
-    \begin{itemize}
-        \item Multiplicación, División, Módulo (\texttt{MUL}, \texttt{DIV}, \texttt{MOD})
-        \item Suma y Resta (\texttt{ADD}, \texttt{SUB})
-    \end{itemize}
-
-    \item \textbf{Operadores de Comparación}:
-    \begin{itemize}
-        \item Relacionales: \texttt{<}, \texttt{>}, \texttt{<=}, \texttt{>=}
-        \item Igualdad: \texttt{==}, \texttt{!=}
-    \end{itemize}
-
-    \item \textbf{Operadores Lógicos}:
-    \begin{itemize}
-        \item AND (\texttt{\&}), OR (\texttt{|}), NOT (\texttt{!})
-    \end{itemize}
-
-    \item \textbf{Operadores Especiales}:
-    \begin{itemize}
-        \item Concatenación: \texttt{@}, \texttt{@@}
-        \item Funciones matemáticas: \texttt{sin}, \texttt{cos}, \texttt{sqrt}, etc.
-    \end{itemize}
+    \item \textbf{Tabla ACTION:} Para cada estado y símbolo terminal, se almacena la acción a realizar (shift, reduce, accept o error).
+    \item \textbf{Tabla GOTO:} Para cada estado y no terminal, se almacena el siguiente estado tras una reducción.
+    \item \textbf{Precedencia y Asociatividad:} Los conflictos se resuelven usando precedencia y asociatividad configurables, permitiendo un control fino sobre el comportamiento del parser.
+    \item \textbf{Tokens Esperados:} Se mantiene, para cada estado, el conjunto de tokens válidos, lo que permite mensajes de error precisos y sugerencias de recuperación.
 \end{itemize}
 
-\subsection{Reglas Gramaticales}
-
-La gramática está estructurada en niveles jerárquicos:
+\subsection{Construcción del AST y Acciones Semánticas}
 
 \begin{itemize}
-    \item \textbf{Nivel Superior}:
-    \begin{itemize}
-        \item \texttt{program}: Lista de statements
-        \item \texttt{statement}: Expresiones, declaraciones y bloques
-    \end{itemize}
-
-    \item \textbf{Expresiones}:
-    \begin{itemize}
-        \item Literales: números, strings, booleanos, null
-        \item Operaciones binarias y unarias
-        \item Llamadas a funciones y métodos
-        \item Expresiones de control de flujo
-    \end{itemize}
-
-    \item \textbf{Estructuras de Control}:
-    \begin{itemize}
-        \item \texttt{if\_expr}: Soporte para \texttt{if}, \texttt{elif}, \texttt{else}
-        \item \texttt{while\_expr}: Bucles while con condición
-        \item \texttt{for\_expr}: Bucles for con rangos
-    \end{itemize}
-
-    \item \textbf{Programación Orientada a Objetos}:
-    \begin{itemize}
-        \item Declaración de tipos con \texttt{type\_decl}
-        \item Herencia mediante \texttt{inherits}
-        \item Métodos y atributos con \texttt{method\_decl} y \texttt{attribute\_decl}
-        \item Llamadas a métodos y constructores
-    \end{itemize}
+    \item \textbf{Dispatcher de Acciones:} El \texttt{SemanticActionDispatcher} asocia cada producción con una acción semántica, que puede construir nodos del AST, listas, o realizar validaciones.
+    \item \textbf{Pila de Valores:} El parser utiliza una pila de valores polimórficos (\texttt{ParserValue}) para manejar tokens, nodos AST y listas de nodos.
+    \item \textbf{Integración con el AST:} Cada reducción puede crear o combinar nodos del AST, permitiendo la construcción incremental y modular del árbol sintáctico.
 \end{itemize}
 
-\subsection{Construcción del AST}
-
-Durante el análisis sintáctico, se construye el AST de manera incremental:
+\subsection{Ventajas y Características Especiales}
 
 \begin{itemize}
-    \item \textbf{Nodos Básicos}:
-    \begin{itemize}
-        \item Literales y identificadores
-        \item Operadores binarios y unarios
-        \item Llamadas a funciones
-    \end{itemize}
-
-    \item \textbf{Nodos Compuestos}:
-    \begin{itemize}
-        \item Bloques de código
-        \item Estructuras de control
-        \item Declaraciones de tipos y funciones
-    \end{itemize}
-
-    \item \textbf{Información de Ubicación}:
-    \begin{itemize}
-        \item Cada nodo almacena su línea de origen (\texttt{yylloc.first\_line})
-        \item Facilita el reporte preciso de errores
-    \end{itemize}
+    \item \textbf{Modularidad Total:} Cada componente (normalización, augmentación, autómata, tablas, parser) es independiente y extensible.
+    \item \textbf{Diagnóstico y Depuración:} El sistema permite imprimir los conjuntos de items, las tablas de parsing y los tokens esperados, facilitando la depuración y el análisis de la gramática.
+    \item \textbf{Recuperación de Errores:} El parser implementa mecanismos de recuperación y sincronización, permitiendo continuar el análisis tras errores sintácticos.
+    \item \textbf{Extensibilidad:} Es sencillo añadir nuevas reglas, operadores o modificar la gramática, gracias a la separación clara de responsabilidades y la automatización de la normalización y generación de tablas.
 \end{itemize}
-
 
 \section{Chequeo Sem\'antico}
 El chequeo sem\'antico en el compilador \textbf{HULK} se implementa mediante un sistema sofisticado que utiliza el \textbf{Patr\'on Visitor} para recorrer y analizar el AST. La implementación se divide en varios componentes principales que trabajan en conjunto para garantizar la corrección semántica del programa.
@@ -599,37 +543,30 @@ El manejo de errores en el compilador \textbf{Hulk} está implementado de manera
 
 \subsection{Errores Léxicos}
 
-El analizador léxico, implementado con \textbf{Flex}, incluye un sistema de seguimiento de posición preciso:
+El analizador léxico, implementado manualmente en C++ (sin Flex), incluye un sistema preciso de seguimiento de posición y manejo de errores:
 
 \begin{itemize}
-    \item \textbf{Seguimiento de Posición}: Se mantiene un registro exacto de línea y columna para cada token mediante las variables \texttt{yylineno} y \texttt{yycolumn}.
+    \item \textbf{Seguimiento de Posición}: El lexer mantiene un registro exacto de línea y columna para cada token y error, actualizando estos valores a medida que avanza por el texto fuente.
     \item \textbf{Detección de Errores}:
     \begin{itemize}
-        \item Identificadores inválidos (comenzando con guiones bajos o números)
-        \item Caracteres no reconocidos en el lenguaje
+        \item Símbolos no reconocidos (caracteres fuera del alfabeto del lenguaje)
+        \item Literales de cadena sin cerrar
         \item Tokens malformados
     \end{itemize}
-    \item \textbf{Reporte de Errores}: Los errores se reportan inmediatamente con:
-    \begin{itemize}
-        \item Descripción del error
-        \item Línea y columna exacta del error
-        \item Token problemático
-    \end{itemize}
+    \item \textbf{Reporte y Acumulación de Errores}: Cada vez que se detecta un error, se crea un objeto \texttt{LexerError} que almacena un mensaje descriptivo, la ubicación exacta (línea y columna) y el lexema problemático. Todos los errores se acumulan en un vector interno y pueden ser consultados tras el análisis mediante el método \texttt{getErrors()}.
+    \item \textbf{Precisión}: La información de ubicación se gestiona manualmente, sin depender de herramientas externas, lo que permite mensajes de error claros y útiles para el usuario.
 \end{itemize}
 
 \subsection{Errores Sintácticos}
 
-El parser, construido con \textbf{Bison}, implementa un sistema de recuperación de errores:
+El parser, implementado como un autómata LR(1) propio en C++, gestiona los errores sintácticos de manera robusta y extensible:
 
 \begin{itemize}
-    \item \textbf{Sincronización}: Uso de tokens de sincronización (como el punto y coma) para recuperarse de errores.
-    \item \textbf{Localización}: Aprovecha la información de ubicación (\texttt{YYLTYPE}) para reportar errores con precisión.
-    \item \textbf{Validación de AST}: Verificación de la validez del árbol sintáctico generado:
-    \begin{itemize}
-        \item Comprobación de nodos nulos
-        \item Validación de estructura del árbol
-        \item Verificación de completitud
-    \end{itemize}
+    \item \textbf{Detección de Errores}: Cuando se encuentra un token inesperado (no existe una acción válida para el estado actual y el token), el parser reporta el error, indicando el token problemático, su ubicación y el conjunto de tokens esperados.
+    \item \textbf{Sincronización y Recuperación}: El parser implementa mecanismos de recuperación mediante la búsqueda de tokens de sincronización (como el punto y coma), permitiendo continuar el análisis tras un error y acumular múltiples errores en una sola pasada.
+    \item \textbf{Acumulación de Errores}: Todos los errores sintácticos se almacenan en un vector interno y se reportan al finalizar el análisis.
+    \item \textbf{Validación de AST}: Tras el análisis, se verifica la validez del árbol sintáctico generado, comprobando la ausencia de nodos nulos o estructuras incompletas, y reportando errores si es necesario.
+    \item \textbf{Precisión}: La información de ubicación de los errores se obtiene directamente de los tokens, permitiendo mensajes detallados y precisos.
 \end{itemize}
 
 \subsection{Errores Semánticos}

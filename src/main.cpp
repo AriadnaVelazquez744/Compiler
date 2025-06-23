@@ -14,7 +14,7 @@
 #include "parser/TokenTypeStringMap.hpp"
 #include "ast/AST.hpp"
 #include "ast/ASTPrinter.hpp"
-// #include "semantic/SemanticAnalyzer.hpp"
+#include "semantic/SemanticAnalyzer.hpp"
 // #include "codegen/CodeGenContext.hpp"
 
 #include <filesystem> // C++17

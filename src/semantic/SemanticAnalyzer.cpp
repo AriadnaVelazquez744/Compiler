@@ -236,7 +236,15 @@ void SemanticAnalyzer::collectParamUsages(std::shared_ptr<ASTNode> node, const s
         std::string objType;
 
         // Buscamos el símbolo de la instancia para obtener su tipo
-        std::shared_ptr<Symbol> instanceSym = symbolTable.lookup(method->instanceName);
+        std::string instanceName;
+        if (auto id = std::dynamic_pointer_cast<IdentifierNode>(method->object)) {
+            instanceName = id->name;
+        } else if (auto self = std::dynamic_pointer_cast<SelfCallNode>(method->object)) {
+            instanceName = self->varName;
+        } else {
+            return;
+        }
+        std::shared_ptr<Symbol> instanceSym = symbolTable.lookup(instanceName);
         if (!instanceSym) return; 
 
         objType = instanceSym->type;
@@ -1186,12 +1194,11 @@ void SemanticAnalyzer::visit(LetNode& node) {
 }
 
 void SemanticAnalyzer::visit(AssignmentNode& node) {
-    
     std::string name;
-    if(auto* id = dynamic_pointer_cast<IdentifierNode>(node.name)) {
+    if(auto id = std::dynamic_pointer_cast<IdentifierNode>(node.name)) {
         name = id->name;
     }
-    else if (auto* self = dynamic_pointer_cast<SelfCallNode>(node.name)) {
+    else if (auto self = std::dynamic_pointer_cast<SelfCallNode>(node.name)) {
         name = self->varName;
     }
 
@@ -1493,9 +1500,19 @@ void SemanticAnalyzer::visit(NewInstanceNode& node) {
 }
 
 void SemanticAnalyzer::visit(MethodCallNode& node) {
-    std::shared_ptr<Symbol> instSym = symbolTable.lookup(node.instanceName);
+    std::string instanceName;
+    if (auto id = std::dynamic_pointer_cast<IdentifierNode>(node.object)) {
+        instanceName = id->name;
+    } else if (auto self = std::dynamic_pointer_cast<SelfCallNode>(node.object)) {
+        instanceName = self->varName;
+    } else {
+        errors.emplace_back("Expresión de objeto inválida en llamada a método", node.line());
+        node._type = "Error";
+        return;
+    }
+    std::shared_ptr<Symbol> instSym = symbolTable.lookup(instanceName);
     if (!instSym) {
-        errors.emplace_back("Variable '" + node.instanceName + "' no declarada", node.line());
+        errors.emplace_back("Variable '" + instanceName + "' no declarada", node.line());
         node._type = "Error";
         return;
     }
@@ -1508,11 +1525,11 @@ void SemanticAnalyzer::visit(MethodCallNode& node) {
     }
 
     // Búsqueda jerárquica del método en la cadena de herencia
-    Symbol* method = nullptr;
+    std::shared_ptr<Symbol> method = nullptr;
     while (typeSym) {
         auto it = typeSym->methods.find(node.methodName);
         if (it != typeSym->methods.end()) {
-            method = &it->second;
+            method = std::make_shared<Symbol>(it->second);
             break;
         }
         if (typeSym->parentType.empty()) break;

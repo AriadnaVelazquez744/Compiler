@@ -3,6 +3,7 @@
 #include "SymbolTable.hpp"
 #include "SemanticError.hpp"
 #include <vector>
+#include <memory>
 
 class SemanticAnalyzer : public ASTVisitor {
 private:
@@ -10,7 +11,7 @@ private:
     
 
     // Helper para verificar funciones matemáticas
-    void checkMathFunction(const std::string& funcName, const std::vector<ASTNode*>& args, int line);
+    void checkMathFunction(const std::string& funcName, const std::vector<std::shared_ptr<ASTNode>>& args, int line);
 
     bool isValidIdentifier(const std::string& name);
 
@@ -20,14 +21,14 @@ private:
     std::string currentMethodContext;
 
 public:
-    void analyze(const std::vector<ASTNode*>& nodes);
+    void analyze(const std::vector<std::shared_ptr<ASTNode>>& nodes);
     // SemanticAnalyzer(SymbolTable& table, std::vector<SemanticError>& errs)
     //     : symbolTable(table), errors(errs) {}
     // void resolveFunctionTypes();
-    std::string inferParamUsageType(const std::string& paramName, ASTNode* body);
-    void collectParamUsages(ASTNode* node, const std::string& paramName, std::set<std::string>& types);
+    std::string inferParamUsageType(const std::string& paramName, std::shared_ptr<ASTNode> body);
+    void collectParamUsages(std::shared_ptr<ASTNode> node, const std::string& paramName, std::set<std::string>& types);
 
-    Symbol* lookupMethodInHierarchy(const std::string& typeName, const std::string& methodName);
+    std::shared_ptr<Symbol> lookupMethodInHierarchy(const std::string& typeName, const std::string& methodName);
    
     
 

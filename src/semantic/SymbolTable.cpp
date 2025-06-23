@@ -30,11 +30,11 @@ bool SymbolTable::addSymbol(const std::string& name, const std::string& type, bo
     return true;
 }
 
-Symbol* SymbolTable::lookup(const std::string& name) {
+std::shared_ptr<Symbol> SymbolTable::lookup(const std::string& name) {
     // Buscar en ámbitos locales
     for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
         auto entry = it->find(name);
-        if (entry != it->end()) return &entry->second;
+        if (entry != it->end()) return std::make_shared<Symbol>(entry->second);
     }
     return nullptr;
 }
@@ -50,7 +50,7 @@ bool SymbolTable::addFunction(
     const std::string& name,
     const std::string& returnType,
     const std::vector<std::string>& params,
-    ASTNode* body
+    std::shared_ptr<ASTNode> body
 ) {
     if (scopes.empty()) return false;
     auto& current = scopes.back();
@@ -76,20 +76,20 @@ bool SymbolTable::addType(
     return true;
 }
 
-TypeSymbol* SymbolTable::lookupType(const std::string& name) {
+std::shared_ptr<TypeSymbol> SymbolTable::lookupType(const std::string& name) {
     auto it = types.find(name);
     if (it == types.end()) return nullptr;
-    return &it->second;
+    return std::make_shared<TypeSymbol>(it->second);
 }
 
-const TypeSymbol* SymbolTable::lookupType(const std::string& name) const {
+std::shared_ptr<const TypeSymbol> SymbolTable::lookupType(const std::string& name) const {
     auto it = types.find(name);
     if (it == types.end()) return nullptr;
-    return &it->second;
+    return std::make_shared<const TypeSymbol>(it->second);
 }
 
 bool SymbolTable::addTypeAttribute(const std::string& typeName, const std::string& attrName, const std::string& attrType) {
-    TypeSymbol* type = lookupType(typeName);
+    std::shared_ptr<TypeSymbol> type = lookupType(typeName);
     if (!type) return false;
     if (type->attributes.find(attrName) != type->attributes.end()) return false;
     type->attributes[attrName] = Symbol{"attribute", attrType, true, {}};
@@ -102,7 +102,7 @@ bool SymbolTable::addTypeMethod(
     const std::string& returnType,
     const std::vector<std::string>& params
 ) {
-    TypeSymbol* type = lookupType(typeName);
+    std::shared_ptr<TypeSymbol> type = lookupType(typeName);
     if (!type) return false;
     if (type->methods.find(methodName) != type->methods.end()) return false;
     type->methods[methodName] = Symbol{"method", returnType, false, params};
@@ -137,7 +137,7 @@ bool SymbolTable::updateSymbolType(const std::string& name, const std::string& n
 bool SymbolTable::isSubtype(const std::string& subtype, const std::string& supertype) {
     if (subtype == supertype) return true;
 
-    TypeSymbol* type = lookupType(subtype);
+    std::shared_ptr<TypeSymbol> type = lookupType(subtype);
     while (type && !type->parentType.empty()) {
         if (type->parentType == supertype) return true;
         type = lookupType(type->parentType);
@@ -150,7 +150,6 @@ std::string SymbolTable::lowestCommonAncestor(const std::vector<std::string>& ty
     if (types.empty()) return "Object";
     if (types.size() == 1) return types[0];
 
-    
     std::string candidate = types[0];
 
     for (size_t i = 1; i < types.size(); ++i) {
@@ -161,8 +160,7 @@ std::string SymbolTable::lowestCommonAncestor(const std::vector<std::string>& ty
         } else if (isSubtype(other, candidate)) {
             candidate = other; 
         } else {
-            
-            TypeSymbol* type = lookupType(candidate);
+            std::shared_ptr<TypeSymbol> type = lookupType(candidate);
             while (type && type->name != "Object") {
                 type = lookupType(type->parentType);
                 if (type && isSubtype(other, type->name)) {
@@ -171,7 +169,6 @@ std::string SymbolTable::lowestCommonAncestor(const std::vector<std::string>& ty
                 }
             }
 
-            
             if (!type) return "Object";
         }
     }

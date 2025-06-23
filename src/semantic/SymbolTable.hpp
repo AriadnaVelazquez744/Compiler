@@ -17,14 +17,14 @@ struct Symbol {
     std::string type;       // Tipo del símbolo (para variables) o tipo de retorno (funciones)
     bool is_const;          // ¿Es constante? 
     std::vector<std::string> params; // Parámetros (funciones) o tipoParams (tipos)
-    ASTNode* body = nullptr;
+    std::shared_ptr<ASTNode> body = nullptr;
 
     // Constructor completo
-    Symbol(std::string kind, std::string type, bool is_const, std::vector<std::string> params, ASTNode* body = nullptr)
+    Symbol(std::string kind, std::string type, bool is_const, std::vector<std::string> params, std::shared_ptr<ASTNode> body = nullptr)
         : kind(std::move(kind)), type(std::move(type)), is_const(is_const), params(std::move(params)), body(body) {}
 
     // Constructor mínimo 
-    Symbol(std::string type, bool is_const, std::vector<std::string> params = {}, ASTNode* body = nullptr)
+    Symbol(std::string type, bool is_const, std::vector<std::string> params = {}, std::shared_ptr<ASTNode> body = nullptr)
         : kind("variable"), type(std::move(type)), is_const(is_const), params(std::move(params)), body(body) {}
 
     Symbol() = default;
@@ -55,7 +55,7 @@ public:
     void enterScope();
     void exitScope();
     bool addSymbol(const std::string& name, const std::string& type, bool is_const, const std::vector<std::string>& params = {});
-    Symbol* lookup(const std::string& name);
+    std::shared_ptr<Symbol> lookup(const std::string& name);
     bool existsInCurrentScope(const std::string& name);
     std::string lowestCommonAncestor(const std::vector<std::string>& types) ;
     bool isSubtype(const std::string& subtype, const std::string& supertype) ;
@@ -64,7 +64,7 @@ public:
     const std::string& name,
     const std::string& returnType,
     const std::vector<std::string>& params,
-    ASTNode* body = nullptr 
+    std::shared_ptr<ASTNode> body = nullptr 
 );
 
     // Métodos para tipos
@@ -73,8 +73,8 @@ public:
         const std::string& parentType,
         const std::vector<std::string>& typeParams = {}
     );
-    const TypeSymbol* lookupType(const std::string& name) const;
-    TypeSymbol* lookupType(const std::string& name);
+    std::shared_ptr<TypeSymbol> lookupType(const std::string& name);
+    std::shared_ptr<const TypeSymbol> lookupType(const std::string& name) const;
     
     // Métodos para atributos y métodos de tipos
     bool addTypeAttribute(const std::string& typeName, const std::string& attrName, const std::string& attrType);

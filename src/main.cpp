@@ -84,7 +84,6 @@ int main(int argc, char** argv) {
     // 2. LOAD GRAMMAR AND BUILD PARSER
     GrammarAugment grammar;
 
-    // std::string grammarPath = std::filesystem::current_path().string() + "parser/BNFGrammar.bnf";
     try {
         grammar.readGrammar("src/parser/grammar/BNFGrammar.bnf");
 
@@ -104,9 +103,8 @@ int main(int argc, char** argv) {
     LR1ParsingTableGenerator tableGen(grammar, itemBuilder);
     setupPrecedence(tableGen); // External config
     tableGen.generateParsingTables();
-    std::cerr << "tablas action and gotoc y precedencia establecida \n";
+    std::cerr << "tablas action and goto y precedencia establecida \n";
 
-    // tableGen.printGotoTable();
 
     // 3. PARSE TOKENS → AST
     SemanticActionDispatcher dispatcher(tableGen);
@@ -138,11 +136,11 @@ int main(int argc, char** argv) {
     }
     std::cout << "\n=== End AST Structure ===\n";
 
-    // // 4. SEMANTIC ANALYSIS (future)
-    // SemanticAnalyzer analyzer;
-    // analyzer.analyze(result.ast);
+    // 4. SEMANTIC ANALYSIS (future)
+    SemanticAnalyzer analyzer;
+    analyzer.analyze(result.ast);
 
-    // std::cout << "Análisis semántico completado.\n";
+    std::cout << "Análisis semántico completado.\n";
 
     // // 5. CODEGEN (optional)
     // CodeGenContext codegen;

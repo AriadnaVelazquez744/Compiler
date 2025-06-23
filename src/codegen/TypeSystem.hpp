@@ -24,10 +24,10 @@ struct PlaceholderEntry {
  */
 struct TypeMethod {
     std::vector<Parameter>* params;
-    ASTNode* body;
+    std::shared_ptr<ASTNode> body;
     std::string returnType;
 
-    TypeMethod(std::vector<Parameter>* p, ASTNode* b, std::string ret = "")
+    TypeMethod(std::vector<sdt::shared_ptr<Parameter>> p, std::shared_ptr<ASTNode> b, std::string ret = "")
         : params(p), body(b), returnType(std::move(ret)) {}
 };
 
@@ -37,9 +37,9 @@ struct TypeMethod {
 struct TypeAttribute {
     std::string AttrName;           // Attribute name
     std::string TypeName;          // Attribute type (Number, String, Boolean, etc.)
-    ASTNode* initializer;      // Initializer AST node
+    std::shared_ptr<ASTNode> initializer;      // Initializer AST node
 
-    TypeAttribute(std::string attrName, std::string attrType, ASTNode* init)
+    TypeAttribute(std::string attrName, std::string attrType, std::shared_ptr<ASTNode> init)
         : AttrName(std::move(attrName))
         , TypeName(std::move(attrType))
         , initializer(init) {}
@@ -54,7 +54,7 @@ struct TypeDefinition {
     std::map<std::string, TypeAttribute> attributes;
     std::map<std::string, TypeMethod> methods;
     std::vector<std::string> constructorParams;  // List of parameter names
-    std::vector<ASTNode*> baseArgs;            // Arguments for base constructor
+    std::vector<std::shared_ptr<ASTNode>> baseArgs;            // Arguments for base constructor
 
     TypeDefinition(std::string n, std::optional<std::string> parent = std::nullopt)
         : name(std::move(n)), parentType(std::move(parent)), 
@@ -121,7 +121,7 @@ public:
      * @param typeName Type name
      * @return Vector of base argument AST nodes
      */
-    const std::vector<ASTNode*>& getBaseArgs(const std::string& typeName) {
+    const std::vector<std::shared_ptr<ASTNode>>& getBaseArgs(const std::string& typeName) {
         return getTypeDefinition(typeName).baseArgs;
     }
 
@@ -149,7 +149,7 @@ public:
      * @param typeName Type name
      * @param initializer Attribute initializer AST node
      */
-    void addAttribute(const std::string& attrName, const std::string& typeName, ASTNode* initializer);
+    void addAttribute(const std::string& attrName, const std::string& typeName, std::shared_ptr<ASTNode> initializer);
 
     /**
      * @brief Adds a method to a type
@@ -160,7 +160,7 @@ public:
      * @param returnType Method return type
      */
     void addMethod(const std::string& typeName, const std::string& methodName,
-                  std::vector<Parameter>* params, ASTNode* body, const std::string& returnType = "");
+                  std::vector<std::shared_ptr<Parameter>> params, std::shared_ptr<ASTNode> body, const std::string& returnType = "");
 
     /**
      * @brief Creates a new instance of a type

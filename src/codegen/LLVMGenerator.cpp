@@ -306,7 +306,7 @@ void LLVMGenerator::visit(BuiltInFunctionNode& node) {
 
     std::cout << "🔍 BuiltInFunction: " << node.name << " - Stack size before args: " << context.valueStack.size() << std::endl;
 
-    for (ASTNode* arg : node.args) {
+    for (const auto& arg : node.args) {
         arg->accept(*this);
         args.push_back(context.valueStack.back());
         context.valueStack.pop_back();
@@ -406,12 +406,12 @@ void LLVMGenerator::visit(BlockNode& node) {
 
     // Separate declarations from other expressions
     std::vector<ASTNode*> bodyExprs;
-    for (ASTNode* expr : node.expressions) {
-        if (auto* decl = dynamic_cast<FunctionDeclarationNode*>(expr)) {
+    for (const auto& expr : node.expressions) {
+        if (auto decl = std::dynamic_pointer_cast<FunctionDeclarationNode>(expr)) {
             context.addFuncDecl(decl->name, decl); // Register locally
             std::cout << "  📝 Registered function: " << decl->name << std::endl;
         } else {
-            bodyExprs.push_back(expr);
+            bodyExprs.push_back(expr.get());
         }
     }
 
@@ -538,7 +538,7 @@ void LLVMGenerator::visit(LetNode& node) {
 
         // Process the initializer
         decl.initializer->accept(*this);
-        if (auto* newInstance = dynamic_cast<NewInstanceNode*>(decl.initializer)) {
+        if (std::dynamic_pointer_cast<NewInstanceNode>(decl.initializer)) {
             context.typeSystem.popPlaceholder();
             continue;
         }
@@ -570,13 +570,13 @@ void LLVMGenerator::visit(FunctionCallNode& node) {
     std::cout << "🔍 FunctionCall: " << node.funcName << " - Stack size before args: " << context.valueStack.size() << std::endl;
     
     // Evaluate each argument (left-to-right) and push onto stack
-    for (ASTNode* arg : node.args) {
+    for (const auto& arg : node.args) {
         arg->accept(*this);
         std::cout << "  📥 Arg evaluated - Stack size: " << context.valueStack.size() << std::endl;
     }
 
     // Lookup FunctionDeclarationNode (not LLVM::Function)
-    auto* decl = context.lookupFuncDecl(node.funcName);
+    std::shared_ptr<FunctionDeclarationNode> decl = context.lookupFuncDecl(node.funcName);
     if (!decl) {
         throw std::runtime_error("❌ Function not declared: " + node.funcName);
     }
@@ -596,7 +596,7 @@ void LLVMGenerator::visit(AssignmentNode& node) {
     context.valueStack.pop_back();
 
     // 2. Get the variable name from the left-hand side
-    if (auto* idNode = dynamic_cast<IdentifierNode*>(node.name)) {
+    if (auto* idNode = std::dynamic_pointer_cast<IdentifierNode>(node.name).get()) {
         const std::string& varName = idNode->name;
         bool found = false;
 
@@ -626,9 +626,9 @@ void LLVMGenerator::visit(AssignmentNode& node) {
         std::string varName;
         
         // 1. Get the variable name
-        if (auto* idNode = dynamic_cast<IdentifierNode*>(node.name)) {
+        if (auto* idNode = std::dynamic_pointer_cast<IdentifierNode>(node.name).get()) {
             varName = idNode->name;
-        } else if (auto* selfNode = dynamic_cast<SelfCallNode*>(node.name)) {
+        } else if (auto* selfNode = std::dynamic_pointer_cast<SelfCallNode>(node.name).get()) {
             varName = selfNode->varName;
         } else {
             throw std::runtime_error("❌ Left-hand side of assignment must be an identifier or self access at line " + 
@@ -800,7 +800,7 @@ void LLVMGenerator::visit(ForNode& node) {
                     
                     // Check if this is a print statement
                     bool isPrint = false;
-                    if (auto* builtin = dynamic_cast<BuiltInFunctionNode*>(node.body)) {
+                    if (auto* builtin = std::dynamic_pointer_cast<BuiltInFunctionNode>(node.body).get()) {
                         isPrint = (builtin->name == "print");
                     }
                     
@@ -842,7 +842,7 @@ void LLVMGenerator::visit(ForNode& node) {
                         
                         // Check if this is a print statement
                         bool isPrint = false;
-                        if (auto* builtin = dynamic_cast<BuiltInFunctionNode*>(node.body)) {
+                        if (auto* builtin = std::dynamic_pointer_cast<BuiltInFunctionNode>(node.body).get()) {
                             isPrint = (builtin->name == "print");
                         }
                         
@@ -916,7 +916,19 @@ void LLVMGenerator::visit(TypeDeclarationNode& node) {
     // Process methods
     if (node.body->methods) {
         for (const auto& method : *node.body->methods) {
-            context.typeSystem.addMethod(node.name, method.name, method.params, method.body, method.returnType);
+            std::vector<std::shared_ptr<Parameter>> paramPtrs;
+            if (method.params) {
+                for (const auto& p : *method.params) {
+                    paramPtrs.push_back(std::make_shared<Parameter>(p));
+                }
+            }
+            context.typeSystem.addMethod(
+                node.name,
+                method.name,
+                paramPtrs,
+                method.body,
+                method.returnType
+            );
             std::cout << "  📝 Added method: " << method.name << std::endl;
         }
     }
@@ -943,7 +955,7 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
 
     // Process constructor arguments first
     std::vector<llvm::Value*> args;
-    for (ASTNode* arg : node.args) {
+    for (const auto& arg : node.args) {
         arg->accept(*this);
         args.push_back(context.valueStack.back());
         context.valueStack.pop_back();
@@ -1027,9 +1039,17 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
 }
 
 void LLVMGenerator::visit(MethodCallNode& node) {
-    std::cout << "🔍 MethodCall: " << node.instanceName << "." << node.methodName << std::endl;
+    // Extract instance name from node.object
+    std::string instanceName;
+    if (auto id = std::dynamic_pointer_cast<IdentifierNode>(node.object)) {
+        instanceName = id->name;
+    } else if (auto self = std::dynamic_pointer_cast<SelfCallNode>(node.object)) {
+        instanceName = self->varName;
+    } else {
+        throw std::runtime_error("Invalid object in method call at line " + std::to_string(node.line()));
+    }
+    std::cout << "🔍 MethodCall: " << instanceName << "." << node.methodName << std::endl;
 
-    std::string instanceName = node.instanceName;
     // 1. Get instance type and set currentType
     if (instanceName == "self") {
         // Get all instance names and use the last one
@@ -1044,7 +1064,7 @@ void LLVMGenerator::visit(MethodCallNode& node) {
     } else {
         // Push instance variables onto the stack
         try {
-            context.typeSystem.pushCurrentInstanceVars(context.typeSystem.getInstanceVars(node.instanceName));
+            context.typeSystem.pushCurrentInstanceVars(context.typeSystem.getInstanceVars(instanceName));
         } catch (const std::runtime_error& e) {
             throw std::runtime_error("❌ " + std::string(e.what()) + " at line " + std::to_string(node.line()));
         }
@@ -1078,17 +1098,17 @@ void LLVMGenerator::visit(MethodCallNode& node) {
 
     // 5. Process method arguments and parameters
     std::vector<llvm::Value*> args;
-    for (ASTNode* arg : node.args) {
+    for (const auto& arg : node.args) {
         arg->accept(*this);
         args.push_back(context.valueStack.back());
         context.valueStack.pop_back();
     }
 
     // Associate parameters with argument values
-    if (method->params) {
-        for (size_t i = 0; i < method->params->size() && i < args.size(); ++i) {
-            context.addLocal((*method->params)[i].name, args[i]);
-            std::cout << "  📝 Bound param " << (*method->params)[i].name << std::endl;
+    if (!method->params.empty()) {
+        for (size_t i = 0; i < method->params.size() && i < args.size(); ++i) {
+            context.addLocal(method->params[i]->name, args[i]);
+            std::cout << "  📝 Bound param " << method->params[i]->name << std::endl;
         }
     }
 
@@ -1206,17 +1226,17 @@ void LLVMGenerator::visit(BaseCallNode& node) {
 
         // 4.6 Process method arguments and parameters
         std::vector<llvm::Value*> args;
-        for (ASTNode* arg : node.args) {
+        for (const auto& arg : node.args) {
             arg->accept(*this);
             args.push_back(context.valueStack.back());
             context.valueStack.pop_back();
         }
 
         // Associate parameters with argument values
-        if (method->params) {
-            for (size_t i = 0; i < method->params->size() && i < args.size(); ++i) {
-                context.addLocal((*method->params)[i].name, args[i]);
-                std::cout << "  📝 Bound param " << (*method->params)[i].name << std::endl;
+        if (!method->params.empty()) {
+            for (size_t i = 0; i < method->params.size() && i < args.size(); ++i) {
+                context.addLocal(method->params[i]->name, args[i]);
+                std::cout << "  📝 Bound param " << method->params[i]->name << std::endl;
             }
         }
 

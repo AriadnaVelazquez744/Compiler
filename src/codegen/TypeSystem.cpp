@@ -14,12 +14,12 @@ TypeDefinition& TypeSystem::registerType(const std::string& name, std::optional<
 
     // Initialize constructor parameters and base args
     it->second.constructorParams = std::vector<std::string>();
-    it->second.baseArgs = std::vector<ASTNode*>();
+    it->second.baseArgs = std::vector<std::shared_ptr<ASTNode>>();
 
     return it->second;
 }
 
-void TypeSystem::addAttribute(const std::string& attrName, const std::string& typeName, ASTNode* initializer) {
+void TypeSystem::addAttribute(const std::string& attrName, const std::string& typeName, std::shared_ptr<ASTNode> initializer) {
     auto it = typeTable.find(typeName);
     if (it == typeTable.end()) {
         throw std::runtime_error("Type '" + typeName + "' not found");
@@ -34,7 +34,7 @@ void TypeSystem::addAttribute(const std::string& attrName, const std::string& ty
 }
 
 void TypeSystem::addMethod(const std::string& typeName, const std::string& methodName,
-                         std::vector<Parameter>* params, ASTNode* body, const std::string& returnType) {
+                         std::vector<std::shared_ptr<Parameter>> params, std::shared_ptr<ASTNode> body, const std::string& returnType) {
     auto it = typeTable.find(typeName);
     if (it == typeTable.end()) {
         throw std::runtime_error("Type '" + typeName + "' not found");
@@ -45,7 +45,7 @@ void TypeSystem::addMethod(const std::string& typeName, const std::string& metho
         throw std::runtime_error("Method '" + methodName + "' already exists in type '" + typeName + "'");
     }
 
-    it->second.methods.emplace(methodName, TypeMethod(params, body, returnType));
+    it->second.methods.emplace(methodName, TypeMethod(std::move(params), std::move(body), returnType));
 }
 
 void TypeSystem::createInstance(const std::string& varName, const std::string& typeName, 

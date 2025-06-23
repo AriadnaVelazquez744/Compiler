@@ -9,6 +9,7 @@
 #include <string>
 #include <map>
 #include <vector> // <-- Needed for value stack
+#include <memory> // <-- Needed for std::shared_ptr
 
 // Forward declarations
 class ASTNode;
@@ -28,12 +29,12 @@ public:
 
     CodeGenContext();  // Constructor initializes builder and module
 
-    void generateCode(std::vector<ASTNode*>& root);                  // Main entry: triggers IR generation
+    void generateCode(std::vector<std::shared_ptr<ASTNode>>& root);                  // Main entry: triggers IR generation
     void dumpIR(const std::string& filename = "hulk-low-code.ll"); // Dumps IR to .ll file
 
     // Scopes
     std::vector<std::map<std::string, llvm::Value*>> localScopes;
-    std::vector<std::map<std::string, FunctionDeclarationNode*>> functionScopes;
+    std::vector<std::map<std::string, std::shared_ptr<FunctionDeclarationNode>>> functionScopes;
 
     // Var Scopes
     void pushVarScope(bool inherit = true) { 
@@ -72,10 +73,10 @@ public:
         }
     }
     void popFuncScope()  { functionScopes.pop_back(); }
-    void addFuncDecl(const std::string& name, FunctionDeclarationNode* decl) {
+    void addFuncDecl(const std::string& name, std::shared_ptr<FunctionDeclarationNode> decl) {
         if (!functionScopes.empty()) functionScopes.back()[name] = decl;
     }
-    FunctionDeclarationNode* lookupFuncDecl(const std::string& name) const {
+    std::shared_ptr<FunctionDeclarationNode> lookupFuncDecl(const std::string& name) const {
         for (auto it = functionScopes.rbegin(); it != functionScopes.rend(); ++it) {
             auto found = it->find(name);
             if (found != it->end()) return found->second;

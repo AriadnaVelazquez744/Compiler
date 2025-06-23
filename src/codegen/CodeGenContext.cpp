@@ -9,17 +9,17 @@
 CodeGenContext::CodeGenContext()
     : builder(context), module("hulk_module", context) {}  // Associate module and builder with context
 
-void CodeGenContext::generateCode(std::vector<ASTNode*>& root) {
+void CodeGenContext::generateCode(std::vector<std::shared_ptr<ASTNode>>& root) {
     
     // Separate type declarations, function declarations, and expressions
-    std::vector<ASTNode*> typeDecls;
-    std::vector<ASTNode*> funcDecls;
-    std::vector<ASTNode*> exprs;
+    std::vector<std::shared_ptr<ASTNode>> typeDecls;
+    std::vector<std::shared_ptr<ASTNode>> funcDecls;
+    std::vector<std::shared_ptr<ASTNode>> exprs;
 
-    for (ASTNode* node : root) {
-        if (auto* typeDecl = dynamic_cast<TypeDeclarationNode*>(node)) {
+    for (auto& node : root) {
+        if (auto typeDecl = std::dynamic_pointer_cast<TypeDeclarationNode>(node)) {
             typeDecls.push_back(node);
-        } else if (auto* fn = dynamic_cast<FunctionDeclarationNode*>(node)) {
+        } else if (auto fn = std::dynamic_pointer_cast<FunctionDeclarationNode>(node)) {
             funcDecls.push_back(node);
         } else {
             exprs.push_back(node);
@@ -29,13 +29,13 @@ void CodeGenContext::generateCode(std::vector<ASTNode*>& root) {
     // Process type declarations first
     pushFuncScope();  // Global function registry
     LLVMGenerator generator(*this);
-    for (ASTNode* node : typeDecls) {
+    for (auto& node : typeDecls) {
         node->accept(generator);
     }
 
     // Then process function declarations
-    for (ASTNode* node : funcDecls) {
-        if (auto* fn = dynamic_cast<FunctionDeclarationNode*>(node)) {
+    for (auto& node : funcDecls) {
+        if (auto fn = std::dynamic_pointer_cast<FunctionDeclarationNode>(node)) {
             addFuncDecl(fn->name, fn);
         }
     }
@@ -69,7 +69,7 @@ void CodeGenContext::generateCode(std::vector<ASTNode*>& root) {
     builder.SetInsertPoint(entry);
 
     // Generate code for all remaining nodes
-    for (ASTNode* node : root) {
+    for (auto& node : root) {
         node->accept(generator);
     }
 

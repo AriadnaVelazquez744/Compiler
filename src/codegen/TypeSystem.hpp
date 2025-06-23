@@ -23,12 +23,12 @@ struct PlaceholderEntry {
  * @brief Represents a type's method with its parameters and body
  */
 struct TypeMethod {
-    std::vector<Parameter>* params;
+    std::vector<std::shared_ptr<Parameter>> params;
     std::shared_ptr<ASTNode> body;
     std::string returnType;
 
-    TypeMethod(std::vector<sdt::shared_ptr<Parameter>> p, std::shared_ptr<ASTNode> b, std::string ret = "")
-        : params(p), body(b), returnType(std::move(ret)) {}
+    TypeMethod(std::vector<std::shared_ptr<Parameter>> p, std::shared_ptr<ASTNode> b, std::string ret = "")
+        : params(std::move(p)), body(std::move(b)), returnType(std::move(ret)) {}
 };
 
 /**

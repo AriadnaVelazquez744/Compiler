@@ -15,7 +15,7 @@
 #include "ast/AST.hpp"
 #include "ast/ASTPrinter.hpp"
 #include "semantic/SemanticAnalyzer.hpp"
-// #include "codegen/CodeGenContext.hpp"
+#include "codegen/CodeGenContext.hpp"
 
 #include <filesystem> // C++17
 
@@ -142,17 +142,17 @@ int main(int argc, char** argv) {
 
     std::cout << "Análisis semántico completado.\n";
 
-    // // 5. CODEGEN (optional)
-    // CodeGenContext codegen;
-    // try {
-    //     codegen.generateCode(result.ast);
-    // } catch (const std::exception& e) {
-    //     std::cerr << "Error en generación de código: " << e.what() << "\n";
-    //     return 1;
-    // }
+    // 5. CODEGEN (optional)
+    CodeGenContext codegen;
+    try {
+        codegen.generateCode(result.ast);
+    } catch (const std::exception& e) {
+        std::cerr << "Error en generación de código: " << e.what() << "\n";
+        return 1;
+    }
 
-    // codegen.dumpIR("hulk-low-code.ll");
-    // std::cout << "IR volcado en 'hulk-low-code.ll'.\n";
+    codegen.dumpIR("hulk-low-code.ll");
+    std::cout << "IR volcado en 'hulk-low-code.ll'.\n";
 
     return 0;
 }

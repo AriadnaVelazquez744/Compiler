@@ -1508,7 +1508,7 @@ void SemanticAnalyzer::visit(MethodCallNode& node) {
     }
 
     // Búsqueda jerárquica del método en la cadena de herencia
-    const Symbol* method = nullptr;
+    Symbol* method = nullptr;
     while (typeSym) {
         auto it = typeSym->methods.find(node.methodName);
         if (it != typeSym->methods.end()) {
@@ -1535,9 +1535,20 @@ void SemanticAnalyzer::visit(MethodCallNode& node) {
     // Verificar tipos de argumentos
     for (size_t i = 0; i < node.args.size(); ++i) {
         node.args[i]->accept(*this);
-        if (!conformsTo(node.args[i]->type(), method->params[i])) {
-            errors.emplace_back("Tipo incorrecto para argumento " + std::to_string(i+1) +
-                                " en llamada a '" + node.methodName + "'", node.line());
+        std::string argType = node.args[i]->type();
+        std::string expectedType = method->params[i];
+
+        if (expectedType.empty() || expectedType == "Unknown") {
+            expectedType = "Unknown";
+        }
+
+        if (!conformsTo(argType, expectedType)) {
+             if (expectedType == "Unknown" && argType != "Unknown") {
+                method->params[i] = argType;
+            } else {
+                errors.emplace_back("Tipo incorrecto para argumento " + std::to_string(i+1) +
+                                    " en llamada a '" + node.methodName + "': esperado '" + expectedType + "', obtenido '" + argType + "'", node.line());
+            }
         }
     }
 

@@ -812,6 +812,10 @@ void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
         }
     }
 
+    // Paso 5: Re-analizar el cuerpo después de la inferencia de tipos para actualizar los nodos AST
+    std::cout << "Paso 5: Re-analizando cuerpo después de inferencia de tipos\n";
+    node.body->accept(*this);
+
     std::cout << "=== Fin del análisis de función ===\n\n";
 
     symbolTable.exitScope();

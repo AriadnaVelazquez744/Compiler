@@ -1,0 +1,692 @@
+\documentclass[11pt, a4paper, twoside]{article} % o book si es muy extenso
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern} % Fuente moderna y legible
+\usepackage{microtype} % Mejora el espaciado y la justificación
+\usepackage{geometry} % Para controlar los márgenes
+    \geometry{
+        a4paper,
+        top=2.5cm,
+        bottom=2.5cm,
+        left=3cm,
+        right=2.5cm,
+        headheight=14pt,
+        footskip=1.2cm
+    }
+\usepackage{fancyhdr} % Para personalizar encabezados y pies de página
+\usepackage{graphicx} % Para incluir imágenes
+\usepackage{hyperref} % Para enlaces interactivos y metadatos
+    \hypersetup{
+        colorlinks=true,
+        linkcolor=blue,
+        filecolor=magenta,
+        urlcolor=cyan,
+        pdftitle={Título de tu Proyecto},
+        pdfauthor={Tu Nombre},
+        pdfsubject={Informe de Proyecto Escolar},
+        pdfkeywords={Proyecto, Escuela, Informe, LaTeX},
+        bookmarks=true,
+        bookmarksopen=true,
+        bookmarksnumbered=true,
+    }
+\usepackage{titlesec} % Para personalizar títulos de secciones
+\usepackage{enumitem} % Para personalizar listas
+\usepackage{setspace} % Para controlar el interlineado
+    \onehalfspacing % Interlineado de 1.5 para mejor lectura
+\usepackage{listings}
+\usepackage{xcolor} % Asegúrate de tenerlo para los colores
+
+% --- Configuración de listings para código ---
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize, % Fuente monoespaciada, tamaño pequeño
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left, % Números de línea a la izquierda
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2, % Tamaño de la tabulación
+    frame=single, % Marco alrededor del código
+    rulecolor=\color{black},
+    frameround=tttt, % Esquinas redondeadas
+    extendedchars=true, % Para caracteres extendidos (como 'ñ')
+    literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1 % Para manejar tildes y eñes
+}
+
+\lstset{style=mystyle} % Aplicar el estilo por defecto
+\usepackage{lastpage} % Para obtener el número total de páginas
+
+% --- Personalización de títulos de secciones ---
+\titleformat{\section}[block]
+  {\normalfont\Large\bfseries\color{green!70!black}}
+  {\thesection}{1em}{}
+\titlespacing*{\section}
+  {0pt}{1.5ex plus .1ex minus .2ex}{1ex plus .1ex}
+
+\titleformat{\subsection}[block]
+  {\normalfont\large\bfseries\color{blue!50!black}}
+  {\thesubsection}{1em}{}
+\titlespacing*{\subsection}
+  {0pt}{1.5ex plus .1ex minus .2ex}{1ex plus .1ex}
+
+% --- Configuración de encabezados y pies de página ---
+\pagestyle{fancy}
+\fancyhf{} % Borra los ajustes predeterminados
+\fancyhead[RO,LE]{\thepage} % Número de página a la derecha en páginas impares, a la izquierda en pares
+\fancyhead[LO]{\nouppercase{\rightmark}} % Título de la sección en la parte izquierda (páginas impares)
+\fancyhead[RE]{\nouppercase{\leftmark}} % Título del capítulo en la parte derecha (páginas pares) (si usas 'book' o 'report')
+\fancyfoot[C]{\textbf{Informe de Proyecto}} % Texto en el pie de página centrado
+\renewcommand{\headrulewidth}{0.4pt} % Línea en el encabezado
+\renewcommand{\footrulewidth}{0.4pt} % Línea en el pie de página
+
+\begin{document}
+
+\thispagestyle{empty} % Para que la primera página no tenga encabezado ni pie de página
+
+\begin{titlepage}
+    \begin{center}
+
+        % --- Título del Proyecto ---
+        {\color{green!80!black}\Huge\bfseries Compilador de HULK}\par
+        \vspace{0.5cm}
+
+        % --- Integrantes del Equipo ---
+        {\Large\bfseries Integrantes:}\par
+        \vspace{0.3cm} % Espacio entre "Integrantes:" y los nombres
+        {\large  Lia S. Lope\'ez Rosales C312}\par
+        {\large  Ariadna Vel\'azquez Rey C311}\par
+        \vspace{1.5cm} % Espacio después de los nombres
+
+        % --- Información del Curso/Asignatura ---
+        {\large Asignatura: Compilaci\'on}\par
+        {\large Universidad de La Habana}\par
+        \vspace{0.5cm}
+
+        % --- Fecha ---
+        {\large \today}\par % Muestra la fecha actual
+        \vfill % Empuja el contenido restante hacia abajo
+
+
+    \end{center}
+\end{titlepage}
+
+\clearpage
+% ... (el resto de tu documento sigue aquí, como la tabla de contenido y las secciones)
+
+\clearpage % Para empezar el contenido en una nueva página
+% Aquí puedes incluir tu tabla de contenido, si la necesitas:
+% \tableofcontents
+% \clearpage
+
+% --- Comienza el contenido de tu informe ---
+\section{Introducción}
+Este informe describe el proceso de creación de un compilador para el lenguaje HULK (Havana University Language for Kompilers)
+utilizando como lenguaje base C++.
+
+El compilador está diseñado siguiendo una arquitectura modular que divide el proceso de compilación en etapas bien definidas, cada una con responsabilidades específicas y mecanismos de manejo de errores robustos.
+
+\subsection{Flujo del Programa}
+El flujo del programa sigue una secuencia clara y estructurada de etapas de compilación. El punto de entrada es la función \texttt{main()} en \texttt{main.cpp}, que coordina todo el proceso:
+
+\begin{enumerate}
+    \item \textbf{Inicialización}:
+    \begin{itemize}
+        \item Procesamiento de argumentos de línea de comandos para determinar el archivo fuente
+        \item Apertura y validación del archivo \texttt{.hulk} especificado
+        \item Configuración del entorno de compilación
+    \end{itemize}
+
+    \item \textbf{Análisis Léxico y Sintáctico}:
+    \begin{itemize}
+        \item Ejecución del análisis léxico mediante \texttt{yylex()}
+        \item Verificación de errores léxicos mediante \texttt{lex\_error}
+        \item Ejecución del análisis sintáctico con \texttt{yyparse()}
+        \item Construcción del AST durante el proceso
+    \end{itemize}
+
+    \item \textbf{Validación del AST}:
+    \begin{itemize}
+        \item Verificación de la validez del árbol mediante \texttt{is\_valid\_ast()}
+        \item Comprobación de nodos nulos y estructura correcta
+        \item Impresión de información de diagnóstico sobre los nodos raíz
+    \end{itemize}
+
+    \item \textbf{Análisis Semántico}:
+    \begin{itemize}
+        \item Creación del analizador semántico (\texttt{SemanticAnalyzer})
+        \item Ejecución del análisis sobre el AST
+        \item Verificación de tipos y reglas semánticas
+    \end{itemize}
+
+    \item \textbf{Generación de Código}:
+    \begin{itemize}
+        \item Inicialización del contexto de generación (\texttt{CodeGenContext})
+        \item Generación de código LLVM IR
+        \item Escritura del código generado en \texttt{hulk-low-code.ll}
+    \end{itemize}
+
+    \item \textbf{Finalización}:
+    \begin{itemize}
+        \item Liberación de recursos mediante \texttt{delete\_ast()}
+        \item Cierre de archivos y limpieza de memoria
+        \item Retorno del estado de la compilación
+    \end{itemize}
+\end{enumerate}
+
+En cada etapa, el compilador implementa un manejo de errores robusto que permite:
+\begin{itemize}
+    \item Detección temprana de problemas
+    \item Mensajes de error descriptivos con información de ubicación
+    \item Limpieza apropiada de recursos en caso de fallo
+    \item Códigos de retorno específicos para diferentes tipos de error
+\end{itemize}
+
+
+\section{An\'alisis L\'exico: Lexer}
+
+El analizador léxico del compilador \textbf{HULK} está implementado utilizando \textbf{Flex}, con un diseño que prioriza la precisión en el seguimiento de posición y el manejo de errores. La implementación incluye características avanzadas para el seguimiento de ubicación y la detección temprana de errores.
+
+\subsection{Configuración y Características}
+
+El lexer está configurado con las siguientes características principales:
+
+\begin{itemize}
+    \item \textbf{Opciones de Flex}:
+    \begin{itemize}
+        \item \texttt{noyywrap}: Desactiva el procesamiento de múltiples archivos
+        \item \texttt{yylineno}: Habilita el seguimiento automático de líneas
+        \item \texttt{nounput}: Optimiza el lexer eliminando funciones no utilizadas
+    \end{itemize}
+    
+    \item \textbf{Seguimiento de Posición}:
+    \begin{itemize}
+        \item Variable \texttt{yycolumn} para seguimiento preciso de columnas
+        \item Macro \texttt{YY\_USER\_ACTION} que actualiza automáticamente:
+        \begin{itemize}
+            \item Línea inicial y final (\texttt{first\_line}, \texttt{last\_line})
+            \item Columna inicial y final (\texttt{first\_column}, \texttt{last\_column})
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\subsection{Tokens y Patrones}
+
+El lexer reconoce los siguientes tipos de tokens:
+
+\begin{itemize}
+    \item \textbf{Literales}:
+    \begin{itemize}
+        \item \textbf{Números}: Enteros y decimales (\texttt{[0-9]+(\textbackslash.[0-9]+)?})
+        \item \textbf{Cadenas}: Con soporte para caracteres de escape (\texttt{"(?:\textbackslash\textbackslash.|[]\^{}")*"})
+        \item \textbf{Booleanos}: \texttt{True} y \texttt{False}
+        \item \textbf{Null}: Valor nulo
+    \end{itemize}
+
+    \item \textbf{Operadores}:
+    \begin{itemize}
+        \item \textbf{Aritméticos}: \texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{\%}, \texttt{\textasciicircum}
+        \item \textbf{Comparación}: \texttt{<}, \texttt{>}, \texttt{<=}, \texttt{>=}, \texttt{==}, \texttt{!=}
+        \item \textbf{Lógicos}: \texttt{\&}, \texttt{|}, \texttt{!}
+        \item \textbf{Concatenación}: \texttt{@}, \texttt{@@}
+    \end{itemize}
+
+    \item \textbf{Palabras Clave}:
+    \begin{itemize}
+        \item \textbf{Control de Flujo}: \texttt{if}, \texttt{else}, \texttt{elif}, \texttt{while}, \texttt{for}
+        \item \textbf{Declaraciones}: \texttt{function}, \texttt{let}, \texttt{in}, \texttt{type}
+        \item \textbf{POO}: \texttt{new}, \texttt{self}, \texttt{inherits}, \texttt{base}
+        \item \textbf{Funciones Matemáticas}: \texttt{sin}, \texttt{cos}, \texttt{max}, \texttt{min}, \texttt{sqrt}, \texttt{exp}, \texttt{log}, \texttt{rand}
+    \end{itemize}
+
+    \item \textbf{Identificadores}: Patrón \texttt{[a-zA-Z\_][a-zA-Z0-9\_]*} con validación específica
+\end{itemize}
+
+\subsection{Características Especiales}
+
+La implementación incluye funcionalidades adicionales:
+
+\begin{itemize}
+    \item \textbf{Gestión de Strings}:
+    \begin{itemize}
+        \item Eliminación automática de comillas delimitadoras
+        \item Preservación de caracteres de escape
+    \end{itemize}
+
+    \item \textbf{Depuración}:
+    \begin{itemize}
+        \item Mensajes informativos para cada token reconocido
+        \item Información de posición para facilitar el desarrollo
+    \end{itemize}
+
+    \item \textbf{Integración con el Parser}:
+    \begin{itemize}
+        \item Comunicación mediante \texttt{yylval} para pasar valores
+        \item Sincronización de posición mediante \texttt{yylloc}
+    \end{itemize}
+\end{itemize}
+
+\section{An\'alisis Sint\'actico: Parser}
+
+El analizador sintáctico del compilador \textbf{HULK} está implementado utilizando \textbf{Bison}, con un diseño que prioriza la construcción precisa del AST y el manejo de expresiones complejas. La implementación sigue una estructura clara y modular que facilita la extensión del lenguaje.
+
+\subsection{Estructura del Parser}
+
+El parser está organizado en secciones bien definidas:
+
+\begin{itemize}
+    \item \textbf{Declaraciones Iniciales}:
+    \begin{itemize}
+        \item Estructura \texttt{YYLTYPE} para seguimiento de ubicación
+        \item Vector \texttt{root} para almacenar el AST
+        \item Funciones auxiliares como \texttt{vectorize} para manejo de argumentos
+    \end{itemize}
+
+    \item \textbf{Tipos Semánticos}:
+    \begin{itemize}
+        \item Tipos básicos: \texttt{num}, \texttt{str}, \texttt{boolean}
+        \item Tipos compuestos: \texttt{node}, \texttt{list}, \texttt{param}
+        \item Tipos específicos: \texttt{if\_branch}, \texttt{let\_decl}, \texttt{type\_body}
+    \end{itemize}
+\end{itemize}
+
+\subsection{Tokens y Precedencia}
+
+La gramática define una jerarquía clara de operadores:
+
+\begin{itemize}
+    \item \textbf{Operadores de Mayor Precedencia}:
+    \begin{itemize}
+        \item Multiplicación, División, Módulo (\texttt{MUL}, \texttt{DIV}, \texttt{MOD})
+        \item Suma y Resta (\texttt{ADD}, \texttt{SUB})
+    \end{itemize}
+
+    \item \textbf{Operadores de Comparación}:
+    \begin{itemize}
+        \item Relacionales: \texttt{<}, \texttt{>}, \texttt{<=}, \texttt{>=}
+        \item Igualdad: \texttt{==}, \texttt{!=}
+    \end{itemize}
+
+    \item \textbf{Operadores Lógicos}:
+    \begin{itemize}
+        \item AND (\texttt{\&}), OR (\texttt{|}), NOT (\texttt{!})
+    \end{itemize}
+
+    \item \textbf{Operadores Especiales}:
+    \begin{itemize}
+        \item Concatenación: \texttt{@}, \texttt{@@}
+        \item Funciones matemáticas: \texttt{sin}, \texttt{cos}, \texttt{sqrt}, etc.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Reglas Gramaticales}
+
+La gramática está estructurada en niveles jerárquicos:
+
+\begin{itemize}
+    \item \textbf{Nivel Superior}:
+    \begin{itemize}
+        \item \texttt{program}: Lista de statements
+        \item \texttt{statement}: Expresiones, declaraciones y bloques
+    \end{itemize}
+
+    \item \textbf{Expresiones}:
+    \begin{itemize}
+        \item Literales: números, strings, booleanos, null
+        \item Operaciones binarias y unarias
+        \item Llamadas a funciones y métodos
+        \item Expresiones de control de flujo
+    \end{itemize}
+
+    \item \textbf{Estructuras de Control}:
+    \begin{itemize}
+        \item \texttt{if\_expr}: Soporte para \texttt{if}, \texttt{elif}, \texttt{else}
+        \item \texttt{while\_expr}: Bucles while con condición
+        \item \texttt{for\_expr}: Bucles for con rangos
+    \end{itemize}
+
+    \item \textbf{Programación Orientada a Objetos}:
+    \begin{itemize}
+        \item Declaración de tipos con \texttt{type\_decl}
+        \item Herencia mediante \texttt{inherits}
+        \item Métodos y atributos con \texttt{method\_decl} y \texttt{attribute\_decl}
+        \item Llamadas a métodos y constructores
+    \end{itemize}
+\end{itemize}
+
+\subsection{Construcción del AST}
+
+Durante el análisis sintáctico, se construye el AST de manera incremental:
+
+\begin{itemize}
+    \item \textbf{Nodos Básicos}:
+    \begin{itemize}
+        \item Literales y identificadores
+        \item Operadores binarios y unarios
+        \item Llamadas a funciones
+    \end{itemize}
+
+    \item \textbf{Nodos Compuestos}:
+    \begin{itemize}
+        \item Bloques de código
+        \item Estructuras de control
+        \item Declaraciones de tipos y funciones
+    \end{itemize}
+
+    \item \textbf{Información de Ubicación}:
+    \begin{itemize}
+        \item Cada nodo almacena su línea de origen (\texttt{yylloc.first\_line})
+        \item Facilita el reporte preciso de errores
+    \end{itemize}
+\end{itemize}
+
+
+\section{Chequeo Sem\'antico}
+El chequeo sem\'antico en el compilador \textbf{HULK} se implementa mediante un sistema sofisticado que utiliza el \textbf{Patr\'on Visitor} para recorrer y analizar el AST. La implementación se divide en varios componentes principales que trabajan en conjunto para garantizar la corrección semántica del programa.
+
+\subsection{Componentes Principales}
+
+\begin{itemize}
+    \item \textbf{SemanticAnalyzer}: Implementa el patrón Visitor y coordina todo el análisis semántico.
+    \item \textbf{SymbolTable}: Gestiona los símbolos y ámbitos del programa.
+    \item \textbf{FunctionCollector}: Recolecta y analiza las declaraciones de funciones.
+\end{itemize}
+
+\subsection{Tabla de S\'imbolos}
+
+La tabla de símbolos (\texttt{SymbolTable}) es una estructura sofisticada que maneja:
+
+\begin{itemize}
+    \item \textbf{\'Ambitos Anidados}:
+    \begin{itemize}
+        \item Vector de mapas para manejar ámbitos (\texttt{scopes})
+        \item Métodos \texttt{enterScope()} y \texttt{exitScope()} para gestión de ámbitos
+        \item Búsqueda de símbolos en ámbitos anidados
+    \end{itemize}
+
+    \item \textbf{Tipos de S\'imbolos}:
+    \begin{itemize}
+        \item Variables con tipo y estado de constante
+        \item Funciones con tipo de retorno y parámetros
+        \item Tipos definidos por el usuario con atributos y métodos
+    \end{itemize}
+
+    \item \textbf{Tipos Predefinidos}:
+    \begin{itemize}
+        \item Object, Number, String, Boolean, Null
+        \item Jerarquía de tipos y relaciones de subtipado
+    \end{itemize}
+\end{itemize}
+
+\subsection{An\'alisis de Tipos}
+
+El sistema implementa un sofisticado análisis de tipos que incluye:
+
+\begin{itemize}
+    \item \textbf{Inferencia de Tipos}:
+    \begin{itemize}
+        \item Análisis de uso de parámetros en el cuerpo de funciones
+        \item Inferencia basada en operaciones y contexto
+        \item Resolución de tipos más específicos comunes
+    \end{itemize}
+
+    \item \textbf{Verificaci\'on de Operaciones}:
+    \begin{itemize}
+        \item Operaciones aritméticas (\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{\%})
+        \item Operaciones de comparación (\texttt{>}, \texttt{<}, \texttt{>=}, \texttt{<=})
+        \item Operaciones lógicas (\texttt{\&}, \texttt{|}, \texttt{!})
+        \item Concatenación de strings (\texttt{@}, \texttt{@@})
+    \end{itemize}
+
+    \item \textbf{Jerarqu\'ia de Tipos}:
+    \begin{itemize}
+        \item Verificación de conformidad de tipos (\texttt{conformsTo})
+        \item Búsqueda del ancestro común más bajo (\texttt{lowestCommonAncestor})
+        \item Manejo de herencia
+    \end{itemize}
+\end{itemize}
+
+\subsection{Validaci\'on Sem\'antica}
+
+El analizador semántico realiza múltiples validaciones:
+
+\begin{itemize}
+    \item \textbf{Declaraciones}:
+    \begin{itemize}
+        \item Unicidad de nombres en el ámbito actual
+        \item Tipos correctos en declaraciones
+    \end{itemize}
+
+    \item \textbf{Funciones}:
+    \begin{itemize}
+        \item Compatibilidad de tipos en argumentos
+        \item Inferencia de tipos de retorno
+        \item Validación de funciones matemáticas built-in
+    \end{itemize}
+
+    \item \textbf{Programaci\'on Orientada a Objetos}:
+    \begin{itemize}
+        \item Declaración y uso de tipos
+        \item Validación de herencia
+        \item Llamadas a métodos y constructores
+        \item Acceso a atributos
+    \end{itemize}
+
+    \item \textbf{Control de Flujo}:
+    \begin{itemize}
+        \item Tipos correctos en condiciones
+        \item Validación de bucles
+        \item Comprobación de expresiones let-in
+    \end{itemize}
+\end{itemize}
+
+
+\section{Generación de Código LLVM}
+
+La generación de código intermedio en el compilador \textbf{Hulk} se realiza utilizando \textbf{LLVM IR} (Intermediate Representation). El sistema está diseñado de manera modular, con una clara separación de responsabilidades entre la generación de código, el manejo de tipos y el contexto de generación.
+
+\subsection{Componentes Principales}
+
+La implementación se divide en tres componentes principales:
+
+\begin{itemize}
+    \item \textbf{LLVMGenerator}: Implementa el patrón Visitor para recorrer el AST y generar código LLVM IR.
+    \item \textbf{CodeGenContext}: Encapsula todo el estado y contexto necesario para la generación de código.
+    \item \textbf{TypeSystem}: Maneja el sistema de tipos, incluyendo definiciones de tipos y sus instancias.
+\end{itemize}
+
+\subsection{Estructura del Generador}
+
+El generador de código (\texttt{LLVMGenerator}) implementa el patrón Visitor y proporciona métodos específicos para cada tipo de nodo del AST:
+
+\begin{itemize}
+    \item Manejo de literales (números, booleanos, strings)
+    \item Operaciones binarias y unarias
+    \item Funciones built-in y definidas por el usuario
+    \item Estructuras de control (if, while, for)
+    \item Soporte para POO (declaración de tipos, instanciación, llamadas a métodos)
+\end{itemize}
+
+\subsection{Contexto de Generación}
+
+El \texttt{CodeGenContext} mantiene el estado durante la generación de código:
+
+\begin{itemize}
+    \item \textbf{Estado LLVM}: Contexto global, builder y módulo
+    \item \textbf{Gestión de Ámbitos}: Pilas para variables locales y funciones
+    \item \textbf{Sistema de Tipos}: Integración con el sistema de tipos para POO
+    \item \textbf{Pila de Valores}: Mecanismo para pasar valores entre nodos durante el recorrido del AST
+\end{itemize}
+
+\subsection{Sistema de Tipos}
+
+El \texttt{TypeSystem} proporciona soporte completo para POO:
+
+\begin{itemize}
+    \item Definición de tipos con atributos y métodos
+    \item Soporte para herencia
+    \item Gestión de instancias y sus variables
+    \item Manejo de constructores y llamadas base
+\end{itemize}
+
+\subsection{Flujo de Generación}
+
+El proceso de generación sigue estos pasos:
+
+\begin{enumerate}
+    \item \textbf{Inicialización}:
+    \begin{itemize}
+        \item Configuración del contexto LLVM y builder
+        \item Declaración de funciones externas (printf, malloc, operaciones matemáticas)
+        \item Registro de tipos y funciones del usuario
+    \end{itemize}
+    
+    \item \textbf{Generación de Código}:
+    \begin{itemize}
+        \item Recorrido del AST usando el patrón Visitor
+        \item Generación de instrucciones LLVM para cada tipo de nodo
+        \item Manejo de la pila de valores para comunicación entre nodos
+    \end{itemize}
+    
+    \item \textbf{Gestión de Memoria}:
+    \begin{itemize}
+        \item Uso de \texttt{alloca} para variables locales
+        \item Manejo de memoria para strings y objetos
+        \item Gestión de ámbitos anidados
+    \end{itemize}
+    
+    \item \textbf{Verificación}:
+    \begin{itemize}
+        \item Validación del módulo LLVM generado
+        \item Generación del archivo IR final
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Ejemplo de Generación}
+
+Consideremos la generación de código para una operación binaria:
+
+\begin{enumerate}
+    \item El visitor procesa recursivamente los operandos izquierdo y derecho
+    \item Los valores resultantes se obtienen de la pila de valores
+    \item Se genera la instrucción LLVM correspondiente según el operador
+    \item El resultado se coloca en la pila para uso posterior
+\end{enumerate}
+
+Por ejemplo, para la expresión \texttt{a + b} donde ambos son números:
+
+\begin{itemize}
+    \item Se generan las cargas de las variables \texttt{a} y \texttt{b}
+    \item Se crea una instrucción \texttt{fadd} usando el builder
+    \item El resultado se almacena en la pila de valores
+\end{itemize}
+
+\section{Manejo de Errores}
+
+El manejo de errores en el compilador \textbf{Hulk} está implementado de manera modular y robusta, con mecanismos específicos en cada fase de la compilación. El sistema está diseñado para detectar y reportar errores de manera precisa, proporcionando información detallada sobre la ubicación y naturaleza de cada error.
+
+\subsection{Errores Léxicos}
+
+El analizador léxico, implementado con \textbf{Flex}, incluye un sistema de seguimiento de posición preciso:
+
+\begin{itemize}
+    \item \textbf{Seguimiento de Posición}: Se mantiene un registro exacto de línea y columna para cada token mediante las variables \texttt{yylineno} y \texttt{yycolumn}.
+    \item \textbf{Detección de Errores}:
+    \begin{itemize}
+        \item Identificadores inválidos (comenzando con guiones bajos o números)
+        \item Caracteres no reconocidos en el lenguaje
+        \item Tokens malformados
+    \end{itemize}
+    \item \textbf{Reporte de Errores}: Los errores se reportan inmediatamente con:
+    \begin{itemize}
+        \item Descripción del error
+        \item Línea y columna exacta del error
+        \item Token problemático
+    \end{itemize}
+\end{itemize}
+
+\subsection{Errores Sintácticos}
+
+El parser, construido con \textbf{Bison}, implementa un sistema de recuperación de errores:
+
+\begin{itemize}
+    \item \textbf{Sincronización}: Uso de tokens de sincronización (como el punto y coma) para recuperarse de errores.
+    \item \textbf{Localización}: Aprovecha la información de ubicación (\texttt{YYLTYPE}) para reportar errores con precisión.
+    \item \textbf{Validación de AST}: Verificación de la validez del árbol sintáctico generado:
+    \begin{itemize}
+        \item Comprobación de nodos nulos
+        \item Validación de estructura del árbol
+        \item Verificación de completitud
+    \end{itemize}
+\end{itemize}
+
+\subsection{Errores Semánticos}
+
+El analizador semántico implementa un sistema sofisticado de detección y reporte de errores:
+
+\begin{itemize}
+    \item \textbf{Estructura de Error}:
+    \begin{itemize}
+        \item Clase \texttt{SemanticError} para encapsular errores
+        \item Información de línea y mensaje descriptivo
+        \item Acumulación de errores para reporte completo
+    \end{itemize}
+
+    \item \textbf{Tipos de Errores}:
+    \begin{itemize}
+        \item Errores de tipo en operaciones
+        \item Variables no declaradas o mal utilizadas
+        \item Errores en llamadas a funciones
+        \item Problemas de herencia y tipos
+    \end{itemize}
+
+    \item \textbf{Recuperaci\'on}:
+    \begin{itemize}
+        \item Continuación del análisis tras errores
+        \item Inferencia de tipos en casos ambiguos
+        \item Manejo de tipos desconocidos
+    \end{itemize}
+\end{itemize}
+
+
+\subsection{Errores en Generación de Código}
+
+La fase de generación de código LLVM incluye:
+
+\begin{itemize}
+    \item \textbf{Manejo de Excepciones}: Captura y manejo de errores durante la generación.
+    \item \textbf{Validación de IR}: Verificación del código LLVM generado.
+    \item \textbf{Reporte de Errores}: Mensajes detallados sobre problemas en la generación.
+\end{itemize}
+
+\subsection{Integración en el Flujo Principal}
+
+El \texttt{main.cpp} coordina el manejo de errores entre las diferentes etapas:
+
+\begin{itemize}
+    \item \textbf{Verificación Secuencial}:
+    \begin{itemize}
+        \item Validación de apertura de archivo
+        \item Comprobación de errores léxicos
+        \item Verificación de errores sintácticos
+        \item Validación del AST generado
+        \item Control de errores semánticos
+        \item Manejo de errores en generación de código
+    \end{itemize}
+    \item \textbf{Limpieza de Recursos}: Liberación apropiada de memoria y recursos en caso de error.
+    \item \textbf{Códigos de Retorno}: Uso de códigos de salida para indicar el tipo de error encontrado.
+\end{itemize}
+
+\end{document}

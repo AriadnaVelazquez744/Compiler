@@ -504,24 +504,40 @@ void SemanticAnalyzer::analyze(const std::vector<ASTNode*>& nodes) {
     collector.addBuiltins();
     std::cout << "Builtins agregados." << std::endl;
 
+    // Primera pasada: recolectar todas las declaraciones de tipos
+    std::vector<TypeDeclarationNode*> typeDecls;
+    std::vector<ASTNode*> otherNodes;
     
-
     for (ASTNode* node : nodes) {
         if (!node) {
             std::cerr << "Nodo nulo en AST." << std::endl;
             continue;
         }
 
+        if (auto* typeDecl = dynamic_cast<TypeDeclarationNode*>(node)) {
+            typeDecls.push_back(typeDecl);
+        } else {
+            otherNodes.push_back(node);
+        }
+        
         std::cout << "Recolectando funciones para nodo tipo: " << typeid(*node).name() << std::endl;
         node->accept(collector);
     }
 
     std::cout << "Fase de recolección completada." << std::endl;
 
-    // SemanticAnalyzer analyzer(symbolTable, errors);
-    // analyzer.resolveFunctionTypes();    
+    // Segunda pasada: procesar las declaraciones de tipos primero
+    for (TypeDeclarationNode* typeDecl : typeDecls) {
+        try {
+            std::cout << "Análisis semántico de: " << typeid(*typeDecl).name() << std::endl;
+            typeDecl->accept(*this);
+        } catch (const std::exception& e) {
+            std::cerr << "Error durante análisis semántico: " << e.what() << std::endl;
+        }
+    }
 
-    for (ASTNode* node : nodes) {
+    // Tercera pasada: procesar el resto de nodos
+    for (ASTNode* node : otherNodes) {
         try {
             std::cout << "Análisis semántico de: " << typeid(*node).name() << std::endl;
             node->accept(*this);
@@ -1263,19 +1279,18 @@ void SemanticAnalyzer::visit(IfNode& node) {
     }
 
     // Verificar consistencia de tipos
-    const std::string& commonType = branchTypes.front();
+    const std::string& firstType = branchTypes.front();
     for (const auto& t : branchTypes) {
-        if (t != commonType) {
+        // Verificar si los tipos son compatibles usando conformsTo
+        if (!conformsTo(t, firstType) && !conformsTo(firstType, t)) {
             errors.emplace_back("Tipos incompatibles en ramas del 'if'", node.line());
             node._type = "Error";
-            // std::cout << t << std::endl;
-            // std::cout << commonType << std::endl;
             return;
-
         }
     }
 
-    node._type = commonType;
+    // El tipo del if es el tipo más específico común entre todas las ramas
+    node._type = symbolTable.lowestCommonAncestor(branchTypes);
 }
 
 void SemanticAnalyzer::visit(WhileNode& node) {

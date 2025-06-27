@@ -150,33 +150,71 @@ std::string SymbolTable::lowestCommonAncestor(const std::vector<std::string>& ty
     if (types.empty()) return "Object";
     if (types.size() == 1) return types[0];
 
+    // Obtener la cadena de ancestros para el primer tipo
+    std::vector<std::string> ancestors1;
+    std::string current = types[0];
+    ancestors1.push_back(current);
     
-    std::string candidate = types[0];
+    TypeSymbol* type = lookupType(current);
+    while (type && !type->parentType.empty()) {
+        ancestors1.push_back(type->parentType);
+        type = lookupType(type->parentType);
+    }
 
+    // Para cada tipo restante, encontrar el ancestro común más bajo
+    std::string result = types[0];
     for (size_t i = 1; i < types.size(); ++i) {
         std::string other = types[i];
+        
+        // Si uno es subtipo del otro, usar el supertipo
+        if (isSubtype(result, other)) {
+            result = other;
+            continue;
+        }
+        if (isSubtype(other, result)) {
+            continue;
+        }
 
-        if (isSubtype(candidate, other)) {
-            
-        } else if (isSubtype(other, candidate)) {
-            candidate = other; 
-        } else {
-            
-            TypeSymbol* type = lookupType(candidate);
-            while (type && type->name != "Object") {
-                type = lookupType(type->parentType);
-                if (type && isSubtype(other, type->name)) {
-                    candidate = type->name;
+        // Obtener la cadena de ancestros para el otro tipo
+        std::vector<std::string> ancestors2;
+        current = other;
+        ancestors2.push_back(current);
+        
+        type = lookupType(current);
+        while (type && !type->parentType.empty()) {
+            ancestors2.push_back(type->parentType);
+            type = lookupType(type->parentType);
+        }
+
+        // Encontrar el primer ancestro común
+        bool found = false;
+        for (const auto& anc1 : ancestors1) {
+            for (const auto& anc2 : ancestors2) {
+                if (anc1 == anc2) {
+                    result = anc1;
+                    found = true;
                     break;
                 }
             }
+            if (found) break;
+        }
 
-            
-            if (!type) return "Object";
+        if (!found) {
+            result = "Object";
+        }
+
+        // Actualizar ancestors1 para la siguiente iteración
+        ancestors1.clear();
+        current = result;
+        ancestors1.push_back(current);
+        type = lookupType(current);
+        while (type && !type->parentType.empty()) {
+            ancestors1.push_back(type->parentType);
+            type = lookupType(type->parentType);
         }
     }
 
-    return candidate;
+    return result;
 }
 
 void SymbolTable::updateTypeParams(const std::string& typeName, const std::vector<std::string>& params) {

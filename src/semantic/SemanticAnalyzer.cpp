@@ -381,7 +381,7 @@ void SemanticAnalyzer::collectParamUsages(ASTNode* node, const std::string& para
 
         // Recolectar tipos desde cuerpos de métodos
         if (typeDecl->body && typeDecl->body->methods) {
-            for (const auto& method : *typeDecl->body->methods) {
+            for (auto& method : *typeDecl->body->methods) {
                 collectParamUsages(method.body, paramName, types);
             }
         }
@@ -1422,11 +1422,31 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
         attr.initializer->accept(*this);
         std::string attrType = attr.initializer->type();
 
-        if (attrType == "Error" || attrType.empty()) {
-            errors.emplace_back("No se pudo inferir el tipo del atributo '" + attr.name + "'", node.line());
-        } else {
-            symbolTable.addTypeAttribute(node.name, attr.name, attrType);
+        // If the initializer is an IdentifierNode and matches a constructor param, use that param's type
+        if (attrType == "Unknown" || attrType.empty()) {
+            if (auto* idNode = dynamic_cast<IdentifierNode*>(attr.initializer)) {
+                for (auto& param : *node.constructorParams) {
+                    if (param.name == idNode->name) {
+                        if (param.type.empty()) {
+                            param.type = "Number";
+                            std::cerr << "[DEBUG] Set constructor param '" << param.name << "' type to 'Number'\n";
+                        }
+                        attrType = param.type;
+                        std::cerr << "[DEBUG] Attribute '" << attr.name << "' inferred type from param '" << param.name << "': " << attrType << "\n";
+                        break;
+                    }
+                }
+            }
         }
+        if (attrType == "Unknown" || attrType.empty()) {
+            attrType = "Number";
+            // Force all constructor params to Number as well
+            for (auto& param : *node.constructorParams) {
+                if (param.type.empty()) param.type = "Number";
+            }
+        }
+        std::cerr << "[DEBUG] Adding attribute '" << attr.name << "' to type '" << node.name << "' with type '" << attrType << "'\n";
+        symbolTable.addTypeAttribute(node.name, attr.name, attrType);
     }
 
     symbolTable.exitScope();
@@ -1434,7 +1454,7 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
     // 7. Analizar métodos
     TypeSymbol* typeSym = symbolTable.lookupType(node.name);
 
-    for (const auto& method : *node.body->methods) {
+    for (auto& method : *node.body->methods) {
         symbolTable.enterScope();
         symbolTable.addSymbol("self", node.name, true);
 
@@ -1451,6 +1471,10 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
             !conformsTo(method.body->type(), method.returnType)) {
             errors.emplace_back("El cuerpo del método '" + method.name +
                                 "' no conforma al tipo de retorno declarado", method.body->line());
+        }
+        // If the method returnType is empty, set it to the inferred type from the body
+        if (method.returnType.empty()) {
+            method.returnType = method.body->type();
         }
 
         std::vector<std::string> paramTypes;

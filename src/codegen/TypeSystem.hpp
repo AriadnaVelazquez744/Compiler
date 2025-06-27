@@ -8,6 +8,21 @@
 #include <stdexcept>
 #include "../ast/AST.hpp"
 #include <llvm/IR/Value.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/IRBuilder.h>
+
+// Forward declarations
+namespace llvm {
+    class Module;
+    class LLVMContext;
+    class StructType;
+    class Function;
+    class Value;
+}
+
+class LLVMGenerator; // Forward declaration
 
 /**
  * @brief Represents a placeholder entry with name and type
@@ -26,9 +41,10 @@ struct TypeMethod {
     std::vector<Parameter>* params;
     ASTNode* body;
     std::string returnType;
+    llvm::Function* llvmFunction;  // LLVM function for this method
 
     TypeMethod(std::vector<Parameter>* p, ASTNode* b, std::string ret = "")
-        : params(p), body(b), returnType(std::move(ret)) {}
+        : params(p), body(b), returnType(std::move(ret)), llvmFunction(nullptr) {}
 };
 
 /**
@@ -38,11 +54,13 @@ struct TypeAttribute {
     std::string AttrName;           // Attribute name
     std::string TypeName;          // Attribute type (Number, String, Boolean, etc.)
     ASTNode* initializer;      // Initializer AST node
+    llvm::Type* llvmType;      // LLVM type for this attribute
 
     TypeAttribute(std::string attrName, std::string attrType, ASTNode* init)
         : AttrName(std::move(attrName))
         , TypeName(std::move(attrType))
-        , initializer(init) {}
+        , initializer(init)
+        , llvmType(nullptr) {}
 };
 
 /**
@@ -55,11 +73,17 @@ struct TypeDefinition {
     std::map<std::string, TypeMethod> methods;
     std::vector<std::string> constructorParams;  // List of parameter names
     std::vector<ASTNode*> baseArgs;            // Arguments for base constructor
+    
+    // LLVM-specific fields
+    llvm::StructType* llvmStructType;          // LLVM struct type
+    llvm::StructType* vtableType;              // VTable type for this class
+    llvm::GlobalVariable* vtableGlobal;        // Global vtable instance
+    int typeId;                                // Unique type ID for runtime type checking
 
     TypeDefinition(std::string n, std::optional<std::string> parent = std::nullopt)
         : name(std::move(n)), parentType(std::move(parent)), 
-          constructorParams(), 
-          baseArgs() {}
+          constructorParams(), baseArgs(),
+          llvmStructType(nullptr), vtableType(nullptr), vtableGlobal(nullptr), typeId(0) {}
 };
 
 /**
@@ -85,14 +109,46 @@ private:
     // Stack to track current instance variables with type information
     std::vector<std::map<std::pair<std::string, std::string>, llvm::Value*>> currentInstanceVarsStack;
 
+    // LLVM context and module references
+    llvm::LLVMContext* llvmContext;
+    llvm::Module* llvmModule;
+    
+    // Type ID counter for runtime type checking
+    int nextTypeId;
+
+    // Helper methods for LLVM type generation
+    void generateLLVMStructType(TypeDefinition& typeDef);
+    void generateVTableType(TypeDefinition& typeDef);
+    void generateVTableGlobal(TypeDefinition& typeDef);
+    void generateMethodFunctions(TypeDefinition& typeDef);
+    void generateMethodBody(TypeMethod& method, TypeDefinition& typeDef, llvm::IRBuilder<>& builder);
+
 public:
     /**
-     * @brief Registers a new type definition
+     * @brief Constructor with LLVM context and module
+     */
+    TypeSystem(llvm::LLVMContext* context, llvm::Module* module);
+
+    /**
+     * @brief Gets the LLVM type for a Hulk type name
+     * @param hulkType Type name (Number, String, Boolean, etc.)
+     * @return LLVM type pointer
+     */
+    llvm::Type* getLLVMTypeForHulkType(const std::string& hulkType);
+
+    /**
+     * @brief Registers a new type definition and generates LLVM types
      * @param name Type name
      * @param parent Optional parent type name
      * @return Reference to the created type definition
      */
     TypeDefinition& registerType(const std::string& name, std::optional<std::string> parent = std::nullopt);
+
+    /**
+     * @brief Generates complete LLVM types for a registered type
+     * @param typeName Type name to generate LLVM types for
+     */
+    void generateLLVMTypes(const std::string& typeName);
 
     /**
      * @brief Gets a type definition by name
@@ -105,6 +161,42 @@ public:
             throw std::runtime_error("Type '" + typeName + "' not found");
         }
         return it->second;
+    }
+
+    /**
+     * @brief Gets the LLVM struct type for a type
+     * @param typeName Type name
+     * @return LLVM struct type pointer
+     */
+    llvm::StructType* getLLVMStructType(const std::string& typeName) {
+        return getTypeDefinition(typeName).llvmStructType;
+    }
+
+    /**
+     * @brief Gets the vtable type for a type
+     * @param typeName Type name
+     * @return LLVM vtable struct type pointer
+     */
+    llvm::StructType* getVTableType(const std::string& typeName) {
+        return getTypeDefinition(typeName).vtableType;
+    }
+
+    /**
+     * @brief Gets the vtable global variable for a type
+     * @param typeName Type name
+     * @return LLVM vtable global variable pointer
+     */
+    llvm::GlobalVariable* getVTableGlobal(const std::string& typeName) {
+        return getTypeDefinition(typeName).vtableGlobal;
+    }
+
+    /**
+     * @brief Gets the type ID for a type
+     * @param typeName Type name
+     * @return Type ID
+     */
+    int getTypeId(const std::string& typeName) {
+        return getTypeDefinition(typeName).typeId;
     }
 
     /**
@@ -145,11 +237,12 @@ public:
 
     /**
      * @brief Adds an attribute to a type
+     * @param typeName Type being defined
      * @param attrName Attribute name
-     * @param typeName Type name
+     * @param attrType Attribute type
      * @param initializer Attribute initializer AST node
      */
-    void addAttribute(const std::string& attrName, const std::string& typeName, ASTNode* initializer);
+    void addAttribute(const std::string& typeName, const std::string& attrName, const std::string& attrType, ASTNode* initializer);
 
     /**
      * @brief Adds a method to a type
@@ -250,28 +343,28 @@ public:
     /**
      * @brief Checks if a type exists
      * @param typeName Type name
-     * @return true if type exists, false otherwise
+     * @return True if type exists, false otherwise
      */
     bool typeExists(const std::string& typeName) const {
         return typeTable.find(typeName) != typeTable.end();
     }
 
     /**
-     * @brief Pushes a variable name and type onto the placeholder stack
-     * @param varName Variable name to push
-     * @param varType Variable type to push
+     * @brief Pushes a placeholder entry onto the stack
+     * @param varName Variable name
+     * @param varType Variable type
      */
     void pushPlaceholder(const std::string& varName, const std::string& varType) {
-        placeholderStack.push_back(PlaceholderEntry(varName, varType));
+        placeholderStack.emplace_back(varName, varType);
     }
 
     /**
-     * @brief Pops a variable name and type from the placeholder stack
-     * @return The popped PlaceholderEntry
+     * @brief Pops a placeholder entry from the stack
+     * @return Placeholder entry
      */
     PlaceholderEntry popPlaceholder() {
         if (placeholderStack.empty()) {
-            return PlaceholderEntry("", "");
+            throw std::runtime_error("Placeholder stack is empty");
         }
         PlaceholderEntry entry = placeholderStack.back();
         placeholderStack.pop_back();
@@ -279,61 +372,67 @@ public:
     }
 
     /**
-     * @brief Gets the current variable name and type being processed
-     * @return Current PlaceholderEntry, or empty entry if stack is empty
+     * @brief Gets the current placeholder entry
+     * @return Current placeholder entry
      */
     PlaceholderEntry getCurrentPlaceholder() const {
-        return placeholderStack.empty() ? PlaceholderEntry("", "") : placeholderStack.back();
+        if (placeholderStack.empty()) {
+            return PlaceholderEntry("", "");
+        }
+        return placeholderStack.back();
     }
 
     /**
-     * @brief Checks if the placeholder stack is empty
-     * @return true if stack is empty, false otherwise
+     * @brief Checks if placeholder stack is empty
+     * @return True if empty, false otherwise
      */
     bool isPlaceholderStackEmpty() const {
         return placeholderStack.empty();
     }
 
     /**
-     * @brief Pushes a new instance variables map onto the stack
-     * @param vars Map of instance variables to push
+     * @brief Pushes current instance variables onto the stack
+     * @param vars Instance variables map
      */
     void pushCurrentInstanceVars(const std::map<std::pair<std::string, std::string>, llvm::Value*>& vars) {
         currentInstanceVarsStack.push_back(vars);
     }
 
     /**
-     * @brief Pops the top instance variables map from the stack
+     * @brief Pops current instance variables from the stack
      */
     void popCurrentInstanceVars() {
-        if (!currentInstanceVarsStack.empty()) {
-            currentInstanceVarsStack.pop_back();
+        if (currentInstanceVarsStack.empty()) {
+            throw std::runtime_error("Current instance vars stack is empty");
         }
+        currentInstanceVarsStack.pop_back();
     }
 
     /**
-     * @brief Sets a value in the current instance variables map
-     * @param varName Variable name to set
-     * @param varType Variable type to set
-     * @param value Value to set
+     * @brief Sets a current instance variable
+     * @param varName Variable name
+     * @param varType Variable type
+     * @param value Variable value
      */
     void setCurrentInstanceVar(const std::string& varName, const std::string& varType, llvm::Value* value) {
-        if (!currentInstanceVarsStack.empty()) {
-            currentInstanceVarsStack.back()[{varName, varType}] = value;
+        if (currentInstanceVarsStack.empty()) {
+            throw std::runtime_error("No current instance vars context");
         }
+        currentInstanceVarsStack.back()[{varName, varType}] = value;
     }
 
     /**
-     * @brief Gets a value from the current instance variables map
-     * @param varName Variable name to look up
-     * @param varType Variable type to look up
-     * @return Pointer to the value if found, nullptr otherwise
+     * @brief Gets a current instance variable
+     * @param varName Variable name
+     * @param varType Variable type
+     * @return Variable value if found, nullptr otherwise
      */
     llvm::Value* getCurrentInstanceVar(const std::string& varName, const std::string& varType) const {
         if (currentInstanceVarsStack.empty()) {
             return nullptr;
         }
-        auto& currentVars = currentInstanceVarsStack.back();
+        
+        const auto& currentVars = currentInstanceVarsStack.back();
         auto it = currentVars.find({varName, varType});
         return it != currentVars.end() ? it->second : nullptr;
     }
@@ -351,10 +450,19 @@ public:
     }
 
     /**
-     * @brief Checks if the instance variables stack is empty
-     * @return true if stack is empty, false otherwise
+     * @brief Checks if instance vars stack is empty
+     * @return True if empty, false otherwise
      */
     bool isInstanceVarsStackEmpty() const {
         return currentInstanceVarsStack.empty();
     }
+
+    /**
+     * @brief Sets the LLVM generator for method body generation
+     * @param generator Pointer to the LLVM generator
+     */
+    void setLLVMGenerator(LLVMGenerator* generator);
+
+private:
+    LLVMGenerator* llvmGenerator; // Reference to LLVM generator for method body generation
 }; 

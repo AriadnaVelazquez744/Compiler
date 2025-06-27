@@ -7,7 +7,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 CodeGenContext::CodeGenContext()
-    : builder(context), module("hulk_module", context) {}  // Associate module and builder with context
+    : builder(context), module("hulk_module", context), typeSystem(&context, &module) {}  // Initialize TypeSystem with LLVM context and module
 
 void CodeGenContext::generateCode(std::vector<ASTNode*>& root) {
     
@@ -26,11 +26,20 @@ void CodeGenContext::generateCode(std::vector<ASTNode*>& root) {
         }
     }
 
-    // Process type declarations first
+    // Process type declarations first - register types and generate LLVM types
     pushFuncScope();  // Global function registry
     LLVMGenerator generator(*this);
+    
+    // First pass: Register all types
     for (ASTNode* node : typeDecls) {
         node->accept(generator);
+    }
+    
+    // Second pass: Generate LLVM types for all registered types
+    for (ASTNode* node : typeDecls) {
+        if (auto* typeDecl = dynamic_cast<TypeDeclarationNode*>(node)) {
+            typeSystem.generateLLVMTypes(typeDecl->name);
+        }
     }
 
     // Then process function declarations

@@ -365,7 +365,7 @@ struct MethodDeclaration {
     std::string name;
     std::vector<Parameter>* params;
     ASTNode* body;
-    std::string returnType;  
+    std::string returnType;
 
     MethodDeclaration(std::string name, std::vector<Parameter>* params, ASTNode* body, std::string ret = "")
         : name(std::move(name)), params(params), body(body), returnType(std::move(ret)) {}

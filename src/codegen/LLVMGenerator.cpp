@@ -26,6 +26,20 @@ extern "C" {
 LLVMGenerator::LLVMGenerator(CodeGenContext& ctx)
     : context(ctx) {}
 
+llvm::IRBuilder<>& LLVMGenerator::getBuilder() { 
+    return context.builder; 
+}
+
+void LLVMGenerator::setBuilder(llvm::IRBuilder<>* newBuilder) { 
+    // Note: This is a simplified approach. In a real implementation,
+    // you'd want to properly manage the builder context
+    (void)newBuilder; // Suppress unused parameter warning
+}
+
+std::vector<llvm::Value*>& LLVMGenerator::getValueStack() { 
+    return context.valueStack; 
+}
+
 std::string processRawString(const std::string& raw) {
     std::string processed;
     bool escape = false;
@@ -908,8 +922,14 @@ void LLVMGenerator::visit(TypeDeclarationNode& node) {
     // Process attributes
     if (node.body->attributes) {
         for (const auto& attr : *node.body->attributes) {
-            context.typeSystem.addAttribute(attr.name, node.name, attr.initializer);
-            std::cout << "  📝 Added attribute: " << attr.name << " of type " << node.name << std::endl;
+            // Determine attribute type from initializer if possible
+            std::string attrType = "Number"; // Default type
+            if (attr.initializer) {
+                attrType = attr.initializer->type();
+            }
+            if (attrType.empty()) attrType = "Number";
+            context.typeSystem.addAttribute(node.name, attr.name, attrType, attr.initializer);
+            std::cout << "  📝 Added attribute: " << attr.name << " of type " << attrType << std::endl;
         }
     }
 
@@ -921,7 +941,10 @@ void LLVMGenerator::visit(TypeDeclarationNode& node) {
         }
     }
 
-    std::cout << "✅ Type " << node.name << " processed" << std::endl;
+    // Generate LLVM types immediately after registration
+    context.typeSystem.generateLLVMTypes(node.name);
+
+    std::cout << "✅ Type " << node.name << " registered and LLVM types generated" << std::endl;
 }
 
 void LLVMGenerator::visit(NewInstanceNode& node) {
@@ -931,6 +954,16 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
     std::string varName = context.typeSystem.getCurrentPlaceholder().name;
     if (!varName.empty()) {
         std::cout << "  📝 Using placeholder variable: " << varName << std::endl;
+    }
+
+    // Check if type exists and has LLVM struct type
+    if (!context.typeSystem.typeExists(node.typeName)) {
+        throw std::runtime_error("❌ Type '" + node.typeName + "' not found at line " + std::to_string(node.line()));
+    }
+
+    auto& typeDef = context.typeSystem.getTypeDefinition(node.typeName);
+    if (!typeDef.llvmStructType) {
+        throw std::runtime_error("❌ LLVM struct type not generated for '" + node.typeName + "' at line " + std::to_string(node.line()));
     }
 
     // 1. Initialize instance variables map and set current type
@@ -949,7 +982,34 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
         context.valueStack.pop_back();
     }
 
-    // Process type hierarchy
+    // 3. Allocate memory for the struct instance
+    llvm::Value* instancePtr = context.builder.CreateAlloca(typeDef.llvmStructType, nullptr, varName + "_ptr");
+    
+    // 4. Initialize struct fields
+    int fieldIndex = 0;
+    
+    // Set type ID (first field)
+    llvm::Value* typeIdPtr = context.builder.CreateStructGEP(typeDef.llvmStructType, instancePtr, fieldIndex++);
+    llvm::Value* typeId = llvm::ConstantInt::get(context.context, llvm::APInt(32, typeDef.typeId));
+    context.builder.CreateStore(typeId, typeIdPtr);
+    
+    // Set vtable pointer (second field)
+    if (typeDef.vtableGlobal) {
+        llvm::Value* vtablePtr = context.builder.CreateStructGEP(typeDef.llvmStructType, instancePtr, fieldIndex++);
+        context.builder.CreateStore(typeDef.vtableGlobal, vtablePtr);
+    } else {
+        fieldIndex++; // Skip vtable field if not available
+    }
+    
+    // Set parent pointer if inheriting (third field)
+    if (typeDef.parentType) {
+        llvm::Value* parentPtr = context.builder.CreateStructGEP(typeDef.llvmStructType, instancePtr, fieldIndex++);
+        // For now, set to null - parent initialization would happen in constructor
+        llvm::Value* nullParent = llvm::ConstantPointerNull::get(llvm::PointerType::get(typeDef.llvmStructType, 0));
+        context.builder.CreateStore(nullParent, parentPtr);
+    }
+
+    // Process type hierarchy for attribute initialization
     while (!currType.empty()) {
         std::cout << "  🔄 Processing type: " << currType << std::endl;
         
@@ -993,16 +1053,33 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
             args.erase(args.begin(), args.begin() + std::min(fatherConst.size() - startIdx, args.size()));
         }
 
-        // Process attributes
+        // Process attributes and initialize struct fields
         for (const auto& [attrName, attr] : attrType) {
             if (attr.initializer) {
                 attr.initializer->accept(*this);
                 if (context.valueStack.empty()) {
                     break;
                 }
-                instanceVars[{attrName, attr.TypeName}] = context.valueStack.back();
+                llvm::Value* attrValue = context.valueStack.back();
                 context.valueStack.pop_back();
+                
+                // Store in instance vars map
+                instanceVars[{attrName, attr.TypeName}] = attrValue;
+                
+                // Store in struct field
+                llvm::Value* fieldPtr = context.builder.CreateStructGEP(typeDef.llvmStructType, instancePtr, fieldIndex++);
+                context.builder.CreateStore(attrValue, fieldPtr);
+                
                 std::cout << "    📝 Added attribute: " << attrName << " of type " << attr.TypeName << std::endl;
+            } else {
+                // Initialize with default value
+                llvm::Type* attrLLVMType = context.typeSystem.getLLVMTypeForHulkType(attr.TypeName);
+                llvm::Value* defaultValue = llvm::Constant::getNullValue(attrLLVMType);
+                llvm::Value* fieldPtr = context.builder.CreateStructGEP(typeDef.llvmStructType, instancePtr, fieldIndex++);
+                context.builder.CreateStore(defaultValue, fieldPtr);
+                
+                instanceVars[{attrName, attr.TypeName}] = defaultValue;
+                std::cout << "    📝 Added default attribute: " << attrName << " of type " << attr.TypeName << std::endl;
             }
         }
 
@@ -1023,85 +1100,78 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
     // Create the instance with its variables
     context.typeSystem.createInstance(varName, node.typeName, instanceVars);
 
+    // Push the instance pointer to the value stack
+    context.valueStack.push_back(instancePtr);
+    if (!varName.empty()) {
+        context.addLocal(varName, instancePtr);
+    }
+
     std::cout << "✅ Instance created: " << varName << std::endl;
 }
 
 void LLVMGenerator::visit(MethodCallNode& node) {
     std::cout << "🔍 MethodCall: " << node.instanceName << "." << node.methodName << std::endl;
 
-    std::string instanceName = node.instanceName;
-    // 1. Get instance type and set currentType
-    if (instanceName == "self") {
-        // Get all instance names and use the last one
-        auto instanceNames = context.typeSystem.getAllInstanceNames();
-        if (!instanceNames.empty()) {
-            std::string lastInstanceName = instanceNames.back();
-            instanceName = lastInstanceName;
-            // Push the last instance's variables as current
-            context.typeSystem.pushCurrentInstanceVars(context.typeSystem.getInstanceVars(lastInstanceName));
-            std::cout << "✅ Vars added." << std::endl;
+    // Get the instance value from the stack or lookup
+    llvm::Value* instancePtr = nullptr;
+    
+    if (node.instanceName == "self") {
+        // Get the current instance from the value stack or context
+        if (!context.valueStack.empty()) {
+            instancePtr = context.valueStack.back();
+        } else {
+            throw std::runtime_error("❌ No instance available for 'self' call at line " + std::to_string(node.line()));
         }
     } else {
-        // Push instance variables onto the stack
-        try {
-            context.typeSystem.pushCurrentInstanceVars(context.typeSystem.getInstanceVars(node.instanceName));
-        } catch (const std::runtime_error& e) {
-            throw std::runtime_error("❌ " + std::string(e.what()) + " at line " + std::to_string(node.line()));
+        // Look up the instance variable
+        instancePtr = context.lookupLocal(node.instanceName);
+        if (!instancePtr) {
+            throw std::runtime_error("❌ Instance '" + node.instanceName + "' not found at line " + std::to_string(node.line()));
         }
     }
-    std::string typeName = context.typeSystem.getInstanceType(instanceName);
+
+    // Get the type information
+    std::string typeName = context.typeSystem.getInstanceType(node.instanceName);
     if (typeName.empty()) {
-        throw std::runtime_error("❌ Instance '" + instanceName + "' not found at line " + std::to_string(node.line()));
-    }
-    context.typeSystem.setCurrentType(typeName);
-
-    // 2. Create new varScope without inheritance
-    context.pushVarScope(false);
-
-    // 3. Set method name in placeholderStack
-    context.typeSystem.pushPlaceholder(node.methodName, "method");
-
-    // 4. Find method in type hierarchy
-    TypeMethod* method = nullptr;
-    std::string currType = typeName;
-    while (!currType.empty() && !method) {
-        method = context.typeSystem.findMethod(currType, node.methodName);
-        if (!method) {
-            currType = context.typeSystem.getParentType(currType).value_or("");
-        }
+        throw std::runtime_error("❌ Type information not found for instance at line " + std::to_string(node.line()));
     }
 
-    if (!method) {
-        throw std::runtime_error("❌ Method '" + node.methodName + "' not found in type hierarchy starting from '" + 
-                               typeName + "' at line " + std::to_string(node.line()));
+    auto& typeDef = context.typeSystem.getTypeDefinition(typeName);
+    if (!typeDef.llvmStructType || !typeDef.vtableGlobal) {
+        throw std::runtime_error("❌ LLVM type or vtable not available for type '" + typeName + "' at line " + std::to_string(node.line()));
     }
 
-    // 5. Process method arguments and parameters
+    // Find the method in the type hierarchy
+    TypeMethod* method = context.typeSystem.findMethod(typeName, node.methodName);
+    if (!method || !method->llvmFunction) {
+        throw std::runtime_error("❌ Method '" + node.methodName + "' not found in type '" + typeName + "' at line " + std::to_string(node.line()));
+    }
+
+    // Prepare arguments for the method call
     std::vector<llvm::Value*> args;
+    args.push_back(instancePtr); // 'this' pointer as first argument
+
+    // Process method arguments
     for (ASTNode* arg : node.args) {
         arg->accept(*this);
+        if (context.valueStack.empty()) {
+            throw std::runtime_error("❌ Failed to evaluate method argument at line " + std::to_string(node.line()));
+        }
         args.push_back(context.valueStack.back());
         context.valueStack.pop_back();
     }
 
-    // Associate parameters with argument values
-    if (method->params) {
-        for (size_t i = 0; i < method->params->size() && i < args.size(); ++i) {
-            context.addLocal((*method->params)[i].name, args[i]);
-            std::cout << "  📝 Bound param " << (*method->params)[i].name << std::endl;
-        }
+    // Call the method function
+    llvm::Type* retType = method->llvmFunction->getReturnType();
+    if (retType->isVoidTy()) {
+        context.builder.CreateCall(method->llvmFunction, args);
+        // Do not push to value stack for void
+    } else {
+        llvm::Value* result = context.builder.CreateCall(method->llvmFunction, args, "basecall_result");
+        context.valueStack.push_back(result);
     }
 
-    // 6. Evaluate method body
-    method->body->accept(*this);
-
-    // 7. Clean up
-    context.typeSystem.setCurrentType("");
-    context.typeSystem.popPlaceholder();
-    context.popVarScope();
-    context.typeSystem.popCurrentInstanceVars();
-
-    std::cout << "✅ Method call processed" << std::endl;
+    std::cout << "✅ Method call processed: " << node.methodName << std::endl;
 }
 
 void LLVMGenerator::visit(SelfCallNode& node) {
@@ -1113,30 +1183,62 @@ void LLVMGenerator::visit(SelfCallNode& node) {
         throw std::runtime_error("❌ 'self' access outside of type context at line " + std::to_string(node.line()));
     }
 
-    // Search for variable in type hierarchy
-    std::string currType = currentType;
-    llvm::Value* val = nullptr;
-
-    while (!currType.empty() && !val) {
-        // Try to get variable from current type
-        val = context.typeSystem.getCurrentInstanceVar(node.varName, currType);
-        
-        // If not found and has parent, try parent type
-        if (!val) {
-            currType = context.typeSystem.getParentType(currType).value_or("");
-            if (currType.empty()) {
-                throw std::runtime_error("❌ Undefined variable '" + node.varName + 
-                                        "' in type hierarchy starting from '" + currentType + 
-                                        "' at line " + std::to_string(node.line()));   
-                break;
-            }
-        }
-        else break;
+    // Get the instance pointer from the value stack
+    if (context.valueStack.empty()) {
+        throw std::runtime_error("❌ No instance available for 'self' access at line " + std::to_string(node.line()));
+    }
+    
+    llvm::Value* instancePtr = context.valueStack.back();
+    
+    // Get type definition
+    auto& typeDef = context.typeSystem.getTypeDefinition(currentType);
+    if (!typeDef.llvmStructType) {
+        throw std::runtime_error("❌ LLVM struct type not available for type '" + currentType + "' at line " + std::to_string(node.line()));
     }
 
-    context.valueStack.push_back(val);
-    std::cout << "  📤 Self value pushed to stack - Final stack size: " << context.valueStack.size() << std::endl;
-    std::cout << "✅ Self access processed" << std::endl;
+    // Search for attribute in type hierarchy
+    std::string currType = currentType;
+    int fieldIndex = 3; // Start after type ID, vtable, and parent pointer
+    
+    while (!currType.empty()) {
+        auto& currTypeDef = context.typeSystem.getTypeDefinition(currType);
+        
+        // Look for attribute in current type
+        auto attrIt = currTypeDef.attributes.find(node.varName);
+        if (attrIt != currTypeDef.attributes.end()) {
+            // Found the attribute, access it using GEP
+            llvm::Value* fieldPtr = context.builder.CreateStructGEP(
+                typeDef.llvmStructType, 
+                instancePtr, 
+                fieldIndex, 
+                node.varName + "_ptr"
+            );
+            
+            llvm::Value* fieldValue = context.builder.CreateLoad(
+                attrIt->second.llvmType,
+                fieldPtr,
+                node.varName + "_value"
+            );
+            
+            context.valueStack.push_back(fieldValue);
+            std::cout << "  📤 Self field accessed: " << node.varName << " - Final stack size: " << context.valueStack.size() << std::endl;
+            std::cout << "✅ Self access processed" << std::endl;
+            return;
+        }
+        
+        // Move to parent type
+        if (currTypeDef.parentType) {
+            currType = *currTypeDef.parentType;
+            // Adjust field index for parent attributes
+            fieldIndex += currTypeDef.attributes.size();
+        } else {
+            currType = "";
+        }
+    }
+
+    throw std::runtime_error("❌ Undefined variable '" + node.varName + 
+                            "' in type hierarchy starting from '" + currentType + 
+                            "' at line " + std::to_string(node.line()));
 }
 
 void LLVMGenerator::visit(BaseCallNode& node) {
@@ -1163,33 +1265,68 @@ void LLVMGenerator::visit(BaseCallNode& node) {
                                "' at line " + std::to_string(node.line()));
     }
 
-    // 3. Handle variable access
+    // 3. Handle variable access using LLVM struct field access
     if (elemType == "var") {
-        llvm::Value* val = context.typeSystem.getCurrentInstanceVar(name, *parentType);
-        if (!val) {
+        // Get the instance pointer from the value stack
+        if (context.valueStack.empty()) {
+            throw std::runtime_error("❌ No instance available for base call at line " + std::to_string(node.line()));
+        }
+        
+        llvm::Value* instancePtr = context.valueStack.back();
+        
+        // Get current type definition
+        auto& currentTypeDef = context.typeSystem.getTypeDefinition(currentType);
+        if (!currentTypeDef.llvmStructType) {
+            throw std::runtime_error("❌ LLVM struct type not available for type '" + currentType + "' at line " + std::to_string(node.line()));
+        }
+        
+        // Get parent type definition
+        auto& parentTypeDef = context.typeSystem.getTypeDefinition(*parentType);
+        
+        // Calculate field index for parent attributes
+        // Start after type ID, vtable, and parent pointer, then add current type's attributes
+        int fieldIndex = 3 + currentTypeDef.attributes.size();
+        
+        // Look for attribute in parent type
+        auto attrIt = parentTypeDef.attributes.find(name);
+        if (attrIt == parentTypeDef.attributes.end()) {
             throw std::runtime_error("❌ Undefined variable '" + name + 
                                    "' in parent type '" + *parentType + 
                                    "' at line " + std::to_string(node.line()));
         }
-        context.valueStack.push_back(val);
-        std::cout << "  📤 Base variable value pushed to stack - Final stack size: " << context.valueStack.size() << std::endl;
+        
+        // Access the field using GEP
+        llvm::Value* fieldPtr = context.builder.CreateStructGEP(
+            currentTypeDef.llvmStructType, 
+            instancePtr, 
+            fieldIndex, 
+            name + "_base_ptr"
+        );
+        
+        llvm::Value* fieldValue = context.builder.CreateLoad(
+            attrIt->second.llvmType,
+            fieldPtr,
+            name + "_base_value"
+        );
+        
+        context.valueStack.push_back(fieldValue);
+        std::cout << "  📤 Base variable accessed: " << name << " - Final stack size: " << context.valueStack.size() << std::endl;
         std::cout << "✅ Base variable access processed" << std::endl;
         return;
     }
 
-    // 4. Handle method call
+    // 4. Handle method call using LLVM function calls
     if (elemType == "method") {
         std::cout << "  🔄 Processing base method call" << std::endl;
-        // 4.1 Update current type to parent type
-        context.typeSystem.setCurrentType(*parentType);
-
-        // 4.3 Create new varScope without inheritance
-        context.pushVarScope(false);
-
-        // 4.4 Set method name in placeholderStack
-        context.typeSystem.pushPlaceholder(name, "method");
-
-        // 4.5 Find method in type hierarchy
+        
+        // Get the instance pointer from the value stack
+        if (context.valueStack.empty()) {
+            throw std::runtime_error("❌ No instance available for base method call at line " + std::to_string(node.line()));
+        }
+        
+        llvm::Value* instancePtr = context.valueStack.back();
+        
+        // Find method in parent type hierarchy
         TypeMethod* method = nullptr;
         std::string currType = *parentType;
         while (!currType.empty() && !method) {
@@ -1199,34 +1336,34 @@ void LLVMGenerator::visit(BaseCallNode& node) {
             }
         }
 
-        if (!method) {
+        if (!method || !method->llvmFunction) {
             throw std::runtime_error("❌ Method '" + name + "' not found in type hierarchy starting from '" + 
                                    *parentType + "' at line " + std::to_string(node.line()));
         }
 
-        // 4.6 Process method arguments and parameters
+        // Prepare arguments for the method call
         std::vector<llvm::Value*> args;
+        args.push_back(instancePtr); // 'this' pointer as first argument
+
+        // Process method arguments
         for (ASTNode* arg : node.args) {
             arg->accept(*this);
+            if (context.valueStack.empty()) {
+                throw std::runtime_error("❌ Failed to evaluate base method argument at line " + std::to_string(node.line()));
+            }
             args.push_back(context.valueStack.back());
             context.valueStack.pop_back();
         }
 
-        // Associate parameters with argument values
-        if (method->params) {
-            for (size_t i = 0; i < method->params->size() && i < args.size(); ++i) {
-                context.addLocal((*method->params)[i].name, args[i]);
-                std::cout << "  📝 Bound param " << (*method->params)[i].name << std::endl;
-            }
+        // Call the method function
+        llvm::Type* retType = method->llvmFunction->getReturnType();
+        if (retType->isVoidTy()) {
+            context.builder.CreateCall(method->llvmFunction, args);
+            // Do not push to value stack for void
+        } else {
+            llvm::Value* result = context.builder.CreateCall(method->llvmFunction, args, "basecall_result");
+            context.valueStack.push_back(result);
         }
-
-        // 4.7 Evaluate method body
-        method->body->accept(*this);
-
-        // 4.8 Clean up
-        context.typeSystem.setCurrentType(currentType); // Restore original type
-        context.typeSystem.popPlaceholder();
-        context.popVarScope();
 
         std::cout << "  📤 Base method result pushed to stack - Final stack size: " << context.valueStack.size() << std::endl;
         std::cout << "✅ Base method call processed" << std::endl;

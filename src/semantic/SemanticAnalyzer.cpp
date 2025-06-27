@@ -1287,10 +1287,12 @@ void SemanticAnalyzer::visit(IfNode& node) {
             node._type = "Error";
             return;
         }
+        
     }
 
     // El tipo del if es el tipo más específico común entre todas las ramas
     node._type = symbolTable.lowestCommonAncestor(branchTypes);
+    std::cerr << "[DEBUG] Tipo de if inferido '" << node._type << "'\n";
 }
 
 void SemanticAnalyzer::visit(WhileNode& node) {

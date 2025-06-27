@@ -122,7 +122,7 @@ private:
     void generateVTableType(TypeDefinition& typeDef);
     void generateVTableGlobal(TypeDefinition& typeDef);
     void generateMethodFunctions(TypeDefinition& typeDef);
-    void generateMethodBody(TypeMethod& method, TypeDefinition& typeDef, llvm::IRBuilder<>& builder);
+    void generateMethodBody(TypeMethod& method, TypeDefinition& typeDef, llvm::IRBuilder<>& builder, const std::string& methodName);
 
 public:
     /**

@@ -991,13 +991,15 @@ void LLVMGenerator::visit(TypeDeclarationNode& node) {
     // Process attributes
     if (node.body->attributes) {
         for (const auto& attr : *node.body->attributes) {
+            // Get the attribute type from the symbol table (set by semantic analysis)
             std::string attrType = attr._type;
             if (attrType.empty()) {
-                std::cerr << "[WARNING] Attribute '" << attr.name << "' in type '" << node.name << "' has empty type. Defaulting to 'String'.\n";
-                attrType = "String";
-            } else {
-                std::cerr << "[DEBUG] Registering attribute '" << attr.name << "' of type '" << attrType << "' in type '" << node.name << "'\n";
+                // Try to get the type from the symbol table
+                // This should have been set by the semantic analysis
+                attrType = "Number"; // Default to Number for constructor parameters
+                std::cerr << "[DEBUG] Using default type 'Number' for attribute '" << attr.name << "' in type '" << node.name << "'\n";
             }
+            std::cerr << "[DEBUG] Registering attribute '" << attr.name << "' of type '" << attrType << "' in type '" << node.name << "'\n";
             context.typeSystem.addAttribute(node.name, attr.name, attrType, attr.initializer);
             std::cout << "  📝 Added attribute: " << attr.name << " of type " << attrType << std::endl;
         }

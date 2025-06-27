@@ -26,19 +26,22 @@ TypeDefinition& TypeSystem::registerType(const std::string& name, std::optional<
     }
 
     // Create and store the type definition
-    auto [it, inserted] = typeTable.try_emplace(name, name, parent);
+    auto [it, inserted] = typeTable.try_emplace(name, std::make_unique<TypeDefinition>(name, parent));
     if (!inserted) {
-        throw std::runtime_error("Type '" + name + "' already exists");
+        throw std::runtime_error("Type '" + name + "' already registered");
+    }
+    if (parent && typeExists(*parent)) {
+        it->second->parentDef = typeTable.at(*parent).get();
     }
 
     // Initialize constructor parameters and base args
-    it->second.constructorParams = std::vector<std::string>();
-    it->second.baseArgs = std::vector<ASTNode*>();
+    it->second->constructorParams = std::vector<std::string>();
+    it->second->baseArgs = std::vector<ASTNode*>();
     
     // Assign type ID
-    it->second.typeId = nextTypeId++;
+    it->second->typeId = nextTypeId++;
 
-    return it->second;
+    return *it->second;
 }
 
 void TypeSystem::generateLLVMTypes(const std::string& typeName) {
@@ -82,39 +85,93 @@ llvm::Type* TypeSystem::getLLVMTypeForHulkType(const std::string& hulkType) {
 }
 
 void TypeSystem::generateLLVMStructType(TypeDefinition& typeDef) {
+    std::cerr << "[DEBUG] generateLLVMStructType: Enter for '" << typeDef.name << "'\n";
+    std::cerr << "[DEBUG] typeDef.llvmStructType before check: " << typeDef.llvmStructType << "\n";
+    
+    // Ensure parent struct type is generated first
+    if (typeDef.parentDef) {
+        std::cerr << "[DEBUG] '" << typeDef.name << "' has parent '" << typeDef.parentDef->name << "'. Checking parent struct type...\n";
+        if (!typeDef.parentDef->llvmStructType) {
+            std::cerr << "[DEBUG] Parent struct type for '" << typeDef.parentDef->name << "' not yet generated. Generating now...\n";
+            generateLLVMStructType(*typeDef.parentDef);
+            std::cerr << "[DEBUG] Parent struct type for '" << typeDef.parentDef->name << "' generated at " << typeDef.parentDef->llvmStructType << "\n";
+        } else {
+            std::cerr << "[DEBUG] Parent struct type for '" << typeDef.parentDef->name << "' already exists at " << typeDef.parentDef->llvmStructType << "\n";
+        }
+    } else {
+        std::cerr << "[DEBUG] '" << typeDef.name << "' has no parent\n";
+    }
+    
+    if (typeDef.llvmStructType) {
+        std::cerr << "[DEBUG] llvmStructType for '" << typeDef.name << "' already exists at " << typeDef.llvmStructType << ". Skipping creation.\n";
+        return;
+    }
+    
+    std::cerr << "[DEBUG] Creating new struct type for '" << typeDef.name << "'\n";
+    
+    // Create opaque struct type first
+    typeDef.llvmStructType = llvm::StructType::create(*llvmContext, typeDef.name);
+    std::cerr << "[DEBUG] Created opaque llvmStructType for '" << typeDef.name << "' at address " << typeDef.llvmStructType << "\n";
+    
+    // Create vtable type
+    std::string vtableTypeName = typeDef.name + "_vtable";
+    typeDef.vtableType = llvm::StructType::create(*llvmContext, vtableTypeName);
+    std::cerr << "[DEBUG] Created vtableType for '" << typeDef.name << "' at address " << typeDef.vtableType << " (name: " << vtableTypeName << ")\n";
+    
     std::vector<llvm::Type*> fieldTypes;
     
     // Add type ID as first field (32-bit integer)
-    fieldTypes.push_back(llvm::Type::getInt32Ty(*llvmContext));
+    llvm::Type* typeIdType = llvm::Type::getInt32Ty(*llvmContext);
+    fieldTypes.push_back(typeIdType);
+    std::cerr << "[DEBUG] Added typeId field for '" << typeDef.name << "' (type: " << typeIdType << ")\n";
     
     // Add vtable pointer as second field
-    std::string vtableTypeName = typeDef.name + "_vtable";
-    typeDef.vtableType = llvm::StructType::create(*llvmContext, vtableTypeName);
-    fieldTypes.push_back(llvm::PointerType::get(typeDef.vtableType, 0));
+    llvm::Type* vtablePtrType = llvm::PointerType::get(typeDef.vtableType, 0);
+    fieldTypes.push_back(vtablePtrType);
+    std::cerr << "[DEBUG] Added vtable pointer field for '" << typeDef.name << "' (type: " << vtablePtrType << ")\n";
     
-    // Add parent pointer if inheriting
-    if (typeDef.parentType) {
-        if (typeExists(*typeDef.parentType)) {
-            auto& parentDef = getTypeDefinition(*typeDef.parentType);
-            if (parentDef.llvmStructType) {
-                fieldTypes.push_back(llvm::PointerType::get(parentDef.llvmStructType, 0));
-            } else {
-                // Create forward declaration for parent
-                parentDef.llvmStructType = llvm::StructType::create(*llvmContext, *typeDef.parentType);
-                fieldTypes.push_back(llvm::PointerType::get(parentDef.llvmStructType, 0));
-            }
+    // Add parent pointer if inheriting (third field)
+    if (typeDef.parentDef) {
+        if (!typeDef.parentDef->llvmStructType) {
+            std::cerr << "[ERROR] parentDef->llvmStructType is nullptr for parent '" << typeDef.parentDef->name << "'\n";
+            throw std::runtime_error("Parent struct type not generated for " + typeDef.parentDef->name);
         }
+        llvm::Type* parentPtrType = llvm::PointerType::get(typeDef.parentDef->llvmStructType, 0);
+        fieldTypes.push_back(parentPtrType);
+        std::cerr << "[DEBUG] Added parent pointer field for '" << typeDef.name << "' (type: " << parentPtrType << ")\n";
+    } else {
+        std::cerr << "[DEBUG] No parent pointer for type: '" << typeDef.name << "'\n";
     }
     
-    // Add this type's attributes
+    // Add attribute fields
     for (auto& [attrName, attr] : typeDef.attributes) {
         std::cerr << "[DEBUG] Adding attribute to struct: '" << attrName << "' of type '" << attr.TypeName << "'\n";
         attr.llvmType = getLLVMTypeForHulkType(attr.TypeName);
+        std::cerr << "[DEBUG] attr.llvmType for '" << attrName << "': " << attr.llvmType << std::endl;
+        if (!attr.llvmType) {
+            std::cerr << "[ERROR] Failed to get LLVM type for attribute '" << attrName << "' of type '" << attr.TypeName << "'\n";
+            throw std::runtime_error("Failed to get LLVM type for " + attr.TypeName);
+        }
         fieldTypes.push_back(attr.llvmType);
     }
     
-    // Create the struct type
-    typeDef.llvmStructType = llvm::StructType::create(*llvmContext, fieldTypes, typeDef.name);
+    std::cerr << "[DEBUG] About to set body for struct '" << typeDef.name << "' with " << fieldTypes.size() << " fields\n";
+    for (size_t i = 0; i < fieldTypes.size(); ++i) {
+        std::cerr << "[DEBUG] Field " << i << ": " << fieldTypes[i] << "\n";
+    }
+    
+    // Set the struct body
+    typeDef.llvmStructType->setBody(fieldTypes);
+    std::cerr << "[DEBUG] Set body for llvmStructType '" << typeDef.name << "' at address " << typeDef.llvmStructType << "\n";
+    
+    // Verify the struct was created correctly
+    if (typeDef.llvmStructType->isOpaque()) {
+        std::cerr << "[ERROR] Struct type '" << typeDef.name << "' is still opaque after setBody!\n";
+        throw std::runtime_error("Struct type " + typeDef.name + " is still opaque");
+    }
+    
+    unsigned numElements = typeDef.llvmStructType->getNumElements();
+    std::cerr << "[DEBUG] Struct '" << typeDef.name << "' has " << numElements << " elements after setBody\n";
     
     std::cout << "  📝 Created LLVM struct type: " << typeDef.name << std::endl;
 }
@@ -241,9 +298,13 @@ void TypeSystem::generateMethodBody(TypeMethod& method, TypeDefinition& typeDef,
         
         // Handle self access for simple cases
         if (auto* selfCall = dynamic_cast<SelfCallNode*>(method.body)) {
-            // Dynamically find the attribute index
             int attrIndex = 2; // typeId, vtable
-            if (typeDef.parentType) attrIndex++; // parent pointer
+            if (typeDef.parentDef != nullptr) {
+                std::cerr << "[DEBUG] SelfCall: type '" << typeDef.name << "' has parent '" << typeDef.parentDef->name << "'\n";
+                attrIndex++; // parent pointer
+            } else {
+                std::cerr << "[DEBUG] SelfCall: type '" << typeDef.name << "' has no parent\n";
+            }
             std::string attrName = selfCall->varName;
             int i = 0;
             for (const auto& [name, attr] : typeDef.attributes) {
@@ -324,11 +385,11 @@ void TypeSystem::addAttribute(const std::string& typeName, const std::string& at
     }
 
     // Check if attribute already exists
-    if (it->second.attributes.find(attrName) != it->second.attributes.end()) {
+    if (it->second->attributes.find(attrName) != it->second->attributes.end()) {
         throw std::runtime_error("Attribute '" + attrName + "' already exists in type '" + typeName + "'");
     }
 
-    it->second.attributes.emplace(attrName, TypeAttribute(attrName, attrType, initializer));
+    it->second->attributes.emplace(attrName, TypeAttribute(attrName, attrType, initializer));
     std::cerr << "[DEBUG] addAttribute: type='" << typeName << "', attr='" << attrName << "', attrType='" << attrType << "'\n";
 }
 
@@ -340,11 +401,11 @@ void TypeSystem::addMethod(const std::string& typeName, const std::string& metho
     }
 
     // Check if method already exists
-    if (it->second.methods.find(methodName) != it->second.methods.end()) {
+    if (it->second->methods.find(methodName) != it->second->methods.end()) {
         throw std::runtime_error("Method '" + methodName + "' already exists in type '" + typeName + "'");
     }
 
-    it->second.methods.emplace(methodName, TypeMethod(params, body, returnType));
+    it->second->methods.emplace(methodName, TypeMethod(params, body, returnType));
 }
 
 void TypeSystem::createInstance(const std::string& varName, const std::string& typeName, 
@@ -372,14 +433,14 @@ TypeMethod* TypeSystem::findMethod(const std::string& typeName, const std::strin
     if (it == typeTable.end()) return nullptr;
 
     // Look for method in current type
-    auto methodIt = it->second.methods.find(methodName);
-    if (methodIt != it->second.methods.end()) {
+    auto methodIt = it->second->methods.find(methodName);
+    if (methodIt != it->second->methods.end()) {
         return &methodIt->second;
     }
 
     // If not found and has parent, look in parent type
-    if (it->second.parentType) {
-        return findMethod(*it->second.parentType, methodName);
+    if (it->second->parentDef != nullptr) {
+        return findMethod(it->second->parentDef->name, methodName);
     }
 
     return nullptr;
@@ -388,17 +449,14 @@ TypeMethod* TypeSystem::findMethod(const std::string& typeName, const std::strin
 TypeAttribute* TypeSystem::findAttribute(const std::string& typeName, const std::string& attrName) {
     auto it = typeTable.find(typeName);
     if (it == typeTable.end()) return nullptr;
-
     // Look for attribute in current type
-    auto attrIt = it->second.attributes.find(attrName);
-    if (attrIt != it->second.attributes.end()) {
+    auto attrIt = it->second->attributes.find(attrName);
+    if (attrIt != it->second->attributes.end()) {
         return &attrIt->second;
     }
-
     // If not found and has parent, look in parent type
-    if (it->second.parentType) {
-        return findAttribute(*it->second.parentType, attrName);
+    if (it->second->parentDef != nullptr) {
+        return findAttribute(it->second->parentDef->name, attrName);
     }
-
     return nullptr;
 } 

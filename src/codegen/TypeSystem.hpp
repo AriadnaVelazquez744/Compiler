@@ -69,6 +69,7 @@ struct TypeAttribute {
 struct TypeDefinition {
     std::string name;
     std::optional<std::string> parentType;
+    TypeDefinition* parentDef = nullptr;
     std::map<std::string, TypeAttribute> attributes;
     std::map<std::string, TypeMethod> methods;
     std::vector<std::string> constructorParams;  // List of parameter names
@@ -92,7 +93,7 @@ struct TypeDefinition {
 class TypeSystem {
 private:
     // Maps type names to their definitions
-    std::map<std::string, TypeDefinition> typeTable;
+    std::map<std::string, std::unique_ptr<TypeDefinition>> typeTable;
     
     // Maps instance variable names to their type names
     std::map<std::string, std::string> instanceTable;
@@ -160,7 +161,7 @@ public:
         if (it == typeTable.end()) {
             throw std::runtime_error("Type '" + typeName + "' not found");
         }
-        return it->second;
+        return *it->second;
     }
 
     /**

@@ -356,9 +356,10 @@ public:
 struct AttributeDeclaration {
     std::string name;
     ASTNode* initializer;
+    std::string _type;
 
     AttributeDeclaration(std::string name, ASTNode* init)
-        : name(std::move(name)), initializer(init) {}
+        : name(std::move(name)), initializer(init), _type("") {}
 };
 
 struct MethodDeclaration {

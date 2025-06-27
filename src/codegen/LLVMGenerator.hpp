@@ -45,4 +45,9 @@ public:
     void visit(class BaseCallNode& node) override;
     void visit(AttributeDeclaration&) override {}
     void visit(MethodDeclaration&) override {}
+
+    llvm::Value* getAttributePtr(llvm::Value* instancePtr, TypeDefinition& typeDef, const std::string& attrName);
+
+    // Add this method declaration
+    void setupMainFunction();
 };

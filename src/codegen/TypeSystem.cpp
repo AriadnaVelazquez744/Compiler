@@ -318,33 +318,63 @@ void TypeSystem::generateMethodBody(TypeMethod& method, TypeDefinition& typeDef,
         
         // Handle self access for simple cases
         if (auto* selfCall = dynamic_cast<SelfCallNode*>(method.body)) {
-            int attrIndex = 2; // typeId, vtable
-            if (typeDef.parentDef != nullptr) {
-                std::cerr << "[DEBUG] SelfCall: type '" << typeDef.name << "' has parent '" << typeDef.parentDef->name << "'\n";
-                attrIndex++; // parent pointer
-            } else {
-                std::cerr << "[DEBUG] SelfCall: type '" << typeDef.name << "' has no parent\n";
-            }
             std::string attrName = selfCall->varName;
+            
+            // Try to find the attribute in the current type or parent types
+            TypeDefinition* currentTypeDef = &typeDef;
+            int attrIndex = 2; // typeId, vtable
+            bool found = false;
+            
+            while (currentTypeDef != nullptr) {
+                if (currentTypeDef->parentDef != nullptr) {
+                    attrIndex++; // parent pointer
+                }
+                
             int i = 0;
-            for (const auto& [name, attr] : typeDef.attributes) {
+                for (const auto& [name, attr] : currentTypeDef->attributes) {
                 if (name == attrName) {
                     attrIndex += i;
+                        found = true;
+                        break;
+                    }
+                    ++i;
+                }
+                
+                if (found) {
                     break;
                 }
-                ++i;
+                
+                // If not found in current type, try parent type
+                if (currentTypeDef->parentDef != nullptr) {
+                    currentTypeDef = currentTypeDef->parentDef;
+                    // Reset attrIndex for parent type
+                    attrIndex = 2; // typeId, vtable
+                } else {
+                    break;
+                }
             }
-            llvm::Value* fieldPtr = builder.CreateStructGEP(typeDef.llvmStructType, thisPtr, attrIndex, "field_ptr");
-            unsigned numElements = typeDef.llvmStructType->getNumElements();
-            std::cerr << "[DEBUG] Struct '" << typeDef.name << "' has " << numElements << " elements. attrIndex=" << attrIndex << std::endl;
+            
+            if (!found) {
+                std::cerr << "[ERROR] Attribute '" << attrName << "' not found in type hierarchy!" << std::endl;
+                builder.CreateRetVoid();
+                return;
+            }
+            
+            // Cast thisPtr to the correct struct type for the attribute
+            llvm::Value* castedThisPtr = builder.CreateBitCast(thisPtr, llvm::PointerType::get(currentTypeDef->llvmStructType, 0), "casted_this");
+            llvm::Value* fieldPtr = builder.CreateStructGEP(currentTypeDef->llvmStructType, castedThisPtr, attrIndex, "field_ptr");
+            unsigned numElements = currentTypeDef->llvmStructType->getNumElements();
+            std::cerr << "[DEBUG] Struct '" << currentTypeDef->name << "' has " << numElements << " elements. attrIndex=" << attrIndex << std::endl;
+            
             llvm::Type* fieldType = nullptr;
             if (attrIndex < numElements) {
-                fieldType = typeDef.llvmStructType->getElementType(attrIndex);
+                fieldType = currentTypeDef->llvmStructType->getElementType(attrIndex);
             } else {
                 std::cerr << "[ERROR] attrIndex out of range!" << std::endl;
                 builder.CreateRetVoid();
                 return;
             }
+            
             llvm::Value* fieldValue = builder.CreateLoad(fieldType, fieldPtr, "field_value");
             llvm::Type* returnType = method.llvmFunction->getReturnType();
             if (!returnType->isVoidTy()) {
@@ -353,6 +383,152 @@ void TypeSystem::generateMethodBody(TypeMethod& method, TypeDefinition& typeDef,
                 builder.CreateRetVoid();
             }
             return;
+        }
+        
+        // Handle base calls (calling parent method)
+        if (auto* baseCall = dynamic_cast<BaseCallNode*>(method.body)) {
+            if (typeDef.parentDef != nullptr) {
+                // Find the parent method
+                TypeMethod* parentMethod = findMethod(typeDef.parentDef->name, methodName);
+                if (parentMethod && parentMethod->llvmFunction) {
+                    // Call the parent method
+                    std::vector<llvm::Value*> args;
+                    // Load the parent instance pointer (field 2)
+                    llvm::Value* parentPtr = builder.CreateStructGEP(typeDef.llvmStructType, thisPtr, 2, "parent_ptr");
+                    llvm::Value* parentInstance = builder.CreateLoad(
+                        llvm::PointerType::get(typeDef.parentDef->llvmStructType, 0), parentPtr, "parent_instance");
+                    
+                    args.push_back(parentInstance); // Pass parent instance instead of current instance
+                    
+                    // Add any arguments from baseCall
+                    for (auto* arg : baseCall->args) {
+                        // For now, we'll need to handle argument evaluation
+                        // This is a simplified version
+                        if (auto* literal = dynamic_cast<LiteralNode*>(arg)) {
+                            if (literal->type() == "String") {
+                                args.push_back(builder.CreateGlobalStringPtr(literal->value));
+                            } else if (literal->type() == "Number") {
+                                double value = std::stod(literal->value);
+                                args.push_back(llvm::ConstantFP::get(*llvmContext, llvm::APFloat(value)));
+                            }
+                        }
+                    }
+                    
+                    llvm::Value* result = builder.CreateCall(parentMethod->llvmFunction, args, "base_call");
+                    llvm::Type* returnType = method.llvmFunction->getReturnType();
+                    if (!returnType->isVoidTy()) {
+                        builder.CreateRet(result);
+                    } else {
+                        builder.CreateRetVoid();
+                    }
+                    return;
+                }
+            }
+        }
+        
+        // Handle binary operations (like @@ for string concatenation)
+        if (auto* binaryOp = dynamic_cast<BinaryOpNode*>(method.body)) {
+            std::cerr << "[DEBUG] BinaryOp in method body: " << binaryOp->op << std::endl;
+            
+            // Handle string concatenation (@@)
+            if (binaryOp->op == "@@" || binaryOp->op == "@") {
+                const char* funcName = (binaryOp->op == "@") ? "hulk_str_concat" : "hulk_str_concat_space";
+                
+                // Evaluate left operand
+                llvm::Value* leftValue = nullptr;
+                if (auto* leftSelfCall = dynamic_cast<SelfCallNode*>(binaryOp->left)) {
+                    // Handle self.firstname or self.lastname
+                    int attrIndex = 2; // typeId, vtable
+                    if (typeDef.parentDef != nullptr) {
+                        attrIndex++; // parent pointer
+                    }
+                    std::string attrName = leftSelfCall->varName;
+                    int i = 0;
+                    for (const auto& [name, attr] : typeDef.attributes) {
+                        if (name == attrName) {
+                            attrIndex += i;
+                            break;
+                        }
+                        ++i;
+                    }
+                    llvm::Value* fieldPtr = builder.CreateStructGEP(typeDef.llvmStructType, thisPtr, attrIndex, "left_field_ptr");
+                    llvm::Type* fieldType = typeDef.llvmStructType->getElementType(attrIndex);
+                    leftValue = builder.CreateLoad(fieldType, fieldPtr, "left_field_value");
+                } else if (auto* leftLiteral = dynamic_cast<LiteralNode*>(binaryOp->left)) {
+                    if (leftLiteral->type() == "String") {
+                        leftValue = builder.CreateGlobalStringPtr(leftLiteral->value);
+                    }
+                }
+                
+                // Evaluate right operand
+                llvm::Value* rightValue = nullptr;
+                if (auto* rightSelfCall = dynamic_cast<SelfCallNode*>(binaryOp->right)) {
+                    // Handle self.firstname or self.lastname
+                    int attrIndex = 2; // typeId, vtable
+                    if (typeDef.parentDef != nullptr) {
+                        attrIndex++; // parent pointer
+                    }
+                    std::string attrName = rightSelfCall->varName;
+                    int i = 0;
+                    for (const auto& [name, attr] : typeDef.attributes) {
+                        if (name == attrName) {
+                            attrIndex += i;
+                            break;
+                        }
+                        ++i;
+                    }
+                    llvm::Value* fieldPtr = builder.CreateStructGEP(typeDef.llvmStructType, thisPtr, attrIndex, "right_field_ptr");
+                    llvm::Type* fieldType = typeDef.llvmStructType->getElementType(attrIndex);
+                    rightValue = builder.CreateLoad(fieldType, fieldPtr, "right_field_value");
+                } else if (auto* rightBaseCall = dynamic_cast<BaseCallNode*>(binaryOp->right)) {
+                    // Handle base() call
+                    if (typeDef.parentDef != nullptr) {
+                        TypeMethod* parentMethod = findMethod(typeDef.parentDef->name, methodName);
+                        if (parentMethod && parentMethod->llvmFunction) {
+                            std::vector<llvm::Value*> args;
+                            // Load the parent instance pointer (field 2)
+                            llvm::Value* parentPtr = builder.CreateStructGEP(typeDef.llvmStructType, thisPtr, 2, "parent_ptr");
+                            llvm::Value* parentInstance = builder.CreateLoad(
+                                llvm::PointerType::get(typeDef.parentDef->llvmStructType, 0), parentPtr, "parent_instance");
+                            
+                            args.push_back(parentInstance); // Pass parent instance instead of current instance
+                            for (auto* arg : rightBaseCall->args) {
+                                if (auto* literal = dynamic_cast<LiteralNode*>(arg)) {
+                                    if (literal->type() == "String") {
+                                        args.push_back(builder.CreateGlobalStringPtr(literal->value));
+                                    }
+                                }
+                            }
+                            rightValue = builder.CreateCall(parentMethod->llvmFunction, args, "base_call");
+                        }
+                    }
+                }
+                
+                if (leftValue && rightValue) {
+                    // Declare concatenation function if not already in module
+                    llvm::Function* concatFn = llvmModule->getFunction(funcName);
+                    if (!concatFn) {
+                        llvm::FunctionType* concatType = llvm::FunctionType::get(
+                            llvm::PointerType::get(llvm::Type::getInt8Ty(*llvmContext), 0),
+                            {
+                                llvm::PointerType::get(llvm::Type::getInt8Ty(*llvmContext), 0),
+                                llvm::PointerType::get(llvm::Type::getInt8Ty(*llvmContext), 0)
+                            },
+                            false
+                        );
+                        concatFn = llvm::Function::Create(concatType, llvm::Function::ExternalLinkage, funcName, *llvmModule);
+                    }
+                    
+                    llvm::Value* result = builder.CreateCall(concatFn, {leftValue, rightValue}, "concat");
+                    llvm::Type* returnType = method.llvmFunction->getReturnType();
+                    if (!returnType->isVoidTy()) {
+                        builder.CreateRet(result);
+                    } else {
+                        builder.CreateRetVoid();
+                    }
+                    return;
+                }
+            }
         }
     }
     

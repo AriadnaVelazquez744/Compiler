@@ -47,7 +47,8 @@ public:
     void visit(MethodDeclaration&) override {}
 
     llvm::Value* getAttributePtr(llvm::Value* instancePtr, TypeDefinition& typeDef, const std::string& attrName);
-
+    llvm::Value* createParentInstance(TypeDefinition* parentDef, const std::vector<llvm::Value*>& constructorArgs, const std::vector<std::string>& constructorParamNames);
+    
     // Add this method declaration
     void setupMainFunction();
 };

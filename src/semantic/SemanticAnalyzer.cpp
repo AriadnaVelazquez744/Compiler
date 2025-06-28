@@ -756,8 +756,8 @@ void SemanticAnalyzer::visit(FunctionDeclarationNode& node) {
                 if ((leftId && leftId->name == param.name) || 
                     (rightId && rightId->name == param.name)) {
                     std::cout << "    - Parámetro usado en operación aritmética, asignando tipo Number\n";
-                    param.type = "Number";
-                    symbolTable.updateSymbolType(param.name, "Number");
+                    param.type = "String";
+                    symbolTable.updateSymbolType(param.name, "String");
                     continue;
                 }
             }
@@ -1127,7 +1127,7 @@ void SemanticAnalyzer::visit(VariableDeclarationNode& node) {
         node.initializer->accept(*this);
         std::string initType = node.initializer->type();
         if (!node.declaredType.empty() && node.declaredType != initType) {
-            errors.emplace_back("Tipo declarado no coincide con el inicializador", node.line());
+            errors.emplace_back("Tipo declarado '" + node.declaredType + "' no coincide con inicializador '" + initType + "'", node.line());
             node._type = "Error";
         }
         node._type = !node.declaredType.empty() ? node.declaredType : initType;
@@ -1428,8 +1428,8 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
                 for (auto& param : *node.constructorParams) {
                     if (param.name == idNode->name) {
                         if (param.type.empty()) {
-                            param.type = "Number";
-                            std::cerr << "[DEBUG] Set constructor param '" << param.name << "' type to 'Number'\n";
+                            param.type = "String";
+                            std::cerr << "[DEBUG] Set constructor param '" << param.name << "' type to '" << param.type << "'\n";
                         }
                         attrType = param.type;
                         std::cerr << "[DEBUG] Attribute '" << attr.name << "' inferred type from param '" << param.name << "': " << attrType << "\n";
@@ -1439,10 +1439,11 @@ void SemanticAnalyzer::visit(TypeDeclarationNode& node) {
             }
         }
         if (attrType == "Unknown" || attrType.empty()) {
-            attrType = "Number";
-            // Force all constructor params to Number as well
+            // Default to String for attributes that might be used in concatenation
+            attrType = "String";
+            // Force all constructor params to String as well if they're empty
             for (auto& param : *node.constructorParams) {
-                if (param.type.empty()) param.type = "Number";
+                if (param.type.empty()) param.type = "String";
             }
         }
         std::cerr << "[DEBUG] Adding attribute '" << attr.name << "' to type '" << node.name << "' with type '" << attrType << "'\n";

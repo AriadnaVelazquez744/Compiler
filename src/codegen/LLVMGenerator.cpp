@@ -996,8 +996,8 @@ void LLVMGenerator::visit(TypeDeclarationNode& node) {
             if (attrType.empty()) {
                 // Try to get the type from the symbol table
                 // This should have been set by the semantic analysis
-                attrType = "Number"; // Default to Number for constructor parameters
-                std::cerr << "[DEBUG] Using default type 'Number' for attribute '" << attr.name << "' in type '" << node.name << "'\n";
+                attrType = "String"; // Default to String for constructor parameters
+                std::cerr << "[DEBUG] Using default type 'String' for attribute '" << attr.name << "' in type '" << node.name << "'\n";
             }
             std::cerr << "[DEBUG] Registering attribute '" << attr.name << "' of type '" << attrType << "' in type '" << node.name << "'\n";
             context.typeSystem.addAttribute(node.name, attr.name, attrType, attr.initializer);
@@ -1045,7 +1045,7 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
         throw std::runtime_error("❌ LLVM struct type not generated for '" + node.typeName + "' at line " + std::to_string(node.line()));
     }
     std::cerr << "[DEBUG] typeDef.llvmStructType pointer: " << typeDef.llvmStructType << std::endl;
-    
+
     // Process constructor arguments first
     std::vector<llvm::Value*> constructorArgs;
     for (ASTNode* arg : node.args) {
@@ -1056,7 +1056,7 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
         constructorArgs.push_back(context.valueStack.back());
         context.valueStack.pop_back();
     }
-    
+
     // Create a temporary scope for constructor parameters
     context.pushVarScope(false);
     
@@ -1157,11 +1157,16 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
         std::cerr << "[DEBUG] Before CreateStructGEP for parent pointer" << std::endl;
         llvm::Value* parentPtr = context.builder.CreateStructGEP(typeDef.llvmStructType, instancePtr, fieldIndex);
         std::cerr << "[DEBUG] After CreateStructGEP for parent pointer, parentPtr: " << parentPtr << std::endl;
-        // For now, store null (or could recursively create parent instance)
+        
         if (parentLLVMType) {
-            std::cerr << "[DEBUG] Before CreateStore for parent pointer (null)" << std::endl;
-            context.builder.CreateStore(llvm::ConstantPointerNull::get(llvm::PointerType::get(parentLLVMType, 0)), parentPtr);
-            std::cerr << "[DEBUG] After CreateStore for parent pointer (null)" << std::endl;
+            // Create a parent instance instead of storing null
+            std::cerr << "[DEBUG] Creating parent instance for type: '" << typeDef.parentDef->name << "'" << std::endl;
+            llvm::Value* parentInstance = createParentInstance(typeDef.parentDef, constructorArgs, typeDef.constructorParams);
+            
+            // Store the parent instance pointer
+            std::cerr << "[DEBUG] Before CreateStore for parent pointer (actual instance)" << std::endl;
+            context.builder.CreateStore(parentInstance, parentPtr);
+            std::cerr << "[DEBUG] After CreateStore for parent pointer (actual instance)" << std::endl;
         } else {
             std::cerr << "[ERROR] parentLLVMType is nullptr, cannot store parent pointer!\n";
         }
@@ -1174,23 +1179,23 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
     // Initialize attributes (NOTE: only current type's attributes are initialized here)
     for (const auto& [attrName, attr] : typeDef.attributes) {
         std::cerr << "[DEBUG] Initializing attribute '" << attrName << "' (type: '" << attr.TypeName << "', LLVM type: " << attr.llvmType << ") at fieldIndex " << fieldIndex << std::endl;
-        if (attr.initializer) {
-            attr.initializer->accept(*this);
-            if (context.valueStack.empty()) {
+            if (attr.initializer) {
+                attr.initializer->accept(*this);
+                if (context.valueStack.empty()) {
                 std::cerr << "[ERROR] valueStack empty after initializing attribute '" << attrName << "'" << std::endl;
-                break;
-            }
-            llvm::Value* attrValue = context.valueStack.back();
-            context.valueStack.pop_back();
+                    break;
+                }
+                llvm::Value* attrValue = context.valueStack.back();
+                context.valueStack.pop_back();
             llvm::Value* fieldPtr = context.builder.CreateStructGEP(typeDef.llvmStructType, instancePtr, fieldIndex);
-            context.builder.CreateStore(attrValue, fieldPtr);
+                context.builder.CreateStore(attrValue, fieldPtr);
             std::cerr << "[DEBUG] Stored attribute '" << attrName << "' value at fieldIndex " << fieldIndex << std::endl;
-        } else {
-            llvm::Type* attrLLVMType = context.typeSystem.getLLVMTypeForHulkType(attr.TypeName);
+            } else {
+                llvm::Type* attrLLVMType = context.typeSystem.getLLVMTypeForHulkType(attr.TypeName);
             std::cerr << "[DEBUG] No initializer for attribute '" << attrName << "', using default value for type '" << attr.TypeName << "' (LLVM type: " << attrLLVMType << ")\n";
-            llvm::Value* defaultValue = llvm::Constant::getNullValue(attrLLVMType);
+                llvm::Value* defaultValue = llvm::Constant::getNullValue(attrLLVMType);
             llvm::Value* fieldPtr = context.builder.CreateStructGEP(typeDef.llvmStructType, instancePtr, fieldIndex);
-            context.builder.CreateStore(defaultValue, fieldPtr);
+                context.builder.CreateStore(defaultValue, fieldPtr);
             std::cerr << "[DEBUG] Stored default value for attribute '" << attrName << "' at fieldIndex " << fieldIndex << std::endl;
         }
         fieldIndex++;
@@ -1198,10 +1203,10 @@ void LLVMGenerator::visit(NewInstanceNode& node) {
     
     // Clean up the temporary scope
     context.popVarScope();
-    
+
     // Push the instance pointer onto the value stack so it can be stored in the local scope
     context.valueStack.push_back(instancePtr);
-    
+
     std::cerr << "[DEBUG] Finished NewInstanceNode for type: '" << typeDef.name << "'" << std::endl;
 }
 
@@ -1210,16 +1215,13 @@ void LLVMGenerator::visit(MethodCallNode& node) {
 
     // Get the instance value from the stack or lookup
     llvm::Value* instancePtr = nullptr;
-    
     if (node.instanceName == "self") {
-        // Get the current instance from the value stack or context
         if (!context.valueStack.empty()) {
             instancePtr = context.valueStack.back();
         } else {
             throw std::runtime_error("❌ No instance available for 'self' call at line " + std::to_string(node.line()));
         }
     } else {
-        // Look up the instance variable
         instancePtr = context.lookupLocal(node.instanceName);
         if (!instancePtr) {
             throw std::runtime_error("❌ Instance '" + node.instanceName + "' not found at line " + std::to_string(node.line()));
@@ -1231,23 +1233,32 @@ void LLVMGenerator::visit(MethodCallNode& node) {
     if (typeName.empty()) {
         throw std::runtime_error("❌ Type information not found for instance at line " + std::to_string(node.line()));
     }
-
     auto& typeDef = context.typeSystem.getTypeDefinition(typeName);
     if (!typeDef.llvmStructType || !typeDef.vtableGlobal) {
         throw std::runtime_error("❌ LLVM type or vtable not available for type '" + typeName + "' at line " + std::to_string(node.line()));
     }
 
-    // Find the method in the type hierarchy
+    // Find the method in the type hierarchy to get the method index
     TypeMethod* method = context.typeSystem.findMethod(typeName, node.methodName);
     if (!method || !method->llvmFunction) {
         throw std::runtime_error("❌ Method '" + node.methodName + "' not found in type '" + typeName + "' at line " + std::to_string(node.line()));
     }
-
+    // Get the method index in the vtable
+    int methodIndex = 0;
+    for (auto& [name, m] : typeDef.methods) {
+        if (name == node.methodName) break;
+        methodIndex++;
+    }
+    // Load the vtable pointer from the instance (field 1)
+    llvm::Value* vtablePtr = context.builder.CreateStructGEP(typeDef.llvmStructType, instancePtr, 1, "vtable_ptr");
+    llvm::Value* vtable = context.builder.CreateLoad(llvm::PointerType::get(typeDef.vtableType, 0), vtablePtr, "vtable");
+    // Get the method pointer from the vtable
+    llvm::Value* methodPtr = context.builder.CreateStructGEP(typeDef.vtableType, vtable, methodIndex, "method_ptr");
+    llvm::Value* methodFunction = context.builder.CreateLoad(
+        llvm::PointerType::get(method->llvmFunction->getType(), 0), methodPtr, "method_function");
     // Prepare arguments for the method call
     std::vector<llvm::Value*> args;
     args.push_back(instancePtr); // 'this' pointer as first argument
-
-    // Process method arguments
     for (ASTNode* arg : node.args) {
         arg->accept(*this);
         if (context.valueStack.empty()) {
@@ -1256,17 +1267,18 @@ void LLVMGenerator::visit(MethodCallNode& node) {
         args.push_back(context.valueStack.back());
         context.valueStack.pop_back();
     }
-
-    // Call the method function
+    // Call the method function through the vtable
     llvm::Type* retType = method->llvmFunction->getReturnType();
     if (retType->isVoidTy()) {
-        context.builder.CreateCall(method->llvmFunction, args);
-        // Do not push to value stack for void
+        context.builder.CreateCall(method->llvmFunction->getFunctionType(), methodFunction, args);
     } else {
-        llvm::Value* result = context.builder.CreateCall(method->llvmFunction, args, "basecall_result");
+        // Cast the instance pointer to the correct struct type for the method
+        llvm::Value* castedInstance = context.builder.CreateBitCast(instancePtr, method->llvmFunction->getFunctionType()->getParamType(0), "casted_instance");
+        args[0] = castedInstance; // Replace the first argument with the casted pointer
+        
+        llvm::Value* result = context.builder.CreateCall(method->llvmFunction->getFunctionType(), methodFunction, args, "basecall_result");
         context.valueStack.push_back(result);
     }
-
     std::cout << "✅ Method call processed: " << node.methodName << std::endl;
 }
 
@@ -1364,6 +1376,74 @@ llvm::Value* LLVMGenerator::getAttributePtr(llvm::Value* instancePtr, TypeDefini
         std::cerr << "[DEBUG] getAttributePtr: type '" << typeDef.name << "' has no parent\n";
     }
     throw std::runtime_error("Attribute '" + attrName + "' not found in type hierarchy");
+}
+
+// Helper function to recursively construct parent instances
+llvm::Value* LLVMGenerator::createParentInstance(
+    TypeDefinition* parentDef,
+    const std::vector<llvm::Value*>& constructorArgs,
+    const std::vector<std::string>& constructorParamNames
+) {
+    std::cerr << "[DEBUG] Creating parent instance for type: '" << parentDef->name << "' with " << constructorArgs.size() << " args" << std::endl;
+    
+    if (!parentDef->llvmStructType) {
+        throw std::runtime_error("❌ LLVM struct type not generated for parent '" + parentDef->name + "'");
+    }
+    
+    // Create parent instance
+    llvm::Value* parentInstance = context.builder.CreateAlloca(parentDef->llvmStructType, nullptr, "parent_instance");
+    
+    int fieldIndex = 0;
+    
+    // Set parent type ID
+    llvm::Value* parentTypeIdPtr = context.builder.CreateStructGEP(parentDef->llvmStructType, parentInstance, fieldIndex++);
+    llvm::Value* parentTypeId = llvm::ConstantInt::get(context.context, llvm::APInt(32, parentDef->typeId));
+    context.builder.CreateStore(parentTypeId, parentTypeIdPtr);
+    
+    // Set parent vtable
+    if (parentDef->vtableGlobal) {
+        llvm::Value* parentVtablePtr = context.builder.CreateStructGEP(parentDef->llvmStructType, parentInstance, fieldIndex++);
+        context.builder.CreateStore(parentDef->vtableGlobal, parentVtablePtr);
+    } else {
+        fieldIndex++; // Skip vtable field if not available
+    }
+    
+    // Set parent pointer if parent has a parent
+    if (parentDef->parentType && parentDef->parentDef) {
+        // Recursively create grandparent instance
+        llvm::Value* grandparentInstance = createParentInstance(parentDef->parentDef, constructorArgs, constructorParamNames);
+        llvm::Value* grandparentPtr = context.builder.CreateStructGEP(parentDef->llvmStructType, parentInstance, fieldIndex++);
+        context.builder.CreateStore(grandparentInstance, grandparentPtr);
+    }
+    
+    // Initialize parent attributes with constructor arguments
+    for (const auto& [attrName, attr] : parentDef->attributes) {
+        std::cerr << "[DEBUG] Initializing parent attribute '" << attrName << "' at fieldIndex " << fieldIndex << std::endl;
+        
+        // Find the constructor parameter that matches this attribute
+        auto paramIt = std::find(constructorParamNames.begin(), constructorParamNames.end(), attrName);
+        if (paramIt != constructorParamNames.end()) {
+            // Use the corresponding constructor argument
+            size_t paramIndex = std::distance(constructorParamNames.begin(), paramIt);
+            if (paramIndex < constructorArgs.size()) {
+                llvm::Value* fieldPtr = context.builder.CreateStructGEP(parentDef->llvmStructType, parentInstance, fieldIndex);
+                context.builder.CreateStore(constructorArgs[paramIndex], fieldPtr);
+                std::cerr << "[DEBUG] Stored constructor arg " << paramIndex << " for parent attribute '" << attrName << "'" << std::endl;
+        } else {
+                throw std::runtime_error("❌ Constructor argument index out of bounds for parent attribute '" + attrName + "'");
+            }
+        } else {
+            // No matching constructor parameter, use default value
+            llvm::Type* attrLLVMType = context.typeSystem.getLLVMTypeForHulkType(attr.TypeName);
+            llvm::Value* defaultValue = llvm::Constant::getNullValue(attrLLVMType);
+            llvm::Value* fieldPtr = context.builder.CreateStructGEP(parentDef->llvmStructType, parentInstance, fieldIndex);
+            context.builder.CreateStore(defaultValue, fieldPtr);
+            std::cerr << "[DEBUG] Stored default value for parent attribute '" << attrName << "'" << std::endl;
+        }
+        fieldIndex++;
+    }
+    
+    return parentInstance;
 }
 
 // Add this method to create a main function and set up the builder

@@ -189,10 +189,24 @@ statement:
                                         std::cout << "Definición función inline: " << *$2 << std::endl;
                                         
                                     }
+    | FUNC ID '(' params ')' ':' ID LAMBDA body
+                                    {
+                                        $$ = new FunctionDeclarationNode(*$2, $4, $8, true, yylloc.first_line);
+                                        $$->returnType = *$6;
+                                        std::cout << "Definición función inline con tipo: " << *$2 << std::endl;
+                                        
+                                    }
     | FUNC ID '(' params ')' block_expr
                                     {
                                         $$ = new FunctionDeclarationNode(*$2, $4, $6, false, yylloc.first_line);
                                         std::cout << "Definición función bloque: " << *$2 << std::endl;
+                                        
+                                    }
+    | FUNC ID '(' params ')' ':' ID block_expr
+                                    {
+                                        $$ = new FunctionDeclarationNode(*$2, $4, $7, false, yylloc.first_line);
+                                        $$->returnType = *$6;
+                                        std::cout << "Definición función bloque con tipo: " << *$2 << std::endl;
                                         
                                     }
     | let_expr                      { $$ = $1; std::cout << "let_expr " << std::endl; }
@@ -371,6 +385,15 @@ statement:
             | ID                { 
                                     Parameter p;
                                     p.name = *$1;
+                                    p.type = "";
+                                    $$ = new std::vector<Parameter>(); 
+                                    $$->push_back(p); 
+                                   
+                                }
+            | ID ':' ID         { 
+                                    Parameter p;
+                                    p.name = *$1;
+                                    p.type = *$3;
                                     $$ = new std::vector<Parameter>(); 
                                     $$->push_back(p); 
                                    
@@ -378,6 +401,14 @@ statement:
             | params ',' ID     { 
                                     Parameter p;
                                     p.name = *$3;
+                                    p.type = "";
+                                    $1->push_back(p); 
+                                    $$ = $1; 
+                                }
+            | params ',' ID ':' ID { 
+                                    Parameter p;
+                                    p.name = *$3;
+                                    p.type = *$5;
                                     $1->push_back(p); 
                                     $$ = $1; 
                                 }
@@ -409,14 +440,32 @@ statement:
               ID '=' expression             {
                                                 LetDeclaration d;
                                                 d.name = *$1;
+                                                d.declaredType = "";
                                                 d.initializer = $3;
+                                                $$ = new std::vector<LetDeclaration>();
+                                                $$->push_back(d); 
+                                            }
+            | ID ':' ID '=' expression     {
+                                                LetDeclaration d;
+                                                d.name = *$1;
+                                                d.declaredType = *$3;
+                                                d.initializer = $5;
                                                 $$ = new std::vector<LetDeclaration>();
                                                 $$->push_back(d); 
                                             }
             | decl ',' ID '=' expression    {
                                                 LetDeclaration d;
                                                 d.name = *$3;
+                                                d.declaredType = "";
                                                 d.initializer = $5;
+                                                $1->push_back(d); $$ = $1;
+                                               
+                                            }
+            | decl ',' ID ':' ID '=' expression {
+                                                LetDeclaration d;
+                                                d.name = *$3;
+                                                d.declaredType = *$5;
+                                                d.initializer = $7;
                                                 $1->push_back(d); $$ = $1;
                                                
                                             }
@@ -502,8 +551,16 @@ statement:
                 $$ = new std::vector<AttributeDeclaration>();
                 $$->push_back(AttributeDeclaration(*$1, $3));
             }
+            | ID ':' ID '=' expression ';' { 
+                $$ = new std::vector<AttributeDeclaration>();
+                $$->push_back(AttributeDeclaration(*$1, $5, *$3));
+            }
             | attribute_decl ID '=' expression ';' { 
                 $1->push_back(AttributeDeclaration(*$2, $4));
+                $$ = $1;
+            }
+            | attribute_decl ID ':' ID '=' expression ';' { 
+                $1->push_back(AttributeDeclaration(*$2, $6, *$4));
                 $$ = $1;
             }
         ;
@@ -513,16 +570,32 @@ statement:
                 $$ = new std::vector<MethodDeclaration>();
                 $$->push_back(MethodDeclaration(*$1, $3, $6));
             }
+            | ID '(' params ')' ':' ID LAMBDA expression ';' {
+                $$ = new std::vector<MethodDeclaration>();
+                $$->push_back(MethodDeclaration(*$1, $3, $7, *$5));
+            }
             | ID '(' params ')' block_expr ';' {
                 $$ = new std::vector<MethodDeclaration>();
                 $$->push_back(MethodDeclaration(*$1, $3, $5));
+            }
+            | ID '(' params ')' ':' ID block_expr ';' {
+                $$ = new std::vector<MethodDeclaration>();
+                $$->push_back(MethodDeclaration(*$1, $3, $6, *$5));
             }
             | method_decl ID '(' params ')' LAMBDA expression ';' {
                 $1->push_back(MethodDeclaration(*$2, $4, $7));
                 $$ = $1;
             }
+            | method_decl ID '(' params ')' ':' ID LAMBDA expression ';' {
+                $1->push_back(MethodDeclaration(*$2, $4, $8, *$6));
+                $$ = $1;
+            }
             | method_decl ID '(' params ')' block_expr ';' {
                 $1->push_back(MethodDeclaration(*$2, $4, $6));
+                $$ = $1;
+            }
+            | method_decl ID '(' params ')' ':' ID block_expr ';' {
+                $1->push_back(MethodDeclaration(*$2, $4, $7, *$6));
                 $$ = $1;
             }
         ;

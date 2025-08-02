@@ -355,10 +355,11 @@ public:
 
 struct AttributeDeclaration {
     std::string name;
+    std::string declaredType; // Can be empty
     ASTNode* initializer;
 
-    AttributeDeclaration(std::string name, ASTNode* init)
-        : name(std::move(name)), initializer(init) {}
+    AttributeDeclaration(std::string name, ASTNode* init, std::string type = "")
+        : name(std::move(name)), declaredType(std::move(type)), initializer(init) {}
 };
 
 struct MethodDeclaration {

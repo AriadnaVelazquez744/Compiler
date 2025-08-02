@@ -416,4 +416,19 @@ public:
     std::string type() const override { return _type; }
 };
 
+class TypeTestNode : public ASTNode {
+public:
+    ASTNode* expression;  // The expression to test
+    std::string typeName; // The type to test against
+    int _line;
+    std::string _type;
+
+    TypeTestNode(ASTNode* expr, const std::string& type, int line)
+        : expression(expr), typeName(type), _line(line), _type("") {}
+
+    void accept(ASTVisitor& v) override { v.visit(*this); }
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
     

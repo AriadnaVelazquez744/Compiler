@@ -130,6 +130,7 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %token SELF
 %token INHERITS
 %token BASE
+%token IS
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <node> statement
@@ -360,6 +361,9 @@ statement:
             | NOT expression {
                 $$ = new UnaryOpNode("!", $2, yylloc.first_line);
                
+            }
+            | expression IS ID {
+                $$ = new TypeTestNode($1, *$3, yylloc.first_line);
             }
         ;
 

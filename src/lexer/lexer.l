@@ -117,6 +117,9 @@ int lex_error = 0;
 "base"                  { printf("base\n"); return BASE; }
 
 
+"is"                    { printf("is\n"); return IS; }
+
+
 [a-zA-Z_][a-zA-Z0-9_]*  {
                             yylval.str = new std::string(yytext);
                             printf("ID: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);

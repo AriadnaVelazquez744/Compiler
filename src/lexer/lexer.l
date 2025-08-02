@@ -117,6 +117,7 @@ int lex_error = 0;
 "base"                  { printf("base\n"); return BASE; }
 
 
+"as"                    { printf("as\n"); return AS; }
 "is"                    { printf("is\n"); return IS; }
 
 

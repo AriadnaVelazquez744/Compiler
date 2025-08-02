@@ -33,6 +33,7 @@ public:
     void visit(class BaseCallNode& node) override;
     void visit(class SelfCallNode& node) override;
     void visit(TypeTestNode& node) override {}
+    void visit(TypeCastNode& node) override {}
     
     // Stubs for other nodes
     void visit(ASTNode&) override {}

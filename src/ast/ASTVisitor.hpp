@@ -24,6 +24,7 @@ class MethodCallNode;
 class BaseCallNode;
 class SelfCallNode;
 class TypeTestNode;
+class TypeCastNode;
 
 
 class ASTVisitor {
@@ -54,4 +55,5 @@ public:
     virtual void visit(UnaryOpNode& node) = 0;
     virtual void visit(BuiltInFunctionNode& node) = 0;
     virtual void visit(TypeTestNode& node) = 0;
+    virtual void visit(TypeCastNode& node) = 0;
 };

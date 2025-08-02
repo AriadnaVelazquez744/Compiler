@@ -60,6 +60,8 @@ public:
     void visit(MethodCallNode& node) override;
     void visit(BaseCallNode& node) override;
     void visit(SelfCallNode& node) override;
+    void visit(TypeTestNode& node) override;
+    void visit(TypeCastNode& node) override;
 
     const std::vector<SemanticError>& getErrors() const { return errors; }
 

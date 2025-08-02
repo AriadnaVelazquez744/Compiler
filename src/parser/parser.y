@@ -131,6 +131,7 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %token INHERITS
 %token BASE
 %token IS
+%token AS
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <node> statement
@@ -364,6 +365,9 @@ statement:
             }
             | expression IS ID {
                 $$ = new TypeTestNode($1, *$3, yylloc.first_line);
+            }
+            | expression AS ID {
+                $$ = new TypeCastNode($1, *$3, yylloc.first_line);
             }
         ;
 

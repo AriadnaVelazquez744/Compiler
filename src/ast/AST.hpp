@@ -431,4 +431,19 @@ public:
     std::string type() const override { return _type; }
 };
 
+class TypeCastNode : public ASTNode {
+public:
+    ASTNode* expression;  // The expression to cast
+    std::string targetType; // The type to cast to
+    int _line;
+    std::string _type;
+
+    TypeCastNode(ASTNode* expr, const std::string& type, int line)
+        : expression(expr), targetType(type), _line(line), _type("") {}
+
+    void accept(ASTVisitor& v) override { v.visit(*this); }
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
     

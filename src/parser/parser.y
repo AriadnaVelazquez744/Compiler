@@ -147,6 +147,7 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %type <node> for_expr
 %type <node> body
 %type <node> method_call
+%type <node> attribute_call
 %type <node> base_call
 %type <node> new_instance
 %type <node> self_call
@@ -226,6 +227,7 @@ statement:
         | block_expr            { $$ = $1; }
         | func_call_expr        { $$ = $1; }
         | method_call           { $$ = $1; }
+        | attribute_call        { $$ = $1; }
         | base_call             { $$ = $1; }
         | assign_expr           { $$ = $1; }
         | let_expr              { $$ = $1; std::cout << "let_expr " << std::endl; }
@@ -616,6 +618,12 @@ statement:
             }
             | SELF '.' ID '(' args ')' {
                 $$ = new MethodCallNode("self", *$3, *$5, yylloc.first_line);
+            }
+        ;
+
+        attribute_call:
+            ID '.' ID {
+                $$ = new AttributeCallNode(*$1, *$3, yylloc.first_line);
             }
         ;
 

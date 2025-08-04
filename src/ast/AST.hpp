@@ -388,6 +388,21 @@ public:
     std::string type() const override { return _type; }
 };
 
+class AttributeCallNode : public ASTNode {
+public:
+    std::string instanceName;
+    std::string attrName;
+    int _line;
+    std::string _type;
+
+    AttributeCallNode(std::string instanceName, std::string attrName, int line)
+        : instanceName(instanceName), attrName(std::move(attrName)), _line(line), _type("") {}
+
+    void accept(ASTVisitor& v) override { v.visit(*this); }
+    int line() const override { return _line; }
+    std::string type() const override { return _type; }
+};
+
 class BaseCallNode : public ASTNode {
 public:
     std::vector<ASTNode*> args;

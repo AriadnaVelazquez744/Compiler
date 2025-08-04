@@ -188,10 +188,10 @@ public:
     int _line;
     std::string _type;
 
-    FunctionDeclarationNode(std::string name, 
+    FunctionDeclarationNode(std::string name, std::string returnType,
                             std::vector<Parameter>* params, ASTNode* body, 
                             bool isInline, int ln)
-        : name(name), params(params), 
+        : name(name), returnType(returnType), params(params), 
           body(body), isInline(isInline), _line(ln), _type("") {}
 
     void accept(ASTVisitor& visitor) override {

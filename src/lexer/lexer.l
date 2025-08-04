@@ -137,6 +137,7 @@ int lex_error = 0;
                             return ';'; 
                         }
 "."                     { printf(" . \n"); return '.'; }            
+":"                     { printf(" : \n"); return ':'; }            
 
 
 [ \t]+                  { /* Whitespace handled by YY_USER_ACTION */ }  // Ignorar espacios

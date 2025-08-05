@@ -41,4 +41,5 @@ public:
     void visit(VariableDeclarationNode&) override {}
     void visit(AttributeDeclaration& node) override {}
     void visit(MethodDeclaration& node) override {}
+    void visit(ProtocolDeclarationNode& node) override {}
 };

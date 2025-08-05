@@ -146,6 +146,7 @@ int syntax_error_count = 0;
 ":"                     { printf(" : \n"); return ':'; }            
 
 
+"//"[^\n]*              { /* Comentario de una línea - ignorar todo hasta el final de línea */ }
 [ \t]+                  { /* Whitespace handled by YY_USER_ACTION */ }  // Ignorar espacios
 \n                      { yycolumn = 1; }        // Resetear columna al salto de línea
 .                       { 

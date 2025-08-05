@@ -6,6 +6,9 @@
 extern int yylex();
 void yyerror(const char *msg);
 
+// Global syntax error counter
+extern int syntax_error_count;
+
 // Definir estructura para ubicación
 typedef struct YYLTYPE {
     int first_line;
@@ -699,6 +702,7 @@ statement:
 %%
 
 void yyerror(const char *msg) {
+    syntax_error_count++;
     fprintf(stderr, "Error en línea %d, columna %d: %s\n",
             yylloc.first_line, yylloc.first_column, msg);
 }

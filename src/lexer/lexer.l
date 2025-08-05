@@ -5,6 +5,7 @@
 // Variables para seguimiento de columnas
 int yycolumn = 1;
 int lex_error = 0;
+int syntax_error_count = 0;
 
 // Macro que se ejecuta ANTES de cada token
 #define YY_USER_ACTION \

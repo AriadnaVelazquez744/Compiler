@@ -9,6 +9,7 @@ extern int yyparse();
 extern FILE *yyin;
 extern std::vector<ASTNode*> root; // Nodo raíz del AST generado por el parser
 extern int lex_error;
+extern int syntax_error_count;
 
 bool is_valid_ast(const std::vector<ASTNode*>& nodes) {
     // Verificar que el vector no esté vacío y que todos los nodos sean válidos
@@ -47,13 +48,28 @@ int main(int argc, char **argv) {
     }
 
     yyin = input_file;
-    yyparse();
+    
+    // Initialize error counters
+    lex_error = 0;
+    syntax_error_count = 0;
+    
+    // Perform lexical and syntactic analysis
+    int parse_result = yyparse();
+    
     if (lex_error > 0) {
         std::cerr << "Error: Falló el análisis léxico." << std::endl;
         fclose(input_file);
         return 1;
     }
-    if (yyparse() != 0) { // Realizar el análisis sintáctico
+    
+    if (syntax_error_count > 0) {
+        std::cerr << "Error: Falló el análisis sintáctico. Se encontraron " 
+                  << syntax_error_count << " error(es) de sintaxis." << std::endl;
+        fclose(input_file);
+        return 1;
+    }
+    
+    if (parse_result != 0) {
         std::cerr << "Error: Falló el análisis sintáctico." << std::endl;
         fclose(input_file);
         return 1;

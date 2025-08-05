@@ -63,6 +63,7 @@ public:
     void visit(TypeTestNode&) override {}
     void visit(TypeCastNode&) override {}
     void visit(AttributeCallNode&) override {}
+    void visit(ProtocolDeclarationNode&) override {}
 
     const std::vector<SemanticError>& getErrors() const { return errors; }
 

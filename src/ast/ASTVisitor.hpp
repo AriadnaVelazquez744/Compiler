@@ -26,6 +26,7 @@ class SelfCallNode;
 class TypeTestNode;
 class TypeCastNode;
 class AttributeCallNode;
+class ProtocolDeclarationNode;
 
 
 class ASTVisitor {
@@ -58,4 +59,5 @@ public:
     virtual void visit(BuiltInFunctionNode& node) = 0;
     virtual void visit(TypeTestNode& node) = 0;
     virtual void visit(TypeCastNode& node) = 0;
+    virtual void visit(ProtocolDeclarationNode& node) = 0;
 };

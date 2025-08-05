@@ -121,6 +121,11 @@ int lex_error = 0;
 "is"                    { printf("is\n"); return IS; }
 
 
+"protocol"              { printf("protocol\n"); return PROTOCOL; }
+"other"                 { printf("other\n"); return OTHER; }
+"extends"               { printf("extends\n"); return EXTENDS; }
+
+
 [a-zA-Z_][a-zA-Z0-9_]*  {
                             yylval.str = new std::string(yytext);
                             printf("ID: %s  → Línea %d, Columna %d\n", yytext, yylineno, yylloc.first_column);

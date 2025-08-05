@@ -41,4 +41,5 @@ class FunctionCollector : public ASTVisitor {
         void visit(TypeTestNode& node) override {}
         void visit(TypeCastNode& node) override {}
         void visit(AttributeCallNode& node) override {}
+        void visit(ProtocolDeclarationNode& node) override {}
     };

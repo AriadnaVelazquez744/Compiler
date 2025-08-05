@@ -461,4 +461,41 @@ public:
     std::string type() const override { return _type; }
 };
 
+// ------------------------------------------------------
+// Protocol-related structures and nodes
+// ------------------------------------------------------
+
+struct ProtocolMethodDeclaration {
+    std::string name;
+    std::vector<Parameter>* params;
+    std::string returnType;
+
+    ProtocolMethodDeclaration(std::string name, std::vector<Parameter>* params, std::string ret)
+        : name(std::move(name)), params(params), returnType(std::move(ret)) {}
+};
+
+struct ProtocolBody {
+    std::vector<ProtocolMethodDeclaration>* methods;
+
+    ProtocolBody(std::vector<ProtocolMethodDeclaration>* methods)
+        : methods(methods) {}
+};
+
+class ProtocolDeclarationNode : public ASTNode {
+public:
+    std::string name;
+    ProtocolBody* body;
+    std::optional<std::string> baseProtocol;  // If protocol extends another protocol
+    int _line;
+
+    ProtocolDeclarationNode(std::string name, ProtocolBody* body, 
+                           std::optional<std::string> baseProtocol, int line)
+        : name(std::move(name)), body(body), 
+          baseProtocol(std::move(baseProtocol)), _line(line) {}
+
+    void accept(ASTVisitor& v) override { v.visit(*this); }
+    int line() const override { return _line; }
+    std::string type() const override { return "Protocol"; }
+};
+
     

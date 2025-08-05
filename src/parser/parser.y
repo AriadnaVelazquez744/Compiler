@@ -56,6 +56,8 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
     std::vector<AttributeDeclaration>* attr_decl;
     std::vector<MethodDeclaration>* method_decl;
     TypeBody* type_body;
+    std::vector<ProtocolMethodDeclaration>* protocol_method_decl;
+    ProtocolBody* protocol_body;
 }
 
 // --------------------------------------/* Definición de Tokens */------------------------------------------- //
@@ -132,6 +134,9 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %token BASE
 %token IS
 %token AS
+%token PROTOCOL
+%token EXTENDS
+%token OTHER
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <node> statement
@@ -154,12 +159,16 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %type <list> block_body
 %type <list> args
 %type <param> params
+%type <param> protocol_params
 %type <if_branch> if_head
 %type <let_decl> decl
 %type <node> type_decl
+%type <node> protocol_decl
 %type <attr_decl> attribute_decl
 %type <method_decl> method_decl
 %type <type_body> type_body
+%type <protocol_method_decl> protocol_method_decl
+%type <protocol_body> protocol_body
 
 // ---------------------------------------/* Precedencia de Operadores */------------------------------------- //
 %left CONCAT CONCAT_SPACE
@@ -185,6 +194,7 @@ statement:
                                         $$ = new BuiltInFunctionNode("print", args, yylloc.first_line);
                                     }
     | type_decl                     { $$ = $1; }
+    | protocol_decl                 { $$ = $1; }
     | block_expr                    { $$ = $1; }
     | FUNC ID '(' params ')' LAMBDA body
                                     {
@@ -537,6 +547,53 @@ statement:
             | TYPE ID INHERITS ID '{' type_body '}' {
                 $$ = new TypeDeclarationNode(*$2, new std::vector<Parameter>(), $6, std::make_optional(*$4), std::vector<ASTNode*>(), yylloc.first_line);
             }
+        ;
+        
+        protocol_decl:
+            PROTOCOL ID '{' protocol_body '}' {
+                $$ = new ProtocolDeclarationNode(*$2, $4, std::nullopt, yylloc.first_line);
+            }
+            | PROTOCOL ID EXTENDS ID '{' protocol_body '}' {
+                $$ = new ProtocolDeclarationNode(*$2, $6, std::make_optional(*$4), yylloc.first_line);
+            }
+        ;
+        
+        protocol_body:
+            /* empty */ {
+                $$ = new ProtocolBody(new std::vector<ProtocolMethodDeclaration>());
+            }
+            | protocol_method_decl {
+                $$ = new ProtocolBody($1);
+            }
+        ;
+        
+        protocol_method_decl:
+            ID '(' protocol_params ')' ':' ID ';' {
+                $$ = new std::vector<ProtocolMethodDeclaration>();
+                $$->push_back(ProtocolMethodDeclaration(*$1, $3, *$6));
+            }
+            | protocol_method_decl ID '(' protocol_params ')' ':' ID ';' {
+                $1->push_back(ProtocolMethodDeclaration(*$2, $4, *$7));
+                $$ = $1;
+            }
+        ;
+        
+        protocol_params:
+            /* empty */         { $$ = new std::vector<Parameter>(); }
+            | OTHER ':' ID      { 
+                                    Parameter p;
+                                    p.name = "other";
+                                    p.type = *$3;
+                                    $$ = new std::vector<Parameter>(); 
+                                    $$->push_back(p); 
+                                }
+            | protocol_params ',' OTHER ':' ID { 
+                                    Parameter p;
+                                    p.name = "other";
+                                    p.type = *$5;
+                                    $1->push_back(p); 
+                                    $$ = $1; 
+                                }
         ;
         
         type_body

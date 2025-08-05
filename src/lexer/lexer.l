@@ -147,7 +147,8 @@ int syntax_error_count = 0;
 
 
 "//"[^\n]*              { /* Comentario de una línea - ignorar todo hasta el final de línea */ }
-[ \t]+                  { /* Whitespace handled by YY_USER_ACTION */ }  // Ignorar espacios
+"/*"([^*]|\*+[^*/])*\*+"/"  { /* Comentario de múltiples líneas - ignorar todo el contenido */ }
+[ \t]+                  { /* Whitespace handled by YY_USER_ACTION */ }
 \n                      { yycolumn = 1; }        // Resetear columna al salto de línea
 .                       { 
                             lex_error = 1;

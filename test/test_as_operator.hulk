@@ -1,0 +1,20 @@
+type A {
+    name = "A";
+}
+
+type B inherits A {
+    name = "B";
+}
+
+type C inherits A {
+    name = "C";
+}
+
+let x : A = if (rand() < 0.5) new B() else new C() in
+    if (x is B)
+        let y : B = x as B in 
+            print("Successfully cast to B: ")
+        
+    else 
+        print("x cannot be downcasted to B");
+    

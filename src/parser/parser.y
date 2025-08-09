@@ -139,7 +139,6 @@ std::vector<ASTNode*> vectorize(ASTNode* arg1, ASTNode* arg2, int n) {
 %token AS
 %token PROTOCOL
 %token EXTENDS
-%token OTHER
 
 // -----------------------------/* Definición de Tipos para las Reglas Gramaticales */------------------------ //
 %type <node> statement
@@ -552,53 +551,6 @@ statement:
             }
         ;
         
-        protocol_decl:
-            PROTOCOL ID '{' protocol_body '}' {
-                $$ = new ProtocolDeclarationNode(*$2, $4, std::nullopt, yylloc.first_line);
-            }
-            | PROTOCOL ID EXTENDS ID '{' protocol_body '}' {
-                $$ = new ProtocolDeclarationNode(*$2, $6, std::make_optional(*$4), yylloc.first_line);
-            }
-        ;
-        
-        protocol_body:
-            /* empty */ {
-                $$ = new ProtocolBody(new std::vector<ProtocolMethodDeclaration>());
-            }
-            | protocol_method_decl {
-                $$ = new ProtocolBody($1);
-            }
-        ;
-        
-        protocol_method_decl:
-            ID '(' protocol_params ')' ':' ID ';' {
-                $$ = new std::vector<ProtocolMethodDeclaration>();
-                $$->push_back(ProtocolMethodDeclaration(*$1, $3, *$6));
-            }
-            | protocol_method_decl ID '(' protocol_params ')' ':' ID ';' {
-                $1->push_back(ProtocolMethodDeclaration(*$2, $4, *$7));
-                $$ = $1;
-            }
-        ;
-        
-        protocol_params:
-            /* empty */         { $$ = new std::vector<Parameter>(); }
-            | OTHER ':' ID      { 
-                                    Parameter p;
-                                    p.name = "other";
-                                    p.type = *$3;
-                                    $$ = new std::vector<Parameter>(); 
-                                    $$->push_back(p); 
-                                }
-            | protocol_params ',' OTHER ':' ID { 
-                                    Parameter p;
-                                    p.name = "other";
-                                    p.type = *$5;
-                                    $1->push_back(p); 
-                                    $$ = $1; 
-                                }
-        ;
-        
         type_body
             : /* empty */ {
                 $$ = new TypeBody(new std::vector<AttributeDeclaration>(), new std::vector<MethodDeclaration>());
@@ -697,6 +649,53 @@ statement:
             NEW ID '(' args ')' {
                 $$ = new NewInstanceNode(*$2, *$4, yylloc.first_line);
             }
+        ;
+
+        protocol_decl:
+            PROTOCOL ID '{' protocol_body '}' {
+                $$ = new ProtocolDeclarationNode(*$2, $4, std::nullopt, yylloc.first_line);
+            }
+            | PROTOCOL ID EXTENDS ID '{' protocol_body '}' {
+                $$ = new ProtocolDeclarationNode(*$2, $6, std::make_optional(*$4), yylloc.first_line);
+            }
+        ;
+        
+        protocol_body:
+            /* empty */ {
+                $$ = new ProtocolBody(new std::vector<ProtocolMethodDeclaration>());
+            }
+            | protocol_method_decl {
+                $$ = new ProtocolBody($1);
+            }
+        ;
+        
+        protocol_method_decl:
+            ID '(' protocol_params ')' ':' ID ';' {
+                $$ = new std::vector<ProtocolMethodDeclaration>();
+                $$->push_back(ProtocolMethodDeclaration(*$1, $3, *$6));
+            }
+            | protocol_method_decl ID '(' protocol_params ')' ':' ID ';' {
+                $1->push_back(ProtocolMethodDeclaration(*$2, $4, *$7));
+                $$ = $1;
+            }
+        ;
+        
+        protocol_params:
+            /* empty */         { $$ = new std::vector<Parameter>(); }
+            | ID ':' ID      { 
+                                    Parameter p;
+                                    p.name = *$1;
+                                    p.type = *$3;
+                                    $$ = new std::vector<Parameter>(); 
+                                    $$->push_back(p); 
+                                }
+            | protocol_params ',' ID ':' ID { 
+                                    Parameter p;
+                                    p.name = *$3;
+                                    p.type = *$5;
+                                    $1->push_back(p); 
+                                    $$ = $1; 
+                                }
         ;
 
 %%

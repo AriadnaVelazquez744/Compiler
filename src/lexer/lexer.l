@@ -123,7 +123,6 @@ int syntax_error_count = 0;
 
 
 "protocol"              { printf("protocol\n"); return PROTOCOL; }
-"other"                 { printf("other\n"); return OTHER; }
 "extends"               { printf("extends\n"); return EXTENDS; }
 
 

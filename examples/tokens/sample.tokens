@@ -3,7 +3,7 @@
 
 # Literals with data types
 NUMBER      : [0-9]+(\.[0-9]+)? -> int
-STRING      : \"(?:\\.|[^"])*\" -> string
+STRING      : \"[^\"\\\\]*\" -> string
 BOOL        : True|False -> bool
 NULL_VAL    : Null
 

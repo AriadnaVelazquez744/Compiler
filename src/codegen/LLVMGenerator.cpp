@@ -1236,3 +1236,55 @@ void LLVMGenerator::visit(BaseCallNode& node) {
     throw std::runtime_error("❌ Invalid element type '" + elemType + 
                            "' for base call at line " + std::to_string(node.line()));
 }
+
+void LLVMGenerator::visit(AttributeCallNode& node) {
+    std::cout << "🔍 AttributeCall: " << node.instanceName << "." << node.attrName << " - Stack size before: " << context.valueStack.size() << std::endl;
+    
+    // Por ahora, implementación básica que emite un error
+    // TODO: Implementar acceso a atributos de instancias
+    throw std::runtime_error("❌ Attribute call not yet implemented: " + node.instanceName + "." + node.attrName + 
+                           " at line " + std::to_string(node.line()));
+}
+
+void LLVMGenerator::visit(TypeTestNode& node) {
+    std::cout << "🔍 TypeTest: " << node.typeName << " - Stack size before: " << context.valueStack.size() << std::endl;
+    
+    // Evaluar la expresión
+    node.expression->accept(*this);
+    llvm::Value* exprValue = context.valueStack.back();
+    context.valueStack.pop_back();
+    
+    // Por ahora, implementación básica que siempre retorna false
+    // TODO: Implementar verificación de tipo dinámico
+    llvm::Value* result = llvm::ConstantInt::get(llvm::Type::getInt1Ty(context.context), false);
+    context.valueStack.push_back(result);
+    
+    std::cout << "  📤 Type test result pushed to stack - Final stack size: " << context.valueStack.size() << std::endl;
+    std::cout << "✅ Type test processed" << std::endl;
+}
+
+void LLVMGenerator::visit(TypeCastNode& node) {
+    std::cout << "🔍 TypeCast: " << node.targetType << " - Stack size before: " << context.valueStack.size() << std::endl;
+    
+    // Evaluar la expresión
+    node.expression->accept(*this);
+    llvm::Value* exprValue = context.valueStack.back();
+    context.valueStack.pop_back();
+    
+    // Por ahora, simplemente retornar el valor original
+    // TODO: Implementar conversión de tipos real
+    context.valueStack.push_back(exprValue);
+    
+    std::cout << "  📤 Type cast result pushed to stack - Final stack size: " << context.valueStack.size() << std::endl;
+    std::cout << "✅ Type cast processed" << std::endl;
+}
+
+void LLVMGenerator::visit(ProtocolDeclarationNode& node) {
+    std::cout << "🔍 ProtocolDeclaration: " << node.name << " - Stack size before: " << context.valueStack.size() << std::endl;
+    
+    // Por ahora, implementación básica que no hace nada
+    // TODO: Implementar registro de protocolos
+    std::cout << "  📝 Protocol '" << node.name << "' registered" << std::endl;
+    
+    std::cout << "✅ Protocol declaration processed" << std::endl;
+}

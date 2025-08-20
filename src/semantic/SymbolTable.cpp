@@ -224,4 +224,130 @@ void SymbolTable::updateTypeParams(const std::string& typeName, const std::vecto
     }
 }
 
+// ========================================
+// Implementación de métodos para protocolos
+// ========================================
+
+bool SymbolTable::addProtocol(const std::string& name, const std::string& baseProtocol) {
+    if (protocols.find(name) != protocols.end()) return false;
+    
+    protocols[name] = ProtocolSymbol{
+        name,                   // std::string name
+        baseProtocol,           // std::string baseProtocol
+        {},                     // std::unordered_map<std::string, Symbol> methods
+        {}                      // std::set<std::string> extendedProtocols
+    };
+    
+    // Si tiene protocolo base, agregarlo a las extensiones
+    if (!baseProtocol.empty()) {
+        protocols[name].extendedProtocols.insert(baseProtocol);
+    }
+    
+    return true;
+}
+
+const ProtocolSymbol* SymbolTable::lookupProtocol(const std::string& name) const {
+    auto it = protocols.find(name);
+    if (it == protocols.end()) return nullptr;
+    return &it->second;
+}
+
+ProtocolSymbol* SymbolTable::lookupProtocol(const std::string& name) {
+    auto it = protocols.find(name);
+    if (it == protocols.end()) return nullptr;
+    return &it->second;
+}
+
+bool SymbolTable::addProtocolMethod(const std::string& protocolName, const std::string& methodName, 
+                                   const std::string& returnType, const std::vector<std::string>& params) {
+    ProtocolSymbol* protocol = lookupProtocol(protocolName);
+    if (!protocol) return false;
+    
+    if (protocol->methods.find(methodName) != protocol->methods.end()) return false;
+    
+    protocol->methods[methodName] = Symbol{"method", returnType, false, params};
+    return true;
+}
+
+bool SymbolTable::checkMethodSignatureCompatibility(const Symbol& typeMethod, const Symbol& protocolMethod) {
+    // Verificar que tienen el mismo número de parámetros
+    if (typeMethod.params.size() != protocolMethod.params.size()) return false;
+    
+    // Verificar que los tipos de parámetros son compatibles (contravariantes)
+    for (size_t i = 0; i < typeMethod.params.size(); ++i) {
+        // Para parámetros: tipo del protocolo debe conformar al tipo de la implementación
+        // (contravariante)
+        if (!isSubtype(protocolMethod.params[i], typeMethod.params[i])) {
+            return false;
+        }
+    }
+    
+    // Verificar que el tipo de retorno es compatible (covariante)
+    // Para retorno: tipo de la implementación debe conformar al tipo del protocolo
+    if (!isSubtype(typeMethod.type, protocolMethod.type)) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool SymbolTable::conformsToProtocol(const std::string& typeName, const std::string& protocolName) {
+    // Verificar que el protocolo existe
+    const ProtocolSymbol* protocol = lookupProtocol(protocolName);
+    if (!protocol) return false;
+    
+    // Verificar que el tipo existe
+    const TypeSymbol* type = lookupType(typeName);
+    if (!type) return false;
+    
+    // Verificar que el tipo tiene todos los métodos requeridos por el protocolo
+    for (const auto& [methodName, protocolMethod] : protocol->methods) {
+        auto it = type->methods.find(methodName);
+        if (it == type->methods.end()) {
+            return false; // Método no encontrado
+        }
+        
+        // Verificar compatibilidad de firma
+        if (!checkMethodSignatureCompatibility(it->second, protocolMethod)) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+std::set<std::string> SymbolTable::getConformingProtocols(const std::string& typeName) {
+    std::set<std::string> conformingProtocols;
+    
+    for (const auto& [protocolName, protocol] : protocols) {
+        if (conformsToProtocol(typeName, protocolName)) {
+            conformingProtocols.insert(protocolName);
+        }
+    }
+    
+    return conformingProtocols;
+}
+
+void SymbolTable::computeProtocolExtensions() {
+    // Computar extensiones transitivas de protocolos
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        
+        for (auto& [protocolName, protocol] : protocols) {
+            // Agregar extensiones del protocolo base
+            if (!protocol.baseProtocol.empty()) {
+                const ProtocolSymbol* baseProtocol = lookupProtocol(protocol.baseProtocol);
+                if (baseProtocol) {
+                    for (const auto& extendedProtocol : baseProtocol->extendedProtocols) {
+                        if (protocol.extendedProtocols.insert(extendedProtocol).second) {
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 

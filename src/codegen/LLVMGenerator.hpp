@@ -32,14 +32,14 @@ public:
     void visit(class MethodCallNode& node) override;
     void visit(class BaseCallNode& node) override;
     void visit(class SelfCallNode& node) override;
-    void visit(TypeTestNode& node) override {}
-    void visit(TypeCastNode& node) override {}
-    void visit(AttributeCallNode& node) override {}
+    void visit(class TypeTestNode& node) override;
+    void visit(class TypeCastNode& node) override;
+    void visit(class AttributeCallNode& node) override;
     
     // Stubs for other nodes
     void visit(ASTNode&) override {}
     void visit(VariableDeclarationNode&) override {}
     void visit(AttributeDeclaration& node) override {}
     void visit(MethodDeclaration& node) override {}
-    void visit(ProtocolDeclarationNode& node) override {}
+    void visit(class ProtocolDeclarationNode& node) override;
 };

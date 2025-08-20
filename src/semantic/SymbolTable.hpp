@@ -39,6 +39,14 @@ struct TypeSymbol {
     std::unordered_map<std::string, Symbol> methods;    // Métodos
 };
 
+// Símbolo específico para protocolos
+struct ProtocolSymbol {
+    std::string name;
+    std::string baseProtocol;                              // Protocolo base (si extiende)
+    std::unordered_map<std::string, Symbol> methods;      // Métodos requeridos
+    std::set<std::string> extendedProtocols;              // Protocolos que extiende (incluyendo transitivos)
+};
+
 class SymbolTable {
 private:
     // Ámbitos para variables/funciones 
@@ -46,6 +54,9 @@ private:
     
     // Tabla global de tipos 
     std::unordered_map<std::string, TypeSymbol> types;
+    
+    // Tabla global de protocolos
+    std::unordered_map<std::string, ProtocolSymbol> protocols;
 
 
 public:
@@ -85,9 +96,25 @@ public:
         const std::vector<std::string>& params
     );
 
+    // Métodos para protocolos
+    bool addProtocol(const std::string& name, const std::string& baseProtocol = "");
+    const ProtocolSymbol* lookupProtocol(const std::string& name) const;
+    ProtocolSymbol* lookupProtocol(const std::string& name);
+    bool addProtocolMethod(const std::string& protocolName, const std::string& methodName, 
+                          const std::string& returnType, const std::vector<std::string>& params);
+    
+    // Métodos para verificación de conformidad con protocolos
+    bool conformsToProtocol(const std::string& typeName, const std::string& protocolName);
+    bool checkMethodSignatureCompatibility(const Symbol& typeMethod, const Symbol& protocolMethod);
+    std::set<std::string> getConformingProtocols(const std::string& typeName);
+    void computeProtocolExtensions();
+
     std::vector<Symbol> getUserDefinedFunctions() const;
     bool updateSymbolType(const std::string& name, const std::string& newType);
     void updateTypeParams(const std::string& typeName, const std::vector<std::string>& params);
 
-
+    // Métodos para acceso a datos internos (para verificación semántica)
+    const std::vector<std::unordered_map<std::string, Symbol>>& getScopes() const { return scopes; }
+    const std::unordered_map<std::string, TypeSymbol>& getTypes() const { return types; }
+    const std::unordered_map<std::string, ProtocolSymbol>& getProtocols() const { return protocols; }
 };

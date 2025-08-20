@@ -21,6 +21,7 @@ private:
 
 public:
     void analyze(const std::vector<ASTNode*>& nodes);
+    
     // SemanticAnalyzer(SymbolTable& table, std::vector<SemanticError>& errs)
     //     : symbolTable(table), errors(errs) {}
     // void resolveFunctionTypes();
@@ -60,10 +61,10 @@ public:
     void visit(MethodCallNode& node) override;
     void visit(BaseCallNode& node) override;
     void visit(SelfCallNode& node) override;
-    void visit(TypeTestNode&) override {}
-    void visit(TypeCastNode&) override {}
-    void visit(AttributeCallNode&) override {}
-    void visit(ProtocolDeclarationNode&) override {}
+    void visit(TypeTestNode& node) override;
+    void visit(TypeCastNode& node) override;
+    void visit(AttributeCallNode& node) override;
+    void visit(ProtocolDeclarationNode& node) override;
 
     const std::vector<SemanticError>& getErrors() const { return errors; }
 

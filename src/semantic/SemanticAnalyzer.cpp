@@ -479,21 +479,32 @@ void SemanticAnalyzer::collectParamUsages(ASTNode* node, const std::string& para
 
 bool SemanticAnalyzer::conformsTo(const std::string& subtype, const std::string& supertype) {
     if (subtype == "Error" || supertype == "Error") return false;
-    if (subtype == supertype) return true;
-    if (supertype == "Object") return true;
-    // if (supertype == "")
-    // {
-    //     return true;
-    // }
+    if (subtype == "Unknown") return true; // Unknown conforma a cualquier tipo
+    if (subtype == supertype) return true; // Todo tipo conforma a sí mismo
+    if (supertype == "Object") return true; // Todo tipo conforma a Object
     
-    
-
+    // Verificar jerarquía de herencia de tipos
     TypeSymbol* sub = symbolTable.lookupType(subtype);
     while (sub && !sub->parentType.empty()) {
         if (sub->parentType == supertype) return true;
         sub = symbolTable.lookupType(sub->parentType);
     }
-
+    
+    // Verificar conformidad con protocolos
+    // Si supertype es un protocolo, verificar que subtype lo implementa
+    if (symbolTable.lookupProtocol(supertype)) {
+        return symbolTable.conformsToProtocol(subtype, supertype);
+    }
+    
+    // Si subtype es un protocolo, verificar que supertype también es un protocolo
+    // y que subtype extiende a supertype
+    if (symbolTable.lookupProtocol(subtype)) {
+        const ProtocolSymbol* subProtocol = symbolTable.lookupProtocol(subtype);
+        if (subProtocol && subProtocol->extendedProtocols.find(supertype) != subProtocol->extendedProtocols.end()) {
+            return true;
+        }
+    }
+    
     return false;
 }
 
@@ -504,7 +515,8 @@ void SemanticAnalyzer::analyze(const std::vector<ASTNode*>& nodes) {
     collector.addBuiltins();
     std::cout << "Builtins agregados." << std::endl;
 
-    // Primera pasada: recolectar todas las declaraciones de tipos
+    // Primera pasada: recolectar todas las declaraciones
+    std::vector<ProtocolDeclarationNode*> protocolDecls;
     std::vector<TypeDeclarationNode*> typeDecls;
     std::vector<ASTNode*> otherNodes;
     
@@ -514,7 +526,9 @@ void SemanticAnalyzer::analyze(const std::vector<ASTNode*>& nodes) {
             continue;
         }
 
-        if (auto* typeDecl = dynamic_cast<TypeDeclarationNode*>(node)) {
+        if (auto* protocolDecl = dynamic_cast<ProtocolDeclarationNode*>(node)) {
+            protocolDecls.push_back(protocolDecl);
+        } else if (auto* typeDecl = dynamic_cast<TypeDeclarationNode*>(node)) {
             typeDecls.push_back(typeDecl);
         } else {
             otherNodes.push_back(node);
@@ -526,17 +540,27 @@ void SemanticAnalyzer::analyze(const std::vector<ASTNode*>& nodes) {
 
     std::cout << "Fase de recolección completada." << std::endl;
 
-    // Segunda pasada: procesar las declaraciones de tipos primero
-    for (TypeDeclarationNode* typeDecl : typeDecls) {
+    // Segunda pasada: procesar las declaraciones de protocolos primero
+    for (ProtocolDeclarationNode* protocolDecl : protocolDecls) {
         try {
-            std::cout << "Análisis semántico de: " << typeid(*typeDecl).name() << std::endl;
-            typeDecl->accept(*this);
+            std::cout << "Análisis semántico de protocolo: " << typeid(*protocolDecl).name() << std::endl;
+            protocolDecl->accept(*this);
         } catch (const std::exception& e) {
-            std::cerr << "Error durante análisis semántico: " << e.what() << std::endl;
+            std::cerr << "Error durante análisis semántico de protocolo: " << e.what() << std::endl;
         }
     }
 
-    // Tercera pasada: procesar el resto de nodos
+    // Tercera pasada: procesar las declaraciones de tipos
+    for (TypeDeclarationNode* typeDecl : typeDecls) {
+        try {
+            std::cout << "Análisis semántico de tipo: " << typeid(*typeDecl).name() << std::endl;
+            typeDecl->accept(*this);
+        } catch (const std::exception& e) {
+            std::cerr << "Error durante análisis semántico de tipo: " << e.what() << std::endl;
+        }
+    }
+
+    // Cuarta pasada: procesar el resto de nodos
     for (ASTNode* node : otherNodes) {
         try {
             std::cout << "Análisis semántico de: " << typeid(*node).name() << std::endl;
@@ -1163,6 +1187,8 @@ void SemanticAnalyzer::visit(LetNode& node) {
     symbolTable.enterScope();
 
     for (auto& decl : *node.declarations) {
+        std::cout << "🔍 LetNode: Analizando declaración '" << decl.name << "' con tipo declarado '" << decl.declaredType << "'" << std::endl;
+        
         // Verificar nombre válido
         if (!isValidIdentifier(decl.name)) {
             errors.emplace_back("Nombre inválido: '" + decl.name + "'", node.line());
@@ -1180,23 +1206,44 @@ void SemanticAnalyzer::visit(LetNode& node) {
         // Analizar inicializador
         decl.initializer->accept(*this);
         std::string initType = decl.initializer->type();
+        std::cout << "  📝 Tipo del inicializador: '" << initType << "'" << std::endl;
 
         // Si no hay tipo declarado, usar el tipo del inicializador
         if (decl.declaredType.empty()) {
             decl.declaredType = initType;
-        } else if (!conformsTo(initType, decl.declaredType)) {
-            errors.emplace_back("Tipo declarado '" + decl.declaredType + "' no coincide con inicializador '" + initType + "'", node.line());
-            node._type = "Error";
-            continue;
+            std::cout << "  ✅ Tipo inferido: '" << decl.declaredType << "'" << std::endl;
+        } else {
+            std::cout << "  🔍 Verificando conformidad: '" << initType << "' conforma a '" << decl.declaredType << "'" << std::endl;
+            
+            // Verificar si el tipo declarado es un protocolo
+            if (symbolTable.lookupProtocol(decl.declaredType)) {
+                std::cout << "  📋 Tipo declarado es un protocolo: '" << decl.declaredType << "'" << std::endl;
+                if (symbolTable.conformsToProtocol(initType, decl.declaredType)) {
+                    std::cout << "  ✅ El tipo '" << initType << "' implementa el protocolo '" << decl.declaredType << "'" << std::endl;
+                } else {
+                    std::cout << "  ❌ El tipo '" << initType << "' NO implementa el protocolo '" << decl.declaredType << "'" << std::endl;
+                    errors.emplace_back("Tipo '" + initType + "' no implementa el protocolo '" + decl.declaredType + "'", node.line());
+                    node._type = "Error";
+                    continue;
+                }
+            } else if (!conformsTo(initType, decl.declaredType)) {
+                std::cout << "  ❌ Fallo en conformidad de tipos" << std::endl;
+                errors.emplace_back("Tipo declarado '" + decl.declaredType + "' no coincide con inicializador '" + initType + "'", node.line());
+                node._type = "Error";
+                continue;
+            }
         }
 
         // Registrar en tabla de símbolos
         symbolTable.addSymbol(decl.name, decl.declaredType, false);
+        std::cout << "  💾 Variable '" << decl.name << "' registrada con tipo '" << decl.declaredType << "'" << std::endl;
     }
 
     // Analizar cuerpo
+    std::cout << "  🔍 Analizando cuerpo del LetNode..." << std::endl;
     node.body->accept(*this);
     node._type = node.body->type();
+    std::cout << "  ✅ Cuerpo analizado, tipo resultante: '" << node._type << "'" << std::endl;
 
     symbolTable.exitScope();
 }
@@ -1247,30 +1294,39 @@ void SemanticAnalyzer::visit(AssignmentNode& node) {
 }
 
 void SemanticAnalyzer::visit(IfNode& node) {
-
+    std::cout << "🔍 IfNode: Analizando estructura condicional" << std::endl;
+    
     std::vector<std::string> branchTypes;
     bool hasErrors = false;
 
     // 2. Verificar condiciones y recolectar tipos
     for (auto& branch : *node.branches) {
+        std::cout << "  📋 Analizando rama con condición..." << std::endl;
+        
         // Analizar condición
         branch.condition->accept(*this);
         std::string condType = branch.condition->type();
+        std::cout << "    📝 Tipo de condición: '" << condType << "'" << std::endl;
+        
         if (condType != "Boolean") {
             errors.emplace_back("Condición debe ser booleana", branch.condition->line());
-            // node._type = "Error";
             hasErrors = true;
         }
 
         // Analizar cuerpo de la rama
         branch.body->accept(*this);
-        branchTypes.push_back(branch.body->type());
+        std::string bodyType = branch.body->type();
+        branchTypes.push_back(bodyType);
+        std::cout << "    📝 Tipo del cuerpo: '" << bodyType << "'" << std::endl;
     }
 
     // Procesar 'else' si está presente
     if (node.elseBody) {
+        std::cout << "  📋 Analizando rama else..." << std::endl;
         node.elseBody->accept(*this);
-        branchTypes.push_back(node.elseBody->type());
+        std::string elseType = node.elseBody->type();
+        branchTypes.push_back(elseType);
+        std::cout << "    📝 Tipo del else: '" << elseType << "'" << std::endl;
     }
 
     if (hasErrors) {
@@ -1278,21 +1334,64 @@ void SemanticAnalyzer::visit(IfNode& node) {
         return;
     }
 
-    // Verificar consistencia de tipos
-    const std::string& firstType = branchTypes.front();
+    // Filtrar tipos de error
+    std::vector<std::string> validTypes;
     for (const auto& t : branchTypes) {
-        // Verificar si los tipos son compatibles usando conformsTo
-        if (!conformsTo(t, firstType) && !conformsTo(firstType, t)) {
+        if (t != "Error") {
+            validTypes.push_back(t);
+        }
+    }
+
+    if (validTypes.empty()) {
+        node._type = "Error";
+        return;
+    }
+
+    // Verificar consistencia de tipos solo si hay más de un tipo válido
+    if (validTypes.size() > 1) {
+        const std::string& firstType = validTypes.front();
+        bool typesCompatible = true;
+        
+        // Para tipos que heredan del mismo padre, son compatibles
+        for (const auto& t : validTypes) {
+            if (t != firstType) {
+                // Verificar si ambos tipos heredan del mismo ancestro
+                TypeSymbol* type1 = symbolTable.lookupType(firstType);
+                TypeSymbol* type2 = symbolTable.lookupType(t);
+                
+                if (type1 && type2) {
+                    // Si ambos heredan del mismo tipo, son compatibles
+                    if (type1->parentType == type2->parentType && !type1->parentType.empty()) {
+                        std::cout << "    ✅ Tipos compatibles por herencia común: '" << t << "' y '" << firstType << "' heredan de '" << type1->parentType << "'" << std::endl;
+                        continue;
+                    }
+                    
+                    // Si uno es ancestro del otro, son compatibles
+                    if (symbolTable.isSubtype(firstType, t) || symbolTable.isSubtype(t, firstType)) {
+                        std::cout << "    ✅ Tipos compatibles por herencia: '" << t << "' y '" << firstType << "'" << std::endl;
+                        continue;
+                    }
+                }
+                
+                // Verificar conformidad general
+                if (!conformsTo(t, firstType) && !conformsTo(firstType, t)) {
+                    std::cout << "    ⚠️ Tipos incompatibles: '" << t << "' y '" << firstType << "'" << std::endl;
+                    typesCompatible = false;
+                    break;
+                }
+            }
+        }
+        
+        if (!typesCompatible) {
             errors.emplace_back("Tipos incompatibles en ramas del 'if'", node.line());
             node._type = "Error";
             return;
         }
-        
     }
 
-    // El tipo del if es el tipo más específico común entre todas las ramas
-    node._type = symbolTable.lowestCommonAncestor(branchTypes);
-    std::cerr << "[DEBUG] Tipo de if inferido '" << node._type << "'\n";
+    // El tipo del if es el tipo más específico común entre todas las ramas válidas
+    node._type = symbolTable.lowestCommonAncestor(validTypes);
+    std::cout << "  ✅ Tipo del if inferido: '" << node._type << "'" << std::endl;
 }
 
 void SemanticAnalyzer::visit(WhileNode& node) {
@@ -1517,6 +1616,57 @@ void SemanticAnalyzer::visit(MethodCallNode& node) {
         return;
     }
 
+    std::cout << "🔍 MethodCall: '" << node.instanceName << "." << node.methodName << "' con tipo de instancia '" << instSym->type << "'" << std::endl;
+
+    // Verificar si el tipo de la instancia es un protocolo
+    const ProtocolSymbol* protocolSym = symbolTable.lookupProtocol(instSym->type);
+    if (protocolSym) {
+        std::cout << "  📋 La instancia tiene tipo de protocolo: '" << instSym->type << "'" << std::endl;
+        
+        // Buscar el método en el protocolo
+        auto it = protocolSym->methods.find(node.methodName);
+        if (it == protocolSym->methods.end()) {
+            errors.emplace_back("Método '" + node.methodName + "' no está definido en protocolo '" + instSym->type + "'", node.line());
+            node._type = "Error";
+            return;
+        }
+        
+        const Symbol* method = &it->second;
+        std::cout << "  ✅ Método '" << node.methodName << "' encontrado en protocolo" << std::endl;
+        
+        // Validar cantidad de argumentos
+        if (node.args.size() != method->params.size()) {
+            errors.emplace_back("Cantidad incorrecta de argumentos en método '" + node.methodName + "'", node.line());
+            node._type = "Error";
+            return;
+        }
+
+        // Verificar tipos de argumentos
+        for (size_t i = 0; i < node.args.size(); ++i) {
+            node.args[i]->accept(*this);
+            std::string argType = node.args[i]->type();
+            std::string expectedType = method->params[i];
+
+            if (expectedType.empty() || expectedType == "Unknown") {
+                expectedType = "Unknown";
+            }
+
+            if (!conformsTo(argType, expectedType)) {
+                if (expectedType == "Unknown" && argType != "Unknown") {
+                    // No podemos modificar el protocolo, así que solo reportamos el error
+                } else {
+                    errors.emplace_back("Tipo incorrecto para argumento " + std::to_string(i+1) +
+                                        " en llamada a '" + node.methodName + "': esperado '" + expectedType + "', obtenido '" + argType + "'", node.line());
+                }
+            }
+        }
+
+        node._type = method->type;
+        std::cout << "  ✅ MethodCall completado, tipo resultante: '" << node._type << "'" << std::endl;
+        return;
+    }
+
+    // Si no es un protocolo, buscar como tipo normal
     TypeSymbol* typeSym = symbolTable.lookupType(instSym->type);
     if (!typeSym) {
         errors.emplace_back("Tipo '" + instSym->type + "' no definido", node.line());
@@ -1575,13 +1725,57 @@ void SemanticAnalyzer::visit(MethodCallNode& node) {
 
 
 void SemanticAnalyzer::visit(AttributeDeclaration& node) {
-    
-    node.initializer->accept(*this);
-   
+    // Analizar el inicializador si existe
+    if (node.initializer) {
+        node.initializer->accept(*this);
+        std::string initType = node.initializer->type();
+        
+        // Si hay tipo declarado, verificar que el tipo del inicializador conforma al tipo declarado
+        if (!node.declaredType.empty()) {
+            if (!conformsTo(initType, node.declaredType)) {
+                errors.emplace_back("Tipo del inicializador '" + initType + "' no conforma al tipo declarado '" + node.declaredType + "'", 0);
+            }
+        }
+    }
 }
 
 void SemanticAnalyzer::visit(MethodDeclaration& node) {
+    // Guardar el contexto del método actual
+    std::string previousMethodContext = currentMethodContext;
+    currentMethodContext = node.name;
     
+    // Entrar en un nuevo ámbito para los parámetros
+    symbolTable.enterScope();
+    
+    // Registrar el parámetro 'self' implícito
+    // El tipo de 'self' se determina por el contexto del tipo que contiene este método
+    // Esto se maneja en el análisis del TypeDeclarationNode
+    
+    // Registrar los parámetros formales
+    if (node.params) {
+        for (const auto& param : *node.params) {
+            if (!symbolTable.addSymbol(param.name, param.type.empty() ? "Unknown" : param.type, false)) {
+                errors.emplace_back("Parámetro '" + param.name + "' ya declarado en método '" + node.name + "'", 0);
+            }
+        }
+    }
+    
+    // Analizar el cuerpo del método
+    if (node.body) {
+        node.body->accept(*this);
+        std::string bodyType = node.body->type();
+        
+        // Verificar que el tipo de retorno del cuerpo conforma al tipo de retorno declarado
+        if (!node.returnType.empty() && !conformsTo(bodyType, node.returnType)) {
+            errors.emplace_back("Tipo de retorno del cuerpo '" + bodyType + "' no conforma al tipo declarado '" + node.returnType + "' en método '" + node.name + "'", 0);
+        }
+    }
+    
+    // Salir del ámbito del método
+    symbolTable.exitScope();
+    
+    // Restaurar el contexto del método anterior
+    currentMethodContext = previousMethodContext;
 }
 
 void SemanticAnalyzer::visit(BaseCallNode& node) {
@@ -1653,6 +1847,181 @@ void SemanticAnalyzer::visit(SelfCallNode& node) {
     node._type = it->second.type;
 }
 
+void SemanticAnalyzer::visit(AttributeCallNode& node) {
+    // Verificar que la instancia existe
+    Symbol* instance = symbolTable.lookup(node.instanceName);
+    if (!instance) {
+        errors.emplace_back("Instancia '" + node.instanceName + "' no declarada", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    // Obtener el tipo de la instancia
+    TypeSymbol* typeSym = symbolTable.lookupType(instance->type);
+    if (!typeSym) {
+        errors.emplace_back("Tipo de instancia '" + instance->type + "' no encontrado", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    // Buscar el atributo en la jerarquía de tipos
+    Symbol* attribute = nullptr;
+    TypeSymbol* currentType = typeSym;
+    while (currentType) {
+        auto it = currentType->attributes.find(node.attrName);
+        if (it != currentType->attributes.end()) {
+            attribute = &it->second;
+            break;
+        }
+        if (currentType->parentType.empty()) break;
+        currentType = symbolTable.lookupType(currentType->parentType);
+    }
+
+    if (!attribute) {
+        errors.emplace_back("Atributo '" + node.attrName + "' no existe en tipo '" + instance->type + "'", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    node._type = attribute->type;
+}
+
+void SemanticAnalyzer::visit(TypeTestNode& node) {
+    std::cout << "🔍 TypeTest: '" << node.expression << " is " << node.typeName << "'" << std::endl;
+    
+    // Analizar la expresión a testear
+    node.expression->accept(*this);
+    std::string exprType = node.expression->type();
+    std::cout << "  📝 Tipo de expresión: '" << exprType << "'" << std::endl;
+
+    if (exprType == "Error") {
+        std::cout << "  ❌ Expresión tiene tipo Error" << std::endl;
+        node._type = "Error";
+        return;
+    }
+
+    // Verificar que el tipo a testear existe
+    TypeSymbol* testType = symbolTable.lookupType(node.typeName);
+    if (!testType) {
+        std::cout << "  ❌ Tipo '" << node.typeName << "' no declarado" << std::endl;
+        errors.emplace_back("Tipo '" + node.typeName + "' no declarado", node.line());
+        node._type = "Error";
+        return;
+    }
+    std::cout << "  ✅ Tipo '" << node.typeName << "' encontrado" << std::endl;
+
+    // Para el operador 'is', permitimos testear cualquier tipo contra cualquier otro
+    // ya que es una verificación de tipo en tiempo de ejecución
+    // No necesitamos verificar conformidad en tiempo de compilación
+    
+    std::cout << "  🔍 Test de tipo válido: '" << exprType << "' puede ser testado contra '" << node.typeName << "'" << std::endl;
+
+    // El resultado de un test de tipo es siempre Boolean
+    node._type = "Boolean";
+    std::cout << "  ✅ TypeTest completado, tipo resultante: '" << node._type << "'" << std::endl;
+}
+
+void SemanticAnalyzer::visit(TypeCastNode& node) {
+    std::cout << "🔍 TypeCast: '" << node.expression << " as " << node.targetType << "'" << std::endl;
+    
+    // Analizar la expresión a castear
+    node.expression->accept(*this);
+    std::string exprType = node.expression->type();
+    std::cout << "  📝 Tipo de expresión: '" << exprType << "'" << std::endl;
+
+    if (exprType == "Error") {
+        std::cout << "  ❌ Expresión tiene tipo Error" << std::endl;
+        node._type = "Error";
+        return;
+    }
+
+    // Verificar que el tipo objetivo existe
+    TypeSymbol* targetType = symbolTable.lookupType(node.targetType);
+    if (!targetType) {
+        std::cout << "  ❌ Tipo objetivo '" << node.targetType << "' no declarado" << std::endl;
+        errors.emplace_back("Tipo '" + node.targetType + "' no declarado", node.line());
+        node._type = "Error";
+        return;
+    }
+    std::cout << "  ✅ Tipo objetivo '" << node.targetType << "' encontrado" << std::endl;
+
+    // Verificar que el cast es válido
+    // Para downcasting (expr as Type), el tipo objetivo debe conformar al tipo de la expresión
+    // o el tipo de la expresión debe conformar al tipo objetivo
+    bool canCast = conformsTo(node.targetType, exprType) || conformsTo(exprType, node.targetType);
+    std::cout << "  🔍 Verificando conformidad para cast: '" << exprType << "' vs '" << node.targetType << "'" << std::endl;
+    std::cout << "    - " << node.targetType << " conforma a " << exprType << ": " << (conformsTo(node.targetType, exprType) ? "✅" : "❌") << std::endl;
+    std::cout << "    - " << exprType << " conforma a " << node.targetType << ": " << (conformsTo(exprType, node.targetType) ? "✅" : "❌") << std::endl;
+    
+    if (!canCast) {
+        std::cout << "  ❌ Cast inválido" << std::endl;
+        errors.emplace_back("No se puede hacer cast de '" + exprType + "' a '" + node.targetType + "'", node.line());
+        node._type = "Error";
+        return;
+    }
+
+    // El tipo resultante es el tipo objetivo
+    node._type = node.targetType;
+    std::cout << "  ✅ TypeCast completado, tipo resultante: '" << node._type << "'" << std::endl;
+}
+
+void SemanticAnalyzer::visit(ProtocolDeclarationNode& node) {
+    std::cout << "🔍 ProtocolDeclaration: " << node.name << std::endl;
+    
+    // Verificar que el protocolo base existe si se especifica
+    if (node.baseProtocol && !node.baseProtocol->empty()) {
+        const ProtocolSymbol* baseProtocol = symbolTable.lookupProtocol(*node.baseProtocol);
+        if (!baseProtocol) {
+            errors.emplace_back("Protocolo base '" + *node.baseProtocol + "' no declarado", node.line());
+            return;
+        }
+    }
+
+    // Registrar el protocolo en la tabla de símbolos
+    if (!symbolTable.addProtocol(node.name, node.baseProtocol.value_or(""))) {
+        errors.emplace_back("Protocolo '" + node.name + "' ya declarado", node.line());
+        return;
+    }
+
+    // Analizar los métodos del protocolo
+    if (node.body && node.body->methods) {
+        for (auto& method : *node.body->methods) {
+            // Verificar que todos los tipos de parámetros están declarados
+            if (method.params) {
+                for (const auto& param : *method.params) {
+                    if (!param.type.empty() && !symbolTable.lookupType(param.type) && !symbolTable.lookupProtocol(param.type)) {
+                        errors.emplace_back("Tipo de parámetro '" + param.type + "' no declarado en método '" + method.name + "'", node.line());
+                        continue;
+                    }
+                }
+            }
+            
+            // Verificar que el tipo de retorno está declarado
+            if (!method.returnType.empty() && !symbolTable.lookupType(method.returnType) && !symbolTable.lookupProtocol(method.returnType)) {
+                errors.emplace_back("Tipo de retorno '" + method.returnType + "' no declarado en método '" + method.name + "'", node.line());
+                continue;
+            }
+
+            // Registrar el método en el protocolo
+            std::vector<std::string> paramTypes;
+            if (method.params) {
+                for (const auto& param : *method.params) {
+                    paramTypes.push_back(param.type.empty() ? "Unknown" : param.type);
+                }
+            }
+
+            if (!symbolTable.addProtocolMethod(node.name, method.name, method.returnType, paramTypes)) {
+                errors.emplace_back("Error al registrar método '" + method.name + "' en protocolo '" + node.name + "'", node.line());
+            }
+        }
+    }
+    
+    // Computar extensiones transitivas del protocolo
+    symbolTable.computeProtocolExtensions();
+    
+    std::cout << "✅ Protocolo '" << node.name << "' procesado correctamente" << std::endl;
+}
+
 
 Symbol* SemanticAnalyzer::lookupMethodInHierarchy(const std::string& typeName, const std::string& methodName) {
     std::cout << "[DEBUG] Buscando método '" << methodName << "' en jerarquía de tipo '" << typeName << "'\n";
@@ -1672,5 +2041,7 @@ Symbol* SemanticAnalyzer::lookupMethodInHierarchy(const std::string& typeName, c
     std::cout << "    [NO ENCONTRADO] Método '" << methodName << "' no existe en jerarquía\n";
     return nullptr;
 }
+
+
 
 

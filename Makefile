@@ -54,8 +54,8 @@ LEXER_GENERATOR_DEPS := $(LEXER_GENERATOR_DIR)/core/TokenPattern.cpp \
 
 LEXER_GENERATOR_DEPS_OBJ := $(patsubst $(LEXER_GENERATOR_DIR)/%.cpp, $(BUILD_DIR)/lexer_generator/%.o, $(LEXER_GENERATOR_DEPS))
 
-# Detectar automáticamente todos los *.cpp de src/ (excluyendo tests, build artifacts, and lexer generator)
-CPP_SRC := $(shell find $(SRC_DIR) -name "*.cpp" ! -name "main.cpp" ! -path "*/test/*" ! -path "*/test*.cpp" ! -path "*/build/*" ! -path "*/lexer_generator/*")
+# Detectar automáticamente todos los *.cpp de src/ (excluyendo tests, build artifacts, lexer generator, and old lexer files)
+CPP_SRC := $(shell find $(SRC_DIR) -name "*.cpp" ! -name "main.cpp" ! -path "*/test/*" ! -path "*/test*.cpp" ! -path "*/build/*" ! -path "*/lexer_generator/*" ! -path "*/lexer_interpreter/*")
 CPP_OBJ := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(CPP_SRC))
 
 # Funciones auxiliares en C

@@ -3,21 +3,11 @@
 #include <sstream>
 #include <vector>
 #include <memory>
-
-#include "lexer/Lexer.hpp"
-#include "parser/core/GrammarAugment.hpp"
-#include "parser/core/LR1ItemSetBuilder.hpp"
-#include "parser/core/LR1ParsingTables.hpp"
-#include "parser/ParserDriver.hpp"
-#include "parser/grammar/SemanticActionDispatcher.hpp"
-#include "parser/grammar/PrecedenceSetup.hpp"
-#include "parser/TokenTypeStringMap.hpp"
-#include "ast/AST.hpp"
-#include "ast/ASTPrinter.hpp"
-#include "semantic/SemanticAnalyzer.hpp"
-#include "codegen/CodeGenContext.hpp"
-
 #include <filesystem> // C++17
+
+// Include the generated lexer
+#include "lexer/.build/HulkLexer.hpp"
+#include "lexer/.build/GeneratedTokenTypes.hpp"
 
 std::string readFile(const std::string& filename) {
     // Ensure file has .hulk extension
@@ -36,21 +26,6 @@ std::string readFile(const std::string& filename) {
     return buffer.str();
 }
 
-
-bool is_valid_ast(const std::vector<std::shared_ptr<ASTNode>>& nodes) {
-    if (nodes.empty()) {
-        std::cerr << "AST vacío: ningún nodo generado" << std::endl;
-        return false;
-    }
-    for (const auto& node : nodes) {
-        if (!node) {
-            std::cerr << "AST contiene nodos nulos" << std::endl;
-            return false;
-        }
-    }
-    return true;
-}
-
 int main(int argc, char** argv) {
     const char* filename = (argc >= 2) ? argv[1] : "script.hulk";
 
@@ -62,97 +37,35 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // 1. LEXER: Convert source code into tokens
-    Lexer lexer(source);
-    std::vector<std::shared_ptr<Token>> tokens;
-    while (true) {
-        auto token = lexer.nextToken();
-        tokens.push_back(token);
-        std::cerr << "Token encontrado: " << tokenTypeToString(token->type) << " => " << token->lexeme << "\n";
-        if (token->type == TokenType::END_OF_FILE) break;
-    }
+    // 1. LEXER: Convert source code into tokens using the generated HulkLexer
+    std::cout << "=== Hulk Compiler - Lexer Phase ===\n";
+    std::cout << "Processing file: " << filename << "\n";
+    std::cout << "Source length: " << source.length() << " characters\n\n";
 
-    if (!lexer.getErrors().empty()) {
-        std::cerr << "Errores léxicos encontrados:\n";
-        for (const auto& err : lexer.getErrors()) {
-            std::cerr << "  Línea " << err.location.line << ", Columna " 
-                      << err.location.column << ": " << err.message << "\n";
+    try {
+        // Create the generated lexer
+        HulkLexer lexer(source);
+        
+        // Tokenize the entire input
+        std::vector<Token> tokens = lexer.tokenize();
+        
+        // Display all tokens found
+        std::cout << "Tokens encontrados (" << tokens.size() << "):\n";
+        for (size_t i = 0; i < tokens.size(); ++i) {
+            const auto& token = tokens[i];
+            std::cout << "  [" << i << "] " << tokenTypeToString(token.type) 
+                      << " => '" << token.lexeme << "'"
+                      << " at line " << token.location.line 
+                      << ", column " << token.location.column << "\n";
         }
-        return 1;
-    }
-
-    // 2. LOAD GRAMMAR AND BUILD PARSER
-    GrammarAugment grammar;
-
-    try {
-        grammar.readGrammar("src/parser/grammar/BNFGrammar.bnf");
-
+        
+        std::cout << "\n✅ Lexer phase completed successfully!\n";
+        std::cout << "Total tokens: " << tokens.size() << "\n";
+        
+        return 0;
+        
     } catch (const std::exception& e) {
-        std::cerr << "Error al cargar la gramática: " << e.what() << std::endl;
+        std::cerr << "Error en fase léxica: " << e.what() << "\n";
         return 1;
     }
-
-    grammar.computeFirstSets();
-    grammar.computeFollowSets();
-    std::cerr << "conjuntos first y follow definidos \n";
-
-    LR1ItemSetBuilder itemBuilder(grammar);
-    itemBuilder.constructItemSets();
-    std::cerr << "conjuntos LR(1) definidos \n";
-
-    LR1ParsingTableGenerator tableGen(grammar, itemBuilder);
-    setupPrecedence(tableGen); // External config
-    tableGen.generateParsingTables();
-    std::cerr << "tablas action and goto y precedencia establecida \n";
-
-
-    // 3. PARSE TOKENS → AST
-    SemanticActionDispatcher dispatcher(tableGen);
-    std::cerr << "action dispatcher inicialyze \n";
-
-    ParserDriver driver(tableGen, dispatcher);
-    std::cerr << "parser driver initialize \n";
-
-    ParseResult result = driver.parse(tokens);
-    std::cerr << "parse result generated \n";
-
-    if (!result.errors.empty()) {
-        std::cerr << "Errores de análisis sintáctico:\n";
-        for (const std::string& e : result.errors)
-            std::cerr << "  " << e << "\n";
-        return 1;
-    }
-
-    if (!is_valid_ast(result.ast)) {
-        std::cerr << "Error: AST inválido.\n";
-        return 1;
-    }
-
-    std::cout << "\n=== AST Structure ===\n";
-    ASTPrinter printer;
-    for (const auto& node : result.ast) {
-        std::cout << "\nRoot Node:\n";
-        node->accept(printer);
-    }
-    std::cout << "\n=== End AST Structure ===\n";
-
-    // 4. SEMANTIC ANALYSIS (future)
-    SemanticAnalyzer analyzer;
-    analyzer.analyze(result.ast);
-
-    std::cout << "Análisis semántico completado.\n";
-
-    // 5. CODEGEN (optional)
-    CodeGenContext codegen;
-    try {
-        codegen.generateCode(result.ast);
-    } catch (const std::exception& e) {
-        std::cerr << "Error en generación de código: " << e.what() << "\n";
-        return 1;
-    }
-
-    codegen.dumpIR("hulk-low-code.ll");
-    std::cout << "IR volcado en 'hulk-low-code.ll'.\n";
-
-    return 0;
 }

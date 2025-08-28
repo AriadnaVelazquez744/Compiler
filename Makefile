@@ -17,6 +17,7 @@ BUILD_DIR := .build
 SRC_DIR := src
 LEXER_DIR := $(SRC_DIR)/lexer
 PARSER_DIR := $(SRC_DIR)/parser
+LEXER_GENERATOR_DIR := $(SRC_DIR)/lexer_generator
 
 # Archivos fuentes
 # LEX_SRC := $(LEXER_DIR)/lexer.l
@@ -33,15 +34,44 @@ MAIN_OBJ = $(BUILD_DIR)/main.o
 # LEX_OBJ = $(BUILD_DIR)/lexer/lex.yy.o
 # YACC_OBJ = $(BUILD_DIR)/parser/parser.tab.o
 
-# Detectar automáticamente todos los *.cpp de src/
-CPP_SRC := $(shell find $(SRC_DIR) -name "*.cpp" ! -name "main.cpp")
+# Lexer generator
+LEXER_GENERATOR_EXEC := lexer-generator
+LEXER_GENERATOR_SRC := $(LEXER_GENERATOR_DIR)/codegen/main.cpp
+LEXER_GENERATOR_OBJ := $(BUILD_DIR)/lexer_generator/codegen/main.o
+
+# Lexer generator dependencies
+LEXER_GENERATOR_DEPS := $(LEXER_GENERATOR_DIR)/core/TokenPattern.cpp \
+                       $(LEXER_GENERATOR_DIR)/core/GeneratorConfig.cpp \
+                       $(LEXER_GENERATOR_DIR)/core/LexerGenerator.cpp \
+                       $(LEXER_GENERATOR_DIR)/parser/TokenFileParser.cpp \
+                       $(LEXER_GENERATOR_DIR)/regex/RegexNode.cpp \
+                       $(LEXER_GENERATOR_DIR)/regex/RegexParser.cpp \
+                       $(LEXER_GENERATOR_DIR)/automata/NFA.cpp \
+                       $(LEXER_GENERATOR_DIR)/automata/DFA.cpp \
+                       $(LEXER_GENERATOR_DIR)/algorithms/NFABuilder.cpp \
+                       $(LEXER_GENERATOR_DIR)/algorithms/DFABuilder.cpp \
+                       $(LEXER_GENERATOR_DIR)/codegen/CodeGenerator.cpp
+
+LEXER_GENERATOR_DEPS_OBJ := $(patsubst $(LEXER_GENERATOR_DIR)/%.cpp, $(BUILD_DIR)/lexer_generator/%.o, $(LEXER_GENERATOR_DEPS))
+
+# Detectar automáticamente todos los *.cpp de src/ (excluyendo tests, build artifacts, and lexer generator)
+CPP_SRC := $(shell find $(SRC_DIR) -name "*.cpp" ! -name "main.cpp" ! -path "*/test/*" ! -path "*/test*.cpp" ! -path "*/build/*" ! -path "*/lexer_generator/*")
 CPP_OBJ := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(CPP_SRC))
 
 # Funciones auxiliares en C
 RUNTIME_SRC := $(SRC_DIR)/runtime/hulk_runtime.c
 RUNTIME_OBJ := $(BUILD_DIR)/runtime/hulk_runtime.o
 
-OBJS := $(MAIN_OBJ) $(CPP_OBJ) $(RUNTIME_OBJ)
+# Generated lexer files (will be created by lexer generator)
+GENERATED_LEXER_HEADER := $(LEXER_DIR)/.build/HulkLexer.hpp
+GENERATED_LEXER_SOURCE := $(LEXER_DIR)/.build/HulkLexer.cpp
+GENERATED_LEXER_OBJ := $(BUILD_DIR)/lexer/.build/HulkLexer.o
+
+# Generated token types files
+GENERATED_TOKEN_TYPES_SOURCE := $(LEXER_DIR)/.build/TokenTypes.cpp
+GENERATED_TOKEN_TYPES_OBJ := $(BUILD_DIR)/lexer/.build/TokenTypes.o
+
+OBJS := $(MAIN_OBJ) $(CPP_OBJ) $(RUNTIME_OBJ) $(GENERATED_LEXER_OBJ) $(GENERATED_TOKEN_TYPES_OBJ)
 
 EXEC := hulk-compiler
 INPUT_FILE := $(word 2, $(MAKECMDGOALS))
@@ -51,7 +81,7 @@ CODE := hulk-code
 # === TARGETS ===
 all:	build
 
-build:	$(BUILD_DIR)	$(EXEC)	
+build:	$(BUILD_DIR)	$(LEXER_GENERATOR_EXEC)	$(GENERATED_LEXER_HEADER)	$(GENERATED_LEXER_SOURCE)	$(EXEC)	
 	@echo	"✅ Build completo. Ejecutable en $(EXEC)"
 
 run: build $(LLVM_IR) $(CODE)
@@ -76,7 +106,7 @@ $(CODE): $(LLVM_IR)	$(RUNTIME_OBJ)
 	@echo "🔨 Generado ejecutable: $(CODE)"
 
 clean:
-	rm -rf $(BUILD_DIR) $(EXEC) $(LLVM_IR) $(CODE)
+	rm -rf $(BUILD_DIR) $(EXEC) $(LLVM_IR) $(CODE) $(LEXER_GENERATOR_EXEC) $(LEXER_DIR)/.build
 	@echo "🧹 Proyecto limpiado."
 
 # === REGLAS DE COMPILACIÓN ===
@@ -114,9 +144,45 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX)	$(CXXFLAGS)	$(LLVM_CXXFLAGS)	-c	$<	-o	$@
 
+# Compilar lexer generator
+$(LEXER_GENERATOR_OBJ): $(LEXER_GENERATOR_SRC)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Compilar lexer generator dependencies
+$(BUILD_DIR)/lexer_generator/%.o: $(LEXER_GENERATOR_DIR)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Compilar generated lexer source file
+$(GENERATED_LEXER_OBJ): $(GENERATED_LEXER_SOURCE) $(GENERATED_LEXER_HEADER)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) -c $< -o $@
+
+# Compilar generated token types source file
+$(GENERATED_TOKEN_TYPES_OBJ): $(GENERATED_TOKEN_TYPES_SOURCE)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) -c $< -o $@
+
 $(EXEC): $(OBJS) 
 	$(CXX)	$(CXXFLAGS)	$(LLVM_CXXFLAGS)	-o	$(EXEC) $(OBJS)	$(LLVM_LDFLAGS)
 	@echo	"✅ Compilación completa. Ejecutable en $(EXEC)"
+
+# Lexer generator
+$(LEXER_GENERATOR_EXEC): $(BUILD_DIR) $(LEXER_GENERATOR_OBJ) $(LEXER_GENERATOR_DEPS_OBJ)
+	$(CXX) $(CXXFLAGS) -o $@ $(LEXER_GENERATOR_OBJ) $(LEXER_GENERATOR_DEPS_OBJ)
+	@echo "🔧 Lexer generator compilado"
+	@echo "📝 Generando código del lexer..."
+	@./$(LEXER_GENERATOR_EXEC)
+	@echo "✅ Código del lexer generado en $(LEXER_DIR)/.build"
+
+# Ensure generated lexer files exist
+$(GENERATED_LEXER_HEADER) $(GENERATED_LEXER_SOURCE): $(LEXER_GENERATOR_EXEC)
+	@echo "📋 Verificando archivos generados del lexer..."
+	@if [ ! -f "$(GENERATED_LEXER_HEADER)" ] || [ ! -f "$(GENERATED_LEXER_SOURCE)" ]; then \
+		echo "❌ Archivos del lexer no encontrados. Ejecutando generador..."; \
+		./$(LEXER_GENERATOR_EXEC); \
+	fi
 
 # === META ===
 .PHONY: all build run compile execute clean

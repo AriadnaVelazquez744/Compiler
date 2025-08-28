@@ -6,6 +6,8 @@
 
 GeneratorConfig::GeneratorConfig() {
     // Constructor already initializes all members with default values
+    // Auto-generate file names based on class name
+    updateFileNames();
 }
 
 bool GeneratorConfig::loadFromFile(const std::string& filename) {
@@ -39,6 +41,7 @@ bool GeneratorConfig::loadFromFile(const std::string& filename) {
                 output_directory = value;
             } else if (key == "class_name") {
                 class_name = value;
+                updateFileNames(); // Update file names when class name changes
             } else if (key == "namespace_name") {
                 namespace_name = value;
             } else if (key == "generate_tests") {
@@ -121,4 +124,16 @@ bool GeneratorConfig::ensureOutputDirectory() const {
         std::cerr << "Error creating output directory: " << e.what() << std::endl;
         return false;
     }
+}
+
+void GeneratorConfig::updateFileNames() {
+    if (!class_name.empty()) {
+        header_file = class_name + ".hpp";
+        source_file = class_name + ".cpp";
+    }
+}
+
+void GeneratorConfig::setClassName(const std::string& name) {
+    class_name = name;
+    updateFileNames();
 } 

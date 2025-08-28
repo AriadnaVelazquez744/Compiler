@@ -17,7 +17,8 @@ public:
     };
 
     CodeGenerator(const std::vector<std::shared_ptr<TokenPattern>>& tokens,
-                  const std::vector<std::unique_ptr<DFA>>& dfas);
+                  const std::vector<std::unique_ptr<DFA>>& dfas,
+                  const std::string& class_name = "GeneratedLexer");
 
     // Generate all files
     GeneratedFiles generateAll();
@@ -32,6 +33,7 @@ public:
 private:
     const std::vector<std::shared_ptr<TokenPattern>>& tokens_;
     const std::vector<std::unique_ptr<DFA>>& dfas_;
+    std::string class_name_;
     std::map<std::string, int> token_name_to_index_;
     
     // Helper methods

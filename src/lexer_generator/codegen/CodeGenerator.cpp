@@ -4,8 +4,9 @@
 #include <cctype>
 
 CodeGenerator::CodeGenerator(const std::vector<std::shared_ptr<TokenPattern>>& tokens,
-                           const std::vector<std::unique_ptr<DFA>>& dfas)
-    : tokens_(tokens), dfas_(dfas) {
+                           const std::vector<std::unique_ptr<DFA>>& dfas,
+                           const std::string& class_name)
+    : tokens_(tokens), dfas_(dfas), class_name_(class_name) {
     
     // Build token name to index mapping
     for (size_t i = 0; i < tokens_.size(); ++i) {
@@ -56,7 +57,7 @@ std::string CodeGenerator::generateTokenTypesHeader() {
 std::string CodeGenerator::generateTokenTypesImplementation() {
     std::ostringstream oss;
     
-    oss << "#include \"TokenTypes.hpp\"\n";
+    oss << "#include \"GeneratedTokenTypes.hpp\"\n";
     oss << "#include <unordered_map>\n";
     oss << "#include <unordered_set>\n";
     oss << "#include <algorithm>\n\n";
@@ -143,7 +144,7 @@ std::string CodeGenerator::generateLexerHeader() {
     std::ostringstream oss;
     
     oss << "#pragma once\n";
-    oss << "#include \"TokenTypes.hpp\"\n";
+    oss << "#include \"GeneratedTokenTypes.hpp\"\n";
     oss << "#include <string>\n";
     oss << "#include <vector>\n";
     oss << "#include <memory>\n\n";
@@ -163,9 +164,9 @@ std::string CodeGenerator::generateLexerHeader() {
     oss << "};\n\n";
     
     // Lexer class
-    oss << "class GeneratedLexer {\n";
+    oss << "class " << class_name_ << " {\n";
     oss << "public:\n";
-    oss << "    explicit GeneratedLexer(const std::string& input);\n\n";
+    oss << "    explicit " << class_name_ << "(const std::string& input);\n\n";
     oss << "    // Main lexing methods\n";
     oss << "    Token getNextToken();\n";
     oss << "    std::vector<Token> tokenize();\n";
@@ -192,21 +193,21 @@ std::string CodeGenerator::generateLexerHeader() {
 std::string CodeGenerator::generateLexerImplementation() {
     std::ostringstream oss;
     
-    oss << "#include \"GeneratedLexer.hpp\"\n";
+    oss << "#include \"" << class_name_ << ".hpp\"\n";
     oss << "#include \"DFATables.hpp\"\n";
     oss << "#include <cctype>\n";
     oss << "#include <algorithm>\n\n";
     
     // Constructor
-    oss << "GeneratedLexer::GeneratedLexer(const std::string& input)\n";
+    oss << class_name_ << "::" << class_name_ << "(const std::string& input)\n";
     oss << "    : input_(input), position_(0), line_(1), column_(1) {}\n\n";
     
     // Helper methods
-    oss << "bool GeneratedLexer::isWhitespace(char c) const {\n";
+    oss << "bool " << class_name_ << "::isWhitespace(char c) const {\n";
     oss << "    return std::isspace(static_cast<unsigned char>(c)) != 0;\n";
     oss << "}\n\n";
     
-    oss << "void GeneratedLexer::skipWhitespace() {\n";
+    oss << "void " << class_name_ << "::skipWhitespace() {\n";
     oss << "    while (position_ < input_.size() && isWhitespace(input_[position_])) {\n";
     oss << "        if (input_[position_] == '\\n') {\n";
     oss << "            line_++;\n";
@@ -219,7 +220,7 @@ std::string CodeGenerator::generateLexerImplementation() {
     oss << "}\n\n";
     
     // DFA execution
-    oss << "GeneratedLexer::DFAResult GeneratedLexer::runAllDFAs(size_t start_pos) {\n";
+    oss << class_name_ << "::DFAResult " << class_name_ << "::runAllDFAs(size_t start_pos) {\n";
     oss << "    DFAResult best_result = {-1, TokenType::UNKNOWN, -1000000};\n\n";
     
     for (size_t i = 0; i < dfas_.size(); ++i) {
@@ -255,7 +256,7 @@ std::string CodeGenerator::generateLexerImplementation() {
     oss << "}\n\n";
     
     // Main lexing methods
-    oss << "Token GeneratedLexer::getNextToken() {\n";
+    oss << "Token " << class_name_ << "::getNextToken() {\n";
     oss << "    skipWhitespace();\n\n";
     oss << "    if (position_ >= input_.size()) {\n";
     oss << "        return Token(TokenType::END_OF_FILE, \"\", {line_, column_});\n";
@@ -297,7 +298,7 @@ std::string CodeGenerator::generateLexerImplementation() {
     oss << "    }\n";
     oss << "}\n\n";
     
-    oss << "std::vector<Token> GeneratedLexer::tokenize() {\n";
+    oss << "std::vector<Token> " << class_name_ << "::tokenize() {\n";
     oss << "    std::vector<Token> tokens;\n";
     oss << "    while (hasMoreTokens()) {\n";
     oss << "        tokens.push_back(getNextToken());\n";
@@ -305,7 +306,7 @@ std::string CodeGenerator::generateLexerImplementation() {
     oss << "    return tokens;\n";
     oss << "}\n\n";
     
-    oss << "bool GeneratedLexer::hasMoreTokens() const {\n";
+    oss << "bool " << class_name_ << "::hasMoreTokens() const {\n";
     oss << "    return position_ < input_.size();\n";
     oss << "}\n";
     

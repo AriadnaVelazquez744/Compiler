@@ -1,4 +1,9 @@
 #include "LexerGenerator.hpp"
+#include "../codegen/CodeGenerator.hpp"
+#include "../regex/RegexParser.hpp"
+#include "../algorithms/NFABuilder.hpp"
+#include "../algorithms/DFABuilder.hpp"
+#include "../automata/DFA.hpp"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -70,16 +75,56 @@ bool LexerGenerator::generateLexer() {
 
 bool LexerGenerator::generateTokenTypes() {
     try {
-        // Generate TokenType enum header
-        std::string token_types_content = generateTokenTypeHeader();
-        std::string token_types_file = config_.getTokenTypesFilePath();
+        // Build NFAs and DFAs for all patterns
+        std::cout << "Building NFAs and DFAs for " << patterns_.size() << " token patterns..." << std::endl;
         
-        if (!writeFile(token_types_file, token_types_content)) {
+        RegexParser regex_parser;
+        NFABuilder nfa_builder;
+        DFABuilder dfa_builder;
+        
+        std::vector<std::unique_ptr<DFA>> dfas;
+        dfas.reserve(patterns_.size());
+        
+        for (const auto& pattern : patterns_) {
+            try {
+                auto ast = regex_parser.parse(pattern->getRegexPattern());
+                auto nfa = nfa_builder.buildNFA(ast);
+                auto dfa = dfa_builder.buildDFA(*nfa);
+                dfas.push_back(std::move(dfa));
+            } catch (const std::exception& e) {
+                reportError("Failed to build DFA for token '" + pattern->getName() + "': " + e.what());
+                return false;
+            }
+        }
+        
+        // Use CodeGenerator to generate all files
+        CodeGenerator code_gen(patterns_, dfas, config_.class_name);
+        auto generated_files = code_gen.generateAll();
+        
+        // Write token types header
+        std::string token_types_file = config_.getTokenTypesFilePath();
+        if (!writeFile(token_types_file, generated_files.token_types_hpp)) {
             reportError("Failed to write token types file: " + token_types_file);
             return false;
         }
         
+        // Write token types implementation
+        std::string token_types_impl_file = config_.output_directory + "/TokenTypes.cpp";
+        if (!writeFile(token_types_impl_file, generated_files.token_types_cpp)) {
+            reportError("Failed to write token types implementation file: " + token_types_impl_file);
+            return false;
+        }
+        
+        // Write DFA tables
+        std::string dfa_tables_file = config_.output_directory + "/DFATables.hpp";
+        if (!writeFile(dfa_tables_file, generated_files.dfa_tables_hpp)) {
+            reportError("Failed to write DFA tables file: " + dfa_tables_file);
+            return false;
+        }
+        
         std::cout << "Generated token types file: " << token_types_file << std::endl;
+        std::cout << "Generated token types implementation: " << token_types_impl_file << std::endl;
+        std::cout << "Generated DFA tables: " << dfa_tables_file << std::endl;
         return true;
         
     } catch (const std::exception& e) {
@@ -90,20 +135,42 @@ bool LexerGenerator::generateTokenTypes() {
 
 bool LexerGenerator::generateLexerClass() {
     try {
-        // Generate lexer header
-        std::string header_content = generateLexerHeader();
-        std::string header_file = config_.getHeaderFilePath();
+        // Build NFAs and DFAs for all patterns (if not already built)
+        std::cout << "Building NFAs and DFAs for " << patterns_.size() << " token patterns..." << std::endl;
         
-        if (!writeFile(header_file, header_content)) {
+        RegexParser regex_parser;
+        NFABuilder nfa_builder;
+        DFABuilder dfa_builder;
+        
+        std::vector<std::unique_ptr<DFA>> dfas;
+        dfas.reserve(patterns_.size());
+        
+        for (const auto& pattern : patterns_) {
+            try {
+                auto ast = regex_parser.parse(pattern->getRegexPattern());
+                auto nfa = nfa_builder.buildNFA(ast);
+                auto dfa = dfa_builder.buildDFA(*nfa);
+                dfas.push_back(std::move(dfa));
+            } catch (const std::exception& e) {
+                reportError("Failed to build DFA for token '" + pattern->getName() + "': " + e.what());
+                return false;
+            }
+        }
+        
+        // Use CodeGenerator to generate lexer files
+        CodeGenerator code_gen(patterns_, dfas, config_.class_name);
+        auto generated_files = code_gen.generateAll();
+        
+        // Generate lexer header
+        std::string header_file = config_.getHeaderFilePath();
+        if (!writeFile(header_file, generated_files.lexer_hpp)) {
             reportError("Failed to write lexer header file: " + header_file);
             return false;
         }
         
         // Generate lexer implementation
-        std::string impl_content = generateLexerImplementation();
         std::string impl_file = config_.getSourceFilePath();
-        
-        if (!writeFile(impl_file, impl_content)) {
+        if (!writeFile(impl_file, generated_files.lexer_cpp)) {
             reportError("Failed to write lexer implementation file: " + impl_file);
             return false;
         }
@@ -146,11 +213,11 @@ bool LexerGenerator::updateMakefile() {
         std::string integration = R"(
 # === LEXER GENERATOR INTEGRATION ===
 LEXER_GENERATOR := lexer_generator
-TOKEN_FILE := src/lexer/tokens.token
+TOKEN_FILE := src/lexer/hulk_language.tokens
 GENERATED_LEXER := $(BUILD_DIR)/generated/GeneratedLexer.hpp
 GENERATED_TOKEN_TYPES := $(BUILD_DIR)/generated/GeneratedTokenTypes.hpp
 
-# Generate lexer from .token file
+# Generate lexer from .tokens file
 $(GENERATED_LEXER) $(GENERATED_TOKEN_TYPES): $(TOKEN_FILE) $(LEXER_GENERATOR)
 	@./$(LEXER_GENERATOR) $(TOKEN_FILE) --output $(BUILD_DIR)/generated
 
@@ -250,11 +317,7 @@ std::string LexerGenerator::generateTokenTypeHeader() const {
     content << "enum class TokenType {\n";
     
     for (size_t i = 0; i < patterns_.size(); ++i) {
-        content << "    " << patterns_[i]->getName();
-        if (i < patterns_.size() - 1) {
-            content << ",";
-        }
-        content << "\n";
+        content << "    " << patterns_[i]->getName() << ",\n";
     }
     
     content << "    END_OF_FILE,\n";

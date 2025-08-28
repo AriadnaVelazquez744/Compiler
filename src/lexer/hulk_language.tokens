@@ -1,0 +1,81 @@
+# Sample token definitions for Hulk language
+# Format: TokenType : RegexPattern [-> DataType] [| Priority] [| Action]
+
+# Literals with data types
+NUMBER      : [0-9]+(\.[0-9]+)? -> int
+STRING      : \"[^\"\\\\]*\" -> string
+BOOL        : True|False -> bool
+NULL_VAL    : Null
+
+# Identifiers
+ID          : [a-zA-Z_][a-zA-Z0-9_]*
+
+# Arithmetic operators
+ADD         : \+ | 10
+SUB         : \- | 10
+MUL         : \* | 20
+DIV         : / | 20
+MOD         : % | 20
+POW         : \*\* | 30
+
+# Relational operators
+LT          : < | 5
+GT          : > | 5
+LE          : <= | 5
+GE          : >= | 5
+EQ          : == | 5
+NE          : != | 5
+
+# Logical operators
+AND         : & | 15
+OR          : \| | 15
+NOT         : ! | 15
+
+# String operations
+CONCAT      : @ | 25
+CONCAT_SPACE: @@ | 25
+
+# Built-in functions
+SIN         : sin -> string
+COS         : cos -> string
+MAX         : max -> string
+MIN         : min -> string
+SQRT        : sqrt -> string
+EXP         : exp -> string
+LOG         : log -> string
+RANDOM      : rand -> string
+
+# Constants
+PI          : PI -> double
+E           : E -> double
+
+# Keywords
+PRINT       : print
+READ        : read
+PARSE       : parse
+FUNC        : function
+LET         : let
+IN          : in
+IF          : if
+ELSE        : else
+ELIF        : elif
+FOR         : for
+WHILE       : while
+RANGE       : range
+TYPE        : type
+NEW         : new
+SELF        : self
+INHERITS    : inherits
+BASE        : base
+
+# Punctuation
+COMMA       : ,
+SEMICOLON   : ;
+DOT         : \.
+LPAREN      : \(
+RPAREN      : \)
+LBRACE      : \{
+RBRACE      : \}
+ASSIGN      : =
+REASSIGN    : :=
+LAMBDA      : =>

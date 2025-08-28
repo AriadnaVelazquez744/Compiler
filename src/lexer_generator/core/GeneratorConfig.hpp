@@ -19,8 +19,8 @@ public:
     std::string output_directory = ".build/generated";  ///< Directory for generated files
     std::string class_name = "GeneratedLexer";          ///< Name of the generated lexer class
     std::string namespace_name = "";                    ///< C++ namespace for generated code
-    std::string header_file = "GeneratedLexer.hpp";     ///< Generated header file name
-    std::string source_file = "GeneratedLexer.cpp";     ///< Generated source file name
+    std::string header_file;                            ///< Generated header file name (auto-generated from class_name)
+    std::string source_file;                            ///< Generated source file name (auto-generated from class_name)
     std::string token_types_file = "GeneratedTokenTypes.hpp"; ///< Generated token types file
     
     // Code generation options
@@ -87,4 +87,15 @@ public:
      * @return true if directory created or already exists
      */
     bool ensureOutputDirectory() const;
+    
+    /**
+     * @brief Update file names based on current class name
+     */
+    void updateFileNames();
+    
+    /**
+     * @brief Set class name and update file names accordingly
+     * @param name New class name
+     */
+    void setClassName(const std::string& name);
 }; 

@@ -6,8 +6,8 @@
 #include <filesystem> // C++17
 
 // Include the generated lexer
-#include "lexer/.build/HulkLexer.hpp"
-#include "lexer/.build/GeneratedTokenTypes.hpp"
+#include "lexer/.build/Lexer.hpp"
+#include "lexer/.build/TokenTypes.hpp"
 
 std::string readFile(const std::string& filename) {
     // Ensure file has .hulk extension
@@ -37,14 +37,14 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // 1. LEXER: Convert source code into tokens using the generated HulkLexer
+    // 1. LEXER: Convert source code into tokens using the generated Lexer
     std::cout << "=== Hulk Compiler - Lexer Phase ===\n";
     std::cout << "Processing file: " << filename << "\n";
     std::cout << "Source length: " << source.length() << " characters\n\n";
 
     try {
         // Create the generated lexer
-        HulkLexer lexer(source);
+        Lexer lexer(source);
         
         // Tokenize the entire input
         std::vector<Token> tokens = lexer.tokenize();

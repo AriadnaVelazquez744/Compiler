@@ -57,7 +57,7 @@ std::string CodeGenerator::generateTokenTypesHeader() {
 std::string CodeGenerator::generateTokenTypesImplementation() {
     std::ostringstream oss;
     
-    oss << "#include \"GeneratedTokenTypes.hpp\"\n";
+    oss << "#include \"TokenTypes.hpp\"\n";
     oss << "#include <unordered_map>\n";
     oss << "#include <unordered_set>\n";
     oss << "#include <algorithm>\n\n";
@@ -144,7 +144,7 @@ std::string CodeGenerator::generateLexerHeader() {
     std::ostringstream oss;
     
     oss << "#pragma once\n";
-    oss << "#include \"GeneratedTokenTypes.hpp\"\n";
+    oss << "#include \"TokenTypes.hpp\"\n";
     oss << "#include <string>\n";
     oss << "#include <vector>\n";
     oss << "#include <memory>\n\n";

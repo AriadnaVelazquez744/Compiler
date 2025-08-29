@@ -11,7 +11,7 @@ int main() {
         // Configure the generator
         GeneratorConfig config;
         config.output_directory = "src/lexer/.build";
-        config.setClassName("HulkLexer"); // This will also update file names
+        config.setClassName("Lexer"); // This will also update file names
         config.namespace_name = "hulk";
         config.verbose = true;
         config.update_makefile = false; // We don't want to update the main Makefile

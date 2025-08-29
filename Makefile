@@ -63,9 +63,9 @@ RUNTIME_SRC := $(SRC_DIR)/runtime/hulk_runtime.c
 RUNTIME_OBJ := $(BUILD_DIR)/runtime/hulk_runtime.o
 
 # Generated lexer files (will be created by lexer generator)
-GENERATED_LEXER_HEADER := $(LEXER_DIR)/.build/HulkLexer.hpp
-GENERATED_LEXER_SOURCE := $(LEXER_DIR)/.build/HulkLexer.cpp
-GENERATED_LEXER_OBJ := $(BUILD_DIR)/lexer/.build/HulkLexer.o
+GENERATED_LEXER_HEADER := $(LEXER_DIR)/.build/Lexer.hpp
+GENERATED_LEXER_SOURCE := $(LEXER_DIR)/.build/Lexer.cpp
+GENERATED_LEXER_OBJ := $(BUILD_DIR)/lexer/.build/Lexer.o
 
 # Generated token types files
 GENERATED_TOKEN_TYPES_SOURCE := $(LEXER_DIR)/.build/TokenTypes.cpp

@@ -33,10 +33,18 @@
 
 # Generados en compilación
 /.build
+/src/lexer/.build
 
-#text file
+#tex file
 *.aux
 *.fdb_latexmk
 *.fls 
 *.log
 *.gz
+
+#test
+/examples
+test_*
+Flex_*
+debug*
+*.backup

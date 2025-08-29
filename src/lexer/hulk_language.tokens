@@ -1,15 +1,15 @@
 # Sample token definitions for Hulk language
 # Format: TokenType : RegexPattern [-> DataType] [| Priority] [| Action]
 
+# Error patterns
+ERROR_ID1   : [_]+[a-zA-Z0-9_]+
+ERROR_ID2   : [0-9]+[a-zA-Z_]+ 
+
 # Literals with data types
 NUMBER      : [0-9]+(\.[0-9]+)? -> int
-STRING      : \"[a-zA-Z0-9_\. ]*\" -> string | 100
+STRING      : \"[a-zA-Z0-9_\.\:\*\\\"\+\-/%\^=><!&¡\?\¿\(\)\{\}\[\] ]*\" -> string | 100
 BOOL        : True|False -> bool
 NULL_VAL    : Null
-
-# Error patterns
-WRONG_ID1   : [_]+[a-zA-Z0-9_]+
-WRONG_ID2   : [0-9]+[a-zA-Z_]+ 
 
 # Identifiers
 ID          : [a-zA-Z_][a-zA-Z0-9_]*

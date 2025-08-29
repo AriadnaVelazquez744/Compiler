@@ -215,7 +215,7 @@ bool LexerGenerator::updateMakefile() {
 LEXER_GENERATOR := lexer_generator
 TOKEN_FILE := src/lexer/hulk_language.tokens
 GENERATED_LEXER := $(BUILD_DIR)/generated/GeneratedLexer.hpp
-GENERATED_TOKEN_TYPES := $(BUILD_DIR)/generated/GeneratedTokenTypes.hpp
+GENERATED_TOKEN_TYPES := $(BUILD_DIR)/generated/TokenTypes.hpp
 
 # Generate lexer from .tokens file
 $(GENERATED_LEXER) $(GENERATED_TOKEN_TYPES): $(TOKEN_FILE) $(LEXER_GENERATOR)
@@ -398,7 +398,7 @@ std::string LexerGenerator::generateTokenTypeHeader() const {
 std::string LexerGenerator::generateTokenTypeToString() const {
     std::stringstream content;
     
-    content << "#include \"GeneratedTokenTypes.hpp\"\n";
+    content << "#include \"TokenTypes.hpp\"\n";
     content << "#include <unordered_map>\n\n";
     
     content << "std::string tokenTypeToString(TokenType type) {\n";
@@ -423,7 +423,7 @@ std::string LexerGenerator::generateLexerHeader() const {
     std::stringstream content;
     
     content << "#pragma once\n\n";
-    content << "#include \"GeneratedTokenTypes.hpp\"\n";
+    content << "#include \"TokenTypes.hpp\"\n";
     content << "#include <string>\n";
     content << "#include <vector>\n";
     content << "#include <memory>\n\n";

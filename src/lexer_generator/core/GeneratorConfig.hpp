@@ -21,7 +21,7 @@ public:
     std::string namespace_name = "";                    ///< C++ namespace for generated code
     std::string header_file;                            ///< Generated header file name (auto-generated from class_name)
     std::string source_file;                            ///< Generated source file name (auto-generated from class_name)
-    std::string token_types_file = "GeneratedTokenTypes.hpp"; ///< Generated token types file
+    std::string token_types_file = "TokenTypes.hpp"; ///< Generated token types file
     
     // Code generation options
     bool generate_tests = false;                        ///< Generate unit tests

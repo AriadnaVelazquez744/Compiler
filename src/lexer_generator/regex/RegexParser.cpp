@@ -334,6 +334,8 @@ char RegexParser::unescapeChar(char c) const {
         case 'S': return 'S'; // non-space class placeholder
         case 'D': return 'D'; // non-digit class placeholder
         case 'W': return 'W'; // non-word class placeholder
+        case '"': return '"'; // escaped quote
+        case '\\': return '\\'; // escaped backslash
         default: return c;
     }
 } 

@@ -26,6 +26,16 @@ std::string readFile(const std::string& filename) {
     return buffer.str();
 }
 
+void printTokens(const std::vector<Token>& tokens) {
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        const auto& token = tokens[i];
+        std::cout << "  [" << i << "] " << tokenTypeToString(token.type) 
+                  << " => '" << token.lexeme << "'"
+                  << " at line " << token.location.line 
+                  << ", column " << token.location.column << "\n";
+    }
+}
+
 int main(int argc, char** argv) {
     const char* filename = (argc >= 2) ? argv[1] : "script.hulk";
 
@@ -42,30 +52,48 @@ int main(int argc, char** argv) {
     std::cout << "Processing file: " << filename << "\n";
     std::cout << "Source length: " << source.length() << " characters\n\n";
 
+    std::vector<Token> tokens;
+    std::vector<Token> error_tokens;
+    bool lexer_success = false;
+    
     try {
         // Create the generated lexer
         Lexer lexer(source);
         
         // Tokenize the entire input
-        std::vector<Token> tokens = lexer.tokenize();
+        tokens = lexer.tokenize();
         
-        // Display all tokens found
-        std::cout << "Tokens encontrados (" << tokens.size() << "):\n";
-        for (size_t i = 0; i < tokens.size(); ++i) {
-            const auto& token = tokens[i];
-            std::cout << "  [" << i << "] " << tokenTypeToString(token.type) 
-                      << " => '" << token.lexeme << "'"
-                      << " at line " << token.location.line 
-                      << ", column " << token.location.column << "\n";
+        // Check for error tokens (those with 'ERROR' in their type)
+        for (const auto& token : tokens) {
+            std::string token_type = tokenTypeToString(token.type);
+            if (token_type.find("ERROR") != std::string::npos) {
+                error_tokens.push_back(token);
+            }
         }
+        
+        // Determine if lexer phase succeeded
+        lexer_success = error_tokens.empty();
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error en fase léxica: " << e.what() << "\n";
+        return 1;
+    }
+    
+    // Process results outside of try-catch for proper resource cleanup
+    if (!lexer_success) {
+        // Lexer phase failed - print error tokens
+        std::cout << "❌ Lexer phase failed!\n";
+        std::cout << "Tokens con errores encontrados (" << error_tokens.size() << "):\n";
+        printTokens(error_tokens);
+        return 1;
+    } else {
+        // Lexer phase succeeded - print all tokens
+        std::cout << "Tokens encontrados (" << tokens.size() << "):\n";
+        printTokens(tokens);
         
         std::cout << "\n✅ Lexer phase completed successfully!\n";
         std::cout << "Total tokens: " << tokens.size() << "\n";
         
         return 0;
-        
-    } catch (const std::exception& e) {
-        std::cerr << "Error en fase léxica: " << e.what() << "\n";
-        return 1;
     }
 }

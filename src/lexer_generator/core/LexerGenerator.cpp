@@ -408,7 +408,7 @@ std::string LexerGenerator::generateTokenTypeToString() const {
         content << "        {TokenType::" << pattern->getName() << ", \"" << pattern->getName() << "\"},\n";
     }
     
-    content << "        {TokenType::END_OF_FILE, \"END_OF_FILE\"},\n";
+    content << "        {TokenType::END_OF_FILE, \"$\"},\n";
     content << "        {TokenType::UNKNOWN, \"UNKNOWN\"}\n";
     content << "    };\n\n";
     

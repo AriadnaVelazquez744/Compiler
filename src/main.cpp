@@ -9,6 +9,15 @@
 #include "lexer/.build/Lexer.hpp"
 #include "lexer/.build/TokenTypes.hpp"
 
+#include "parser/core/GrammarAugment.hpp"
+#include "parser/core/LR1ItemSetBuilder.hpp"
+#include "parser/core/LR1ParsingTables.hpp"
+#include "parser/ParserDriver.hpp"
+#include "parser/grammar/SemanticActionDispatcher.hpp"
+#include "parser/grammar/PrecedenceSetup.hpp"
+#include "ast/AST.hpp"
+#include "ast/ASTPrinter.hpp"
+
 std::string readFile(const std::string& filename) {
     // Ensure file has .hulk extension
     if (!std::filesystem::path(filename).has_extension() ||
@@ -26,14 +35,29 @@ std::string readFile(const std::string& filename) {
     return buffer.str();
 }
 
-void printTokens(const std::vector<Token>& tokens) {
+void printTokens(const std::vector<std::shared_ptr<Token>>& tokens) {
     for (size_t i = 0; i < tokens.size(); ++i) {
         const auto& token = tokens[i];
-        std::cout << "  [" << i << "] " << tokenTypeToString(token.type) 
-                  << " => '" << token.lexeme << "'"
-                  << " at line " << token.location.line 
-                  << ", column " << token.location.column << "\n";
+        std::cout << "  [" << i << "] " << tokenTypeToString(token->type) 
+                  << " => '" << token->lexeme << "'"
+                  << " at line " << token->location.line 
+                  << ", column " << token->location.column << "\n";
     }
+}
+
+
+bool is_valid_ast(const std::vector<std::shared_ptr<ASTNode>>& nodes) {
+    if (nodes.empty()) {
+        std::cerr << "AST vacío: ningún nodo generado" << std::endl;
+        return false;
+    }
+    for (const auto& node : nodes) {
+        if (!node) {
+            std::cerr << "AST contiene nodos nulos" << std::endl;
+            return false;
+        }
+    }
+    return true;
 }
 
 int main(int argc, char** argv) {
@@ -52,8 +76,8 @@ int main(int argc, char** argv) {
     std::cout << "Processing file: " << filename << "\n";
     std::cout << "Source length: " << source.length() << " characters\n\n";
 
-    std::vector<Token> tokens;
-    std::vector<Token> error_tokens;
+    std::vector<std::shared_ptr<Token>> tokens;
+    std::vector<std::shared_ptr<Token>> error_tokens;
     bool lexer_success = false;
     
     try {
@@ -65,9 +89,9 @@ int main(int argc, char** argv) {
         
         // Check for error tokens (those with 'ERROR' in their type)
         for (const auto& token : tokens) {
-            std::string token_type = tokenTypeToString(token.type);
+            std::string token_type = tokenTypeToString(token->type);
             if (token_type.find("ERROR") != std::string::npos) {
-                error_tokens.push_back(token);
+                error_tokens.push_back(token); // Convert shared_ptr back to Token
             }
         }
         
@@ -93,7 +117,62 @@ int main(int argc, char** argv) {
         
         std::cout << "\n✅ Lexer phase completed successfully!\n";
         std::cout << "Total tokens: " << tokens.size() << "\n";
-        
-        return 0;
     }
+
+    // 2. LOAD GRAMMAR AND BUILD PARSER
+    GrammarAugment grammar;
+
+    try {
+        grammar.readGrammar("src/parser/grammar/BNFGrammar.bnf");
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error al cargar la gramática: " << e.what() << std::endl;
+        return 1;
+    }
+
+    grammar.computeFirstSets();
+    grammar.computeFollowSets();
+    std::cerr << "conjuntos first y follow definidos \n";
+
+    LR1ItemSetBuilder itemBuilder(grammar);
+    itemBuilder.constructItemSets();
+    std::cerr << "conjuntos LR(1) definidos \n";
+
+    LR1ParsingTableGenerator tableGen(grammar, itemBuilder);
+    setupPrecedence(tableGen); // External config
+    tableGen.generateParsingTables();
+    std::cerr << "tablas action and goto y precedencia establecida \n";
+
+
+    // 3. PARSE TOKENS → AST
+    SemanticActionDispatcher dispatcher(tableGen);
+    std::cerr << "action dispatcher inicialyze \n";
+
+    ParserDriver driver(tableGen, dispatcher);
+    std::cerr << "parser driver initialize \n";
+
+    ParseResult result = driver.parse(tokens);
+    std::cerr << "parse result generated \n";
+
+    if (!result.errors.empty()) {
+        std::cerr << "Errores de análisis sintáctico:\n";
+        for (const std::string& e : result.errors)
+            std::cerr << "  " << e << "\n";
+        return 1;
+    }
+
+    if (!is_valid_ast(result.ast)) {
+        std::cerr << "Error: AST inválido.\n";
+        return 1;
+    }
+
+    std::cout << "\n=== AST Structure ===\n";
+    ASTPrinter printer;
+    for (const auto& node : result.ast) {
+        std::cout << "\nRoot Node:\n";
+        node->accept(printer);
+    }
+    std::cout << "\n=== End AST Structure ===\n";
+
+    return 0;
 }

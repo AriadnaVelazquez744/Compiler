@@ -3,7 +3,7 @@
 #include "core/LR1ParsingTables.hpp"
 #include "grammar/SemanticActionDispatcher.hpp"
 #include "grammar/ParserValue.hpp"
-#include "../lexer/Lexer.hpp"
+#include "../lexer/.build/Lexer.hpp"
 #include "../ast/AST.hpp"
 #include <vector>
 #include <stack>

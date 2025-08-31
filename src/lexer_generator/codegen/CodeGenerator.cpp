@@ -71,7 +71,7 @@ std::string CodeGenerator::generateTokenTypesImplementation() {
     }
     
     // Add special tokens
-    oss << "        {TokenType::END_OF_FILE, \"END_OF_FILE\"},\n";
+    oss << "        {TokenType::END_OF_FILE, \"$\"},\n";
     oss << "        {TokenType::ERROR, \"ERROR\"},\n";
     
     oss << "    };\n";
@@ -88,7 +88,7 @@ std::string CodeGenerator::generateTokenTypesImplementation() {
     }
     
     // Add special tokens
-    oss << "        {\"END_OF_FILE\", TokenType::END_OF_FILE},\n";
+    oss << "        {\"$\", TokenType::END_OF_FILE},\n";
     oss << "        {\"ERROR\", TokenType::ERROR},\n";
     
     oss << "    };\n";
@@ -159,6 +159,7 @@ std::string CodeGenerator::generateLexerHeader() {
     oss << "    TokenType type;\n";
     oss << "    std::string lexeme;\n";
     oss << "    SourceLocation location;\n\n";
+    oss << "    Token() : type(TokenType::UNKNOWN), lexeme(\"\"), location{0, 0} {}\n";
     oss << "    Token(TokenType type, std::string lexeme, SourceLocation loc)\n";
     oss << "        : type(type), lexeme(std::move(lexeme)), location(loc) {}\n";
     oss << "};\n\n";
@@ -168,8 +169,8 @@ std::string CodeGenerator::generateLexerHeader() {
     oss << "public:\n";
     oss << "    explicit " << class_name_ << "(const std::string& input);\n\n";
     oss << "    // Main lexing methods\n";
-    oss << "    Token getNextToken();\n";
-    oss << "    std::vector<Token> tokenize();\n";
+    oss << "    std::shared_ptr<Token> nextToken();\n";
+    oss << "    std::vector<std::shared_ptr<Token>> tokenize();\n";
     oss << "    bool hasMoreTokens() const;\n\n";
     oss << "private:\n";
     oss << "    std::string input_;\n";
@@ -256,10 +257,10 @@ std::string CodeGenerator::generateLexerImplementation() {
     oss << "}\n\n";
     
     // Main lexing methods
-    oss << "Token " << class_name_ << "::getNextToken() {\n";
+    oss << "std::shared_ptr<Token> " << class_name_ << "::nextToken() {\n";
     oss << "    skipWhitespace();\n\n";
     oss << "    if (position_ >= input_.size()) {\n";
-    oss << "        return Token(TokenType::END_OF_FILE, \"\", {line_, column_});\n";
+    oss << "        return std::make_shared<Token>(TokenType::END_OF_FILE, \"\", SourceLocation{line_, column_});\n";
     oss << "    }\n\n";
     oss << "    size_t start_pos = position_;\n";
     oss << "    int start_line = line_;\n";
@@ -276,21 +277,23 @@ std::string CodeGenerator::generateLexerImplementation() {
     oss << "        }\n\n";
     oss << "        position_ += result.length;\n";
     oss << "        column_ += result.length;\n\n";
-    oss << "        return Token(token_type, lexeme, {start_line, start_column});\n";
+    oss << "        return std::make_shared<Token>(token_type, lexeme, SourceLocation{start_line, start_column});\n";
     oss << "    } else {\n";
     oss << "        // No match - consume one character as ERROR\n";
     oss << "        std::string lexeme = input_.substr(position_, 1);\n";
     oss << "        position_++;\n";
     oss << "        column_++;\n";
-    oss << "        return Token(TokenType::ERROR, lexeme, {start_line, start_column});\n";
+    oss << "        return std::make_shared<Token>(TokenType::ERROR, lexeme, SourceLocation{start_line, start_column});\n";
     oss << "    }\n";
     oss << "}\n\n";
     
-    oss << "std::vector<Token> " << class_name_ << "::tokenize() {\n";
-    oss << "    std::vector<Token> tokens;\n";
+    oss << "std::vector<std::shared_ptr<Token>> " << class_name_ << "::tokenize() {\n";
+    oss << "    std::vector<std::shared_ptr<Token>> tokens;\n";
     oss << "    while (hasMoreTokens()) {\n";
-    oss << "        tokens.push_back(getNextToken());\n";
+    oss << "        tokens.push_back(nextToken());\n";
     oss << "    }\n";
+    oss << "    // Always add END_OF_FILE token at the end\n";
+    oss << "    tokens.push_back(std::make_shared<Token>(TokenType::END_OF_FILE, \"\", SourceLocation{line_, column_}));\n";
     oss << "    return tokens;\n";
     oss << "}\n\n";
     

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../ast/AST.hpp"
-#include "../../lexer/Lexer.hpp"
+#include "../../lexer/.build/Lexer.hpp"
 #include "../core/LR1ParsingTables.hpp"
 #include "../core/GrammarAugment.hpp"
 #include "ParserValue.hpp"

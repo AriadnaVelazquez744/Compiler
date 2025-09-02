@@ -24,6 +24,9 @@ public:
     // Add method to augment grammar
     void augmentGrammar();
 
+    const std::map<std::string, std::set<std::string>>& getFirstSets() const { return firstSet; }
+    const std::map<std::string, std::set<std::string>>& getFollowSets() const { return followSet; }
+
 private:
 
     std::map<std::string, std::vector<std::vector<std::string>>> productions;

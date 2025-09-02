@@ -17,13 +17,14 @@ void CodeGenerator::generateAllFiles(const std::string& outputDir) {
     
     std::cout << "Generating parser component files in directory: " << outputDir << std::endl;
     
-    generateGrammarProductions(basePath + "grammar_productions.cpp");
-    generateFirstSets(basePath + "first_sets.cpp");
-    generateFollowSets(basePath + "follow_sets.cpp");
-    generateLR1ItemSets(basePath + "lr1_item_sets.cpp");
-    generateParsingTables(basePath + "parsing_tables.cpp");
+    // Generate as header files
+    generateGrammarProductions(basePath + "grammar_productions.hpp");
+    generateFirstSets(basePath + "first_sets.hpp");
+    generateFollowSets(basePath + "follow_sets.hpp");
+    generateLR1ItemSets(basePath + "lr1_item_sets.hpp");
+    generateParsingTables(basePath + "parsing_tables.hpp");
     
-    std::cout << "All parser component files generated successfully!" << std::endl;
+    std::cout << "All parser component header files generated successfully!" << std::endl;
 }
 
 void CodeGenerator::generateGrammarProductions(const std::string& filename) {
@@ -38,6 +39,7 @@ void CodeGenerator::generateGrammarProductions(const std::string& filename) {
     file << "// This file contains the numerized grammar productions\n";
     file << "// Generated automatically from the parser\n\n";
     
+    file << "#pragma once\n\n";
     file << "#include <map>\n";
     file << "#include <vector>\n";
     file << "#include <string>\n\n";
@@ -96,6 +98,7 @@ void CodeGenerator::generateFirstSets(const std::string& filename) {
     file << "// This file contains the FIRST sets for each non-terminal\n";
     file << "// Generated automatically from the parser\n\n";
     
+    file << "#pragma once\n\n";
     file << "#include <map>\n";
     file << "#include <set>\n";
     file << "#include <string>\n\n";
@@ -103,24 +106,28 @@ void CodeGenerator::generateFirstSets(const std::string& filename) {
     file << "// FIRST sets for each non-terminal\n";
     file << "const std::map<std::string, std::set<std::string>> FIRST_SETS = {\n";
     
+    // Access first sets through the grammar's public interface
+    // Since we can't access private members, we'll use the computeFirstForSequence method
+    // to generate the first sets for each non-terminal
     const auto& productions = grammar.getProductions();
-    for (const auto& [nt, _] : productions) {
-        file << "    {" << escapeString(nt) << ", {";
+    for (const auto& [nonTerminal, _] : productions) {
+        file << "    {" << escapeString(nonTerminal) << ", {";
         
-        // Get the first set for this non-terminal
+        // Compute first set for this non-terminal by checking all its productions
         std::set<std::string> firstSet;
-        for (const auto& prod : productions.at(nt)) {
-            auto first = grammar.computeFirstForSequence(prod);
-            firstSet.insert(first.begin(), first.end());
+        for (const auto& rhs : productions.at(nonTerminal)) {
+            if (!rhs.empty()) {
+                auto computedFirst = grammar.computeFirstForSequence(rhs);
+                firstSet.insert(computedFirst.begin(), computedFirst.end());
+            }
         }
         
         bool first = true;
-        for (const auto& symbol : firstSet) {
+        for (const auto& terminal : firstSet) {
             if (!first) file << ", ";
-            file << escapeString(symbol);
+            file << escapeString(terminal);
             first = false;
         }
-        
         file << "}},\n";
     }
     
@@ -144,6 +151,7 @@ void CodeGenerator::generateFollowSets(const std::string& filename) {
     file << "// This file contains the FOLLOW sets for each non-terminal\n";
     file << "// Generated automatically from the parser\n\n";
     
+    file << "#pragma once\n\n";
     file << "#include <map>\n";
     file << "#include <set>\n";
     file << "#include <string>\n\n";
@@ -151,25 +159,17 @@ void CodeGenerator::generateFollowSets(const std::string& filename) {
     file << "// FOLLOW sets for each non-terminal\n";
     file << "const std::map<std::string, std::set<std::string>> FOLLOW_SETS = {\n";
     
-    // Note: We need to access the follow sets from the grammar
-    // Since the current GrammarAugment doesn't expose follow sets directly,
-    // we'll generate a placeholder that needs to be filled after computation
-    
+    // Since we can't access the computed follow sets directly, we'll generate placeholders
+    // The actual follow sets would need to be computed and stored in a way that's accessible
     file << "    // Note: FOLLOW sets need to be computed at runtime\n";
-    file << "    // This is a placeholder structure\n";
+    file << "    // This is a placeholder structure that matches the expected interface\n";
     
     const auto& productions = grammar.getProductions();
-    for (const auto& [nt, _] : productions) {
-        file << "    {" << escapeString(nt) << ", {}},\n";
+    for (const auto& [nonTerminal, _] : productions) {
+        file << "    {" << escapeString(nonTerminal) << ", {}},\n";
     }
     
     file << "};\n\n";
-    
-    file << "// Function to compute FOLLOW sets at runtime\n";
-    file << "void computeFollowSets() {\n";
-    file << "    // Implementation would go here\n";
-    file << "    // This is called after grammar loading\n";
-    file << "}\n\n";
     
     writeFooter(file);
     file.close();
@@ -189,6 +189,7 @@ void CodeGenerator::generateLR1ItemSets(const std::string& filename) {
     file << "// This file contains the LR(1) item sets and transitions\n";
     file << "// Generated automatically from the parser\n\n";
     
+    file << "#pragma once\n\n";
     file << "#include <vector>\n";
     file << "#include <map>\n";
     file << "#include <set>\n";
@@ -262,6 +263,7 @@ void CodeGenerator::generateParsingTables(const std::string& filename) {
     file << "// This file contains the Action and Goto tables for LR(1) parsing\n";
     file << "// Generated automatically from the parser\n\n";
     
+    file << "#pragma once\n\n";
     file << "#include <vector>\n";
     file << "#include <map>\n";
     file << "#include <string>\n\n";

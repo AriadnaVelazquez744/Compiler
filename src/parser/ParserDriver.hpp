@@ -1,10 +1,11 @@
 #pragma once
 
-#include "core/LR1ParsingTables.hpp"
 #include "grammar/SemanticActionDispatcher.hpp"
 #include "grammar/ParserValue.hpp"
 #include "../lexer/.build/Lexer.hpp"
 #include "../ast/AST.hpp"
+#include "./.build/parsing_tables.hpp"
+#include "./.build/grammar_productions.hpp"
 #include <vector>
 #include <stack>
 #include <memory>
@@ -19,11 +20,10 @@ struct ParseResult {
 
 class ParserDriver {
 public:
-    ParserDriver(const LR1ParsingTableGenerator& tableGen, SemanticActionDispatcher& dispatcher);
+    ParserDriver(SemanticActionDispatcher& dispatcher);
     ParseResult parse(const std::vector<std::shared_ptr<Token>>& tokens);
 
 private:
-    const LR1ParsingTableGenerator& tableGen;
     SemanticActionDispatcher& dispatcher;
     std::stack<ParserValue> valueStack;  // Can hold both Token and ASTNode
     std::stack<int> stateStack;
@@ -38,15 +38,6 @@ private:
     ParseResult handleAccept();
     void handleError(const std::vector<std::shared_ptr<Token>>& tokens);
 
-    // Helper functions for ParserValue handling
-    bool isNull(const ParserValue& value) const {
-        return std::holds_alternative<std::nullptr_t>(value);
-    }
-
-    std::string getResultString(const ParserValue& value) const {
-        if (isNull(value)) {
-            return "null";
-        }
-        return "Node created";
-    }
+    const std::map<std::string, Action>& getActionTable(int state) const { return ACTION_TABLE[state]; }
+    const std::map<std::string, int>& getGotoTable(int state) const { return GOTO_TABLE[state]; }
 };

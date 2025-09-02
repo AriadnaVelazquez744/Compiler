@@ -9,12 +9,8 @@
 #include "lexer/.build/Lexer.hpp"
 #include "lexer/.build/TokenTypes.hpp"
 
-#include "parser/core/GrammarAugment.hpp"
-#include "parser/core/LR1ItemSetBuilder.hpp"
-#include "parser/core/LR1ParsingTables.hpp"
 #include "parser/ParserDriver.hpp"
 #include "parser/grammar/SemanticActionDispatcher.hpp"
-#include "parser/grammar/PrecedenceSetup.hpp"
 #include "ast/AST.hpp"
 #include "ast/ASTPrinter.hpp"
 
@@ -119,40 +115,11 @@ int main(int argc, char** argv) {
         std::cout << "Total tokens: " << tokens.size() << "\n";
     }
 
-    // 2. LOAD GRAMMAR AND BUILD PARSER
-    GrammarAugment grammar;
-
-    try {
-        grammar.readGrammar("src/parser/grammar/BNFGrammar.bnf");
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error al cargar la gramática: " << e.what() << std::endl;
-        return 1;
-    }
-
-    grammar.computeFirstSets();
-    grammar.computeFollowSets();
-    std::cerr << "conjuntos first y follow definidos \n";
-
-    LR1ItemSetBuilder itemBuilder(grammar);
-    itemBuilder.constructItemSets();
-    std::cerr << "conjuntos LR(1) definidos \n";
-
-    LR1ParsingTableGenerator tableGen(grammar, itemBuilder);
-    setupPrecedence(tableGen); // External config
-    tableGen.generateParsingTables();
-    std::cerr << "tablas action and goto y precedencia establecida \n";
-
-
-    // 3. PARSE TOKENS → AST
-    SemanticActionDispatcher dispatcher(tableGen);
-    std::cerr << "action dispatcher inicialyze \n";
-
-    ParserDriver driver(tableGen, dispatcher);
-    std::cerr << "parser driver initialize \n";
+    // 2. PARSER: Use generated tables directly
+    SemanticActionDispatcher dispatcher;
+    ParserDriver driver(dispatcher);
 
     ParseResult result = driver.parse(tokens);
-    std::cerr << "parse result generated \n";
 
     if (!result.errors.empty()) {
         std::cerr << "Errores de análisis sintáctico:\n";

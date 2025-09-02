@@ -7,8 +7,8 @@
 // Initialize the static member
 std::vector<std::shared_ptr<ASTNode>> SemanticActionDispatcher::rootNodes;
 
-SemanticActionDispatcher::SemanticActionDispatcher(const LR1ParsingTableGenerator& tableGen)
-    : tableGen(tableGen) {
+SemanticActionDispatcher::SemanticActionDispatcher()
+{
     initializeRules();
 }
 
@@ -21,7 +21,7 @@ void SemanticActionDispatcher::initializeRules() {
     };
 
     const std::vector<ProductionInfo> productions = {
-        {"S`", {"program"}},                 // S' : program
+        {"S'", {"program"}},                 // S' : program
         {"program", {"stmt"}},               // program : stmt
         {"program", {"program", "stmt"}},    // program : program stmt
         {"args", {}},                        // args : ε
@@ -70,10 +70,11 @@ void SemanticActionDispatcher::initializeRules() {
         {"params", {"params", "COMMA", "ID", "DEFINE", "ID"}}
     };
 
-    // Initialize ruleInfo using tableBuilder.getProductionNumber
+    // Initialize ruleInfo using PRODUCTION_TO_INDEX
     for (const auto& prod : productions) {
-        int prodNum = tableGen.getProductionNumber(prod.lhs, prod.rhs);
-        if (prodNum != -1) {
+        auto it = PRODUCTION_TO_INDEX.find({prod.lhs, prod.rhs});
+        if (it != PRODUCTION_TO_INDEX.end()) {
+            int prodNum = it->second;
             ruleInfo[prodNum] = {prod.lhs, static_cast<int>(prod.rhs.size())};
             std::cout << "Production " << prodNum << ": " << prod.lhs << " ::= ";
             for (const auto& sym : prod.rhs) {
@@ -124,56 +125,61 @@ ParserValue SemanticActionDispatcher::reduce(int prodNumber,
     std::cout << "Production: " << prodNumber << std::endl;
     std::cout << "Number of children: " << children.size() << std::endl;
     
-    // Get production numbers dynamically
-    int s_prime_prod = tableGen.getProductionNumber("S'", {"program"});
-    int program_stmt_prod = tableGen.getProductionNumber("program", {"stmt"});
-    int program_program_stmt_prod = tableGen.getProductionNumber("program", {"program", "stmt"});
-    int args_empty_prod = tableGen.getProductionNumber("args", {});
-    int args_expr_prod = tableGen.getProductionNumber("args", {"expr"});
-    int args_args_comma_expr_prod = tableGen.getProductionNumber("args", {"args", "COMMA", "expr"});
-    int expr_number_prod = tableGen.getProductionNumber("expr", {"NUMBER"});
-    int expr_string_prod = tableGen.getProductionNumber("expr", {"STRING"});
-    int expr_bool_prod = tableGen.getProductionNumber("expr", {"BOOL"});
-    int expr_id_prod = tableGen.getProductionNumber("expr", {"ID"});
-    int expr_e_prod = tableGen.getProductionNumber("expr", {"E"});
-    int expr_pi_prod = tableGen.getProductionNumber("expr", {"PI"});
-    int expr_paren_prod = tableGen.getProductionNumber("expr", {"LPAREN", "expr", "RPAREN"});
-    int expr_sub_prod = tableGen.getProductionNumber("expr", {"SUB", "expr"});
-    int expr_not_prod = tableGen.getProductionNumber("expr", {"NOT", "expr"});
-    int expr_add_prod = tableGen.getProductionNumber("expr", {"expr", "ADD", "expr"});
-    int expr_sub_binary_prod = tableGen.getProductionNumber("expr", {"expr", "SUB", "expr"});
-    int expr_mul_prod = tableGen.getProductionNumber("expr", {"expr", "MUL", "expr"});
-    int expr_div_prod = tableGen.getProductionNumber("expr", {"expr", "DIV", "expr"});
-    int expr_mod_prod = tableGen.getProductionNumber("expr", {"expr", "MOD", "expr"});
-    int expr_pow_prod = tableGen.getProductionNumber("expr", {"expr", "POW", "expr"});
-    int expr_concat_prod = tableGen.getProductionNumber("expr", {"expr", "CONCAT", "expr"});
-    int expr_concat_space_prod = tableGen.getProductionNumber("expr", {"expr", "CONCAT_SPACE", "expr"});
-    int expr_lt_prod = tableGen.getProductionNumber("expr", {"expr", "LT", "expr"});
-    int expr_gt_prod = tableGen.getProductionNumber("expr", {"expr", "GT", "expr"});
-    int expr_le_prod = tableGen.getProductionNumber("expr", {"expr", "LE", "expr"});
-    int expr_ge_prod = tableGen.getProductionNumber("expr", {"expr", "GE", "expr"});
-    int expr_eq_prod = tableGen.getProductionNumber("expr", {"expr", "EQ", "expr"});
-    int expr_ne_prod = tableGen.getProductionNumber("expr", {"expr", "NE", "expr"});
-    int expr_and_prod = tableGen.getProductionNumber("expr", {"expr", "AND", "expr"});
-    int expr_or_prod = tableGen.getProductionNumber("expr", {"expr", "OR", "expr"});
-    int stmt_expr_prod = tableGen.getProductionNumber("stmt", {"expr"});
-    int stmt_print_ord_prod = tableGen.getProductionNumber("stmt", {"print_ord"});
-    int print_ord_prod = tableGen.getProductionNumber("print_ord", {"PRINT", "LPAREN", "expr", "RPAREN"});
-    int expr_sin_prod = tableGen.getProductionNumber("expr", {"SIN", "LPAREN", "expr", "RPAREN"});
-    int expr_cos_prod = tableGen.getProductionNumber("expr", {"COS", "LPAREN", "expr", "RPAREN"});
-    int expr_min_prod = tableGen.getProductionNumber("expr", {"MIN", "LPAREN", "expr", "COMMA", "expr", "RPAREN"});
-    int expr_max_prod = tableGen.getProductionNumber("expr", {"MAX", "LPAREN", "expr", "COMMA", "expr", "RPAREN"});
-    int expr_sqrt_prod = tableGen.getProductionNumber("expr", {"SQRT", "LPAREN", "expr", "RPAREN"});
-    int expr_log_prod = tableGen.getProductionNumber("expr", {"LOG", "LPAREN", "expr", "COMMA", "expr", "RPAREN"});
-    int expr_exp_prod = tableGen.getProductionNumber("expr", {"EXP", "LPAREN", "expr", "RPAREN"});
-    int expr_random_prod = tableGen.getProductionNumber("expr", {"RANDOM", "LPAREN", "RPAREN"});
+    // Get production numbers using PRODUCTION_TO_INDEX
+    auto getProd = [](const std::string& lhs, const std::vector<std::string>& rhs) -> int {
+        auto it = PRODUCTION_TO_INDEX.find({lhs, rhs});
+        return it != PRODUCTION_TO_INDEX.end() ? it->second : -1;
+    };
+
+    int s_prime_prod = getProd("S'", {"program"});
+    int program_stmt_prod = getProd("program", {"stmt"});
+    int program_program_stmt_prod = getProd("program", {"program", "stmt"});
+    int args_empty_prod = getProd("args", {});
+    int args_expr_prod = getProd("args", {"expr"});
+    int args_args_comma_expr_prod = getProd("args", {"args", "COMMA", "expr"});
+    int expr_number_prod = getProd("expr", {"NUMBER"});
+    int expr_string_prod = getProd("expr", {"STRING"});
+    int expr_bool_prod = getProd("expr", {"BOOL"});
+    int expr_id_prod = getProd("expr", {"ID"});
+    int expr_e_prod = getProd("expr", {"E"});
+    int expr_pi_prod = getProd("expr", {"PI"});
+    int expr_paren_prod = getProd("expr", {"LPAREN", "expr", "RPAREN"});
+    int expr_sub_prod = getProd("expr", {"SUB", "expr"});
+    int expr_not_prod = getProd("expr", {"NOT", "expr"});
+    int expr_add_prod = getProd("expr", {"expr", "ADD", "expr"});
+    int expr_sub_binary_prod = getProd("expr", {"expr", "SUB", "expr"});
+    int expr_mul_prod = getProd("expr", {"expr", "MUL", "expr"});
+    int expr_div_prod = getProd("expr", {"expr", "DIV", "expr"});
+    int expr_mod_prod = getProd("expr", {"expr", "MOD", "expr"});
+    int expr_pow_prod = getProd("expr", {"expr", "POW", "expr"});
+    int expr_concat_prod = getProd("expr", {"expr", "CONCAT", "expr"});
+    int expr_concat_space_prod = getProd("expr", {"expr", "CONCAT_SPACE", "expr"});
+    int expr_lt_prod = getProd("expr", {"expr", "LT", "expr"});
+    int expr_gt_prod = getProd("expr", {"expr", "GT", "expr"});
+    int expr_le_prod = getProd("expr", {"expr", "LE", "expr"});
+    int expr_ge_prod = getProd("expr", {"expr", "GE", "expr"});
+    int expr_eq_prod = getProd("expr", {"expr", "EQ", "expr"});
+    int expr_ne_prod = getProd("expr", {"expr", "NE", "expr"});
+    int expr_and_prod = getProd("expr", {"expr", "AND", "expr"});
+    int expr_or_prod = getProd("expr", {"expr", "OR", "expr"});
+    int stmt_expr_prod = getProd("stmt", {"expr"});
+    int stmt_print_ord_prod = getProd("stmt", {"print_ord"});
+    int print_ord_prod = getProd("print_ord", {"PRINT", "LPAREN", "expr", "RPAREN"});
+    int expr_sin_prod = getProd("expr", {"SIN", "LPAREN", "expr", "RPAREN"});
+    int expr_cos_prod = getProd("expr", {"COS", "LPAREN", "expr", "RPAREN"});
+    int expr_min_prod = getProd("expr", {"MIN", "LPAREN", "expr", "COMMA", "expr", "RPAREN"});
+    int expr_max_prod = getProd("expr", {"MAX", "LPAREN", "expr", "COMMA", "expr", "RPAREN"});
+    int expr_sqrt_prod = getProd("expr", {"SQRT", "LPAREN", "expr", "RPAREN"});
+    int expr_log_prod = getProd("expr", {"LOG", "LPAREN", "expr", "COMMA", "expr", "RPAREN"});
+    int expr_exp_prod = getProd("expr", {"EXP", "LPAREN", "expr", "RPAREN"});
+    int expr_random_prod = getProd("expr", {"RANDOM", "LPAREN", "RPAREN"});
 
     // Add parameter production numbers
-    int params_empty_prod = tableGen.getProductionNumber("params", {});
-    int params_id_prod = tableGen.getProductionNumber("params", {"ID"});
-    int params_id_define_id_prod = tableGen.getProductionNumber("params", {"ID", "DEFINE", "ID"});
-    int params_params_comma_id_prod = tableGen.getProductionNumber("params", {"params", "COMMA", "ID"});
-    int params_params_comma_id_define_id_prod = tableGen.getProductionNumber("params", {"params", "COMMA", "ID", "DEFINE", "ID"});
+    int params_empty_prod = getProd("params", {});
+    int params_id_prod = getProd("params", {"ID"});
+    int params_id_define_id_prod = getProd("params", {"ID", "DEFINE", "ID"});
+    int params_params_comma_id_prod = getProd("params", {"params", "COMMA", "ID"});
+    int params_params_comma_id_define_id_prod = getProd("params", {"params", "COMMA", "ID", "DEFINE", "ID"});
 
     if (prodNumber == s_prime_prod) { // S' : program
         std::cout << "S' reduction" << std::endl;

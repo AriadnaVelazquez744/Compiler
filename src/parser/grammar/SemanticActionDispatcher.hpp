@@ -2,9 +2,8 @@
 
 #include "../../ast/AST.hpp"
 #include "../../lexer/.build/Lexer.hpp"
-#include "../core/LR1ParsingTables.hpp"
-#include "../core/GrammarAugment.hpp"
 #include "ParserValue.hpp"
+#include "../.build/grammar_productions.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,8 +20,7 @@ struct RuleInfo {
 
 class SemanticActionDispatcher {
 public:
-    // Modified constructor to take LR1ParsingTableGenerator
-    SemanticActionDispatcher(const LR1ParsingTableGenerator& tableGen);
+    SemanticActionDispatcher();
 
     // Called by the parser during a reduce step
     ParserValue reduce(int prodNumber,
@@ -38,7 +36,6 @@ public:
     void clearRootNodes();
 
 private:
-    const LR1ParsingTableGenerator& tableGen;  // Added member
     std::unordered_map<int, RuleInfo> ruleInfo;
     std::vector<int> binaryOpProds;
 

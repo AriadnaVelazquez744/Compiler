@@ -1,8 +1,17 @@
 #include "ParserDriver.hpp"
 #include <iostream>
 
-ParserDriver::ParserDriver(const LR1ParsingTableGenerator& tableGen, SemanticActionDispatcher& dispatcher)
-    : tableGen(tableGen), dispatcher(dispatcher), currentTokenIndex(0) {}
+ParserDriver::ParserDriver(SemanticActionDispatcher& dispatcher)
+    : dispatcher(dispatcher), currentTokenIndex(0) {}
+
+static inline bool isNullValue(const ParserValue& value) {
+    return std::holds_alternative<std::nullptr_t>(value);
+}
+
+static inline std::string resultString(const ParserValue& value) {
+    if (isNullValue(value)) return "null";
+    return "Node created";
+}
 
 ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& tokens) {
     std::cout << "\n=== Starting Parser ===" << std::endl;
@@ -21,7 +30,7 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
             std::cout << "Reached end of input" << std::endl;
             // Try to reduce any remaining items
             int currentState = stateStack.top();
-            const auto& actionMap = tableGen.getActionTable(currentState);
+            const auto& actionMap = getActionTable(currentState);
             auto actionIt = actionMap.find("$");
             
             if (actionIt != actionMap.end() && actionIt->second.type == ActionType::Reduce) {
@@ -66,10 +75,10 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 
                 // Perform reduction
                 auto result = dispatcher.reduce(prodNum, children, loc);
-                if (isNull(result)) {
+                if (isNullValue(result)) {
                     return {dispatcher.getRootNodes(), errors};
                 }
-                std::cout << "Reduction result: " << getResultString(result) << std::endl;
+                std::cout << "Reduction result: " << resultString(result) << std::endl;
                 
                 // Handle statement reduction if this is a statement
                 if (lhs == "stmt") {
@@ -77,7 +86,7 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 }
                 
                 valueStack.push(result);
-                const auto& gotoTable = tableGen.getGotoTable(stateStack.top());
+                const auto& gotoTable = getGotoTable(stateStack.top());
                 auto gotoIt = gotoTable.find(lhs);
                 if (gotoIt != gotoTable.end()) {
                     int newState = gotoIt->second;
@@ -85,7 +94,7 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                     stateStack.push(newState);
                     
                     // Check if we can accept
-                    const auto& newActionMap = tableGen.getActionTable(newState);
+                    const auto& newActionMap = getActionTable(newState);
                     auto acceptIt = newActionMap.find("$");
                     if (acceptIt != newActionMap.end() && acceptIt->second.type == ActionType::Accept) {
                         std::cout << "=== Parser Complete ===" << std::endl;
@@ -102,7 +111,7 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
         // Check if current token is a semicolon
         if (isSEMICOLON(currentToken)) {
             std::cout << "Found semicolon, attempting reduction" << std::endl;
-            const auto& actionMap = tableGen.getActionTable(currentState);
+            const auto& actionMap = getActionTable(currentState);
             auto actionIt = actionMap.find("$");
             
             if (actionIt != actionMap.end() && actionIt->second.type == ActionType::Reduce) {
@@ -147,10 +156,10 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 
                 // Perform reduction
                 auto result = dispatcher.reduce(prodNum, children, loc);
-                if (isNull(result)) {
+                if (isNullValue(result)) {
                     return {dispatcher.getRootNodes(), errors};
                 }
-                std::cout << "Reduction result: " << getResultString(result) << std::endl;
+                std::cout << "Reduction result: " << resultString(result) << std::endl;
                 
                 // Handle statement reduction if this is a statement
                 if (lhs == "stmt") {
@@ -158,7 +167,7 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 }
                 
                 valueStack.push(result);
-                const auto& gotoTable = tableGen.getGotoTable(stateStack.top());
+                const auto& gotoTable = getGotoTable(stateStack.top());
                 auto gotoIt = gotoTable.find(lhs);
                 if (gotoIt != gotoTable.end()) {
                     int newState = gotoIt->second;
@@ -173,7 +182,7 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
         }
         
         // Normal token processing
-        const auto& actionMap = tableGen.getActionTable(currentState);
+        const auto& actionMap = getActionTable(currentState);
         std::string tokenType = tokenTypeToString(currentToken->type);
         if ((currentTokenIndex >= tokens.size()) && tokenType == "$") {
             std::cout << "Accepting program" << std::endl;
@@ -185,7 +194,8 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
         auto actionIt = actionMap.find(tokenType);
         if (actionIt == actionMap.end()) {
             std::cout << "ERROR: No action found for token " << tokenType << std::endl;
-            const auto& expected = tableGen.getExpectedTokens(currentState);
+            std::set<std::string> expected;
+            for (const auto& kv : actionMap) expected.insert(kv.first);
             reportError(currentToken, expected);
             handleError(tokens);
             continue;
@@ -243,10 +253,10 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 }
                 
                 auto result = dispatcher.reduce(prodNum, children, loc);
-                if (isNull(result)) {
+                if (isNullValue(result)) {
                     return {dispatcher.getRootNodes(), errors};
                 }
-                std::cout << "Reduction result: " << getResultString(result) << std::endl;
+                std::cout << "Reduction result: " << resultString(result) << std::endl;
                 
                 // Handle statement reduction if this is a statement
                 if (lhs == "stmt") {
@@ -254,7 +264,7 @@ ParseResult ParserDriver::parse(const std::vector<std::shared_ptr<Token>>& token
                 }
                 
                 valueStack.push(result);
-                const auto& gotoTable = tableGen.getGotoTable(stateStack.top());
+                const auto& gotoTable = getGotoTable(stateStack.top());
                 auto gotoIt = gotoTable.find(lhs);
                 if (gotoIt != gotoTable.end()) {
                     int newState = gotoIt->second;

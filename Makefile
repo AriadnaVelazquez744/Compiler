@@ -65,7 +65,6 @@ PARSER_GENERATOR_DEPS := $(PARSER_DIR)/core/GrammarAugment.cpp \
                         $(PARSER_DIR)/core/LR1ParsingTables.cpp \
                         $(PARSER_DIR)/grammar/PrecedenceSetup.cpp \
                         $(PARSER_DIR)/grammar/GrammarNormalizer.cpp \
-                        $(PARSER_DIR)/grammar/SemanticActionDispatcher.cpp \
                         $(PARSER_DIR)/codegen/CodeGenerator.cpp
 
 PARSER_GENERATOR_DEPS_OBJ := $(patsubst $(PARSER_DIR)/%.cpp, $(BUILD_DIR)/parser/%.o, $(PARSER_GENERATOR_DEPS))
